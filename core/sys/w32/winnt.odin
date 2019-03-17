@@ -1,0 +1,8170 @@
+// +build windows
+package w32
+
+import "core:c"
+
+using EXCEPTION_DISPOSITION :: enum c.int {
+	ExceptionContinueExecution = 0,
+	ExceptionContinueSearch    = 1,
+	ExceptionNestedException   = 2,
+	ExceptionCollidedUnwind    = 3,
+}
+
+EXCEPTION_EXECUTE_HANDLER    :: i32(1);
+EXCEPTION_CONTINUE_SEARCH    :: i32(0);
+EXCEPTION_CONTINUE_EXECUTION :: i32(-1);
+
+
+ANYSIZE_ARRAY :: 1;
+MAX_NATURAL_ALIGNMENT :: size_of(uint) == 8 ? 4 : 8;
+MEMORY_ALLOCATION_ALIGNMENT :: size_of(uint) == 8 ? 8 : 16;
+
+SYSTEM_CACHE_ALIGNMENT_SIZE :: 64;
+PVOID      :: rawptr;
+PVOID64    :: u64; // This is a 64-bit pointer, even when in 32-bit
+CHAR       :: c.char;
+LONG       :: c.long;
+WCHAR      :: u16;
+PWCHAR     :: ^WCHAR;
+LPWCH      :: ^WCHAR;
+PWCH       :: ^WCHAR;
+LPCWCH     :: ^WCHAR;
+PCWCH      :: ^WCHAR;
+NWPSTR     :: ^WCHAR;
+LPWSTR     :: ^WCHAR;
+PWSTR      :: ^WCHAR;
+PZPWSTR    :: ^PWSTR;
+PCZPWSTR   :: ^PWSTR;
+LPUWSTR    :: ^WCHAR; // Unaligned pointer
+PUWSTR     :: ^WCHAR; // Unaligned pointer
+LPCWSTR    :: ^WCHAR;
+PCWSTR     :: ^WCHAR;
+PZPCWSTR   :: ^PCWSTR;
+PCZPCWSTR  :: ^PCWSTR;
+LPCUWSTR   :: ^WCHAR; // Unaligned pointer
+PCUWSTR    :: ^WCHAR; // Unaligned pointer
+PZZWSTR    :: ^WCHAR;
+PCZZWSTR   :: ^WCHAR;
+PUZZWSTR   :: ^WCHAR; // Unaligned pointer
+PCUZZWSTR  :: ^WCHAR; // Unaligned pointer
+PNZWCH     :: ^WCHAR;
+PCNZWCH    :: ^WCHAR;
+PUNZWCH    :: ^WCHAR; // Unaligned pointer
+PCUNZWCH   :: ^WCHAR; // Unaligned pointer
+LPCWCHAR   :: ^WCHAR;
+PCWCHAR    :: ^WCHAR;
+LPCUWCHAR  :: ^WCHAR; // Unaligned pointer
+PCUWCHAR   :: ^WCHAR; // Unaligned pointer
+UCSCHAR    :: c.ulong;
+
+UCSCHAR_INVALID_CHARACTER :: UCSCHAR(0xffffffff);
+MIN_UCSCHAR               :: UCSCHAR(0);
+MAX_UCSCHAR               :: UCSCHAR(0x0010FFFF);
+
+PUCSCHAR   :: ^UCSCHAR;
+PCUCSCHAR  :: ^UCSCHAR;
+PUCSSTR    :: ^UCSCHAR;
+PUUCSSTR   :: ^UCSCHAR; // Unaligned pointer
+PCUCSSTR   :: ^UCSCHAR;
+PCUUCSSTR  :: ^UCSCHAR; // Unaligned pointer
+PUUCSCHAR  :: ^UCSCHAR; // Unaligned pointer
+PCUUCSCHAR :: ^UCSCHAR; // Unaligned pointer
+PCHAR      :: cstring;
+LPCH       :: cstring;
+PCH        :: cstring;
+LPCCH      :: cstring;
+PCCH       :: cstring;
+NPSTR      :: cstring;
+LPSTR      :: cstring;
+PSTR       :: cstring;
+PZPSTR     :: ^PSTR;
+PCZPSTR    :: ^PSTR;
+LPCSTR     :: cstring;
+PCSTR      :: cstring;
+PZPCSTR    :: ^PCSTR;
+PCZPCSTR   :: ^PCSTR;
+PZZSTR     :: cstring;
+PCZZSTR    :: cstring;
+PNZCH      :: cstring;
+PCNZCH     :: cstring;
+
+// Skipping TCHAR things
+PSHORT :: ^SHORT;
+PLONG  :: ^LONG;
+
+LUID :: struct {
+	LowPart: ULONG,
+	HighPart: LONG,
+}
+PLUID :: ^LUID;
+
+ALL_PROCESSOR_GROUPS :: WORD(0xffff);
+
+PROCESSOR_NUMBER :: struct {
+	Group:           WORD,
+	Number:          BYTE,
+	Reserved:        BYTE,
+}
+PPROCESSOR_NUMBER :: ^PROCESSOR_NUMBER;
+GROUP_AFFINITY :: struct {
+	Mask:     KAFFINITY,
+	Group:    WORD,
+	Reserved: [3]WORD,
+}
+PGROUP_AFFINITY :: ^GROUP_AFFINITY;
+
+MAXIMUM_PROC_PER_GROUP :: BYTE(8*size_of(uint));
+
+MAXIMUM_PROCESSORS : BYTE : MAXIMUM_PROC_PER_GROUP;
+
+HANDLE  :: distinct rawptr;
+PHANDLE :: ^HANDLE;
+FCHAR   :: BYTE;
+FSHORT  :: WORD;
+FLONG   :: DWORD;
+HRESULT :: c.long;
+CCHAR   :: c.char;
+LCID    :: DWORD;
+PLCID   :: PDWORD;
+LANGID  :: distinct WORD;
+using COMPARTMENT_ID :: enum c.int {
+	UNSPECIFIED_COMPARTMENT_ID = 0,
+	DEFAULT_COMPARTMENT_ID,
+}
+PCOMPARTMENT_ID :: ^COMPARTMENT_ID;
+
+APPLICATION_ERROR_MASK       :: DWORD(0x20000000);
+ERROR_SEVERITY_SUCCESS       :: DWORD(0x00000000);
+ERROR_SEVERITY_INFORMATIONAL :: DWORD(0x40000000);
+ERROR_SEVERITY_WARNING       :: DWORD(0x80000000);
+ERROR_SEVERITY_ERROR         :: DWORD(0xC0000000);
+
+FLOAT128 :: struct {
+	LowPart:  i64,
+	HighPart: i64,
+}
+PFLOAT128 :: ^FLOAT128;
+LONGLONG  :: i64;
+ULONGLONG :: u64;
+
+MAXLONGLONG :: LONGLONG(0x7fffffffffffffff);
+
+PLONGLONG  :: ^LONGLONG;
+PULONGLONG :: ^ULONGLONG;
+USN        :: LONGLONG;
+LARGE_INTEGER_u :: struct {
+	LowPart: DWORD,
+	HighPart: LONG,
+}
+LARGE_INTEGER :: struct #raw_union {
+	i: u64,
+	QuadPart: LONGLONG,
+	u: LARGE_INTEGER_u,
+}
+PLARGE_INTEGER :: ^LARGE_INTEGER;
+ULARGE_INTEGER_u :: struct {
+	LowPart: DWORD,
+	HighPart: LONG,
+}
+ULARGE_INTEGER :: struct #raw_union {
+	i: u64,
+	QuadPart: ULONGLONG,
+	u: ULARGE_INTEGER_u,
+}
+PULARGE_INTEGER        :: ^ULARGE_INTEGER;
+RTL_REFERENCE_COUNT    :: LONG_PTR;
+PRTL_REFERENCE_COUNT   :: ^LONG_PTR;
+RTL_REFERENCE_COUNT32  :: LONG;
+PRTL_REFERENCE_COUNT32 :: ^LONG;
+
+
+// pub use shared::ntdef::LUID;
+// PLUID :: ^LUID;
+DWORDLONG  :: ULONGLONG;
+PDWORDLONG :: ^DWORDLONG;
+ANSI_NULL                :: CHAR(0);
+UNICODE_NULL             :: WCHAR(0);
+UNICODE_STRING_MAX_BYTES :: WORD(65534);
+UNICODE_STRING_MAX_CHARS :: WORD(32767);
+BOOLEAN  :: distinct b8;
+PBOOLEAN :: ^BOOLEAN;
+LIST_ENTRY :: struct {
+	Flink: ^LIST_ENTRY,
+	Blink: ^LIST_ENTRY,
+}
+PLIST_ENTRY  :: ^LIST_ENTRY;
+PRLIST_ENTRY :: ^LIST_ENTRY; // Restricted pointer
+SINGLE_LIST_ENTRY :: struct {
+	Next: ^SINGLE_LIST_ENTRY,
+}
+PSINGLE_LIST_ENTRY :: ^SINGLE_LIST_ENTRY;
+LIST_ENTRY32 :: struct {
+	Flink: DWORD,
+	Blink: DWORD,
+}
+PLIST_ENTRY32 :: ^LIST_ENTRY32;
+LIST_ENTRY64 :: struct {
+	Flink: ULONGLONG,
+	Blink: ULONGLONG,
+}
+PLIST_ENTRY64 :: ^LIST_ENTRY64;
+// OBJECTID :: struct {
+// 	Lineage: GUID,
+// 	Uniquifier: DWORD,
+// }
+
+MINCHAR  :: min(CHAR);
+MAXCHAR  :: max(CHAR);
+MINSHORT :: min(SHORT);
+MAXSHORT :: max(SHORT);
+MINLONG  :: min(LONG);
+MAXLONG  :: max(LONG);
+MAXBYTE  :: max(BYTE);
+MAXWORD  :: max(WORD);
+MAXDWORD :: max(DWORD);
+
+PEXCEPTION_ROUTINE :: #type proc "stdcall" (
+	ExceptionRecord: ^EXCEPTION_RECORD,
+	EstablisherFrame: PVOID,
+	ContextRecord: ^CONTEXT,
+	DispatcherContext: PVOID,
+) -> EXCEPTION_DISPOSITION;
+
+VER_SERVER_NT                      :: DWORD(0x80000000);
+VER_WORKSTATION_NT                 :: DWORD(0x40000000);
+VER_SUITE_SMALLBUSINESS            :: DWORD(0x00000001);
+VER_SUITE_ENTERPRISE               :: DWORD(0x00000002);
+VER_SUITE_BACKOFFICE               :: DWORD(0x00000004);
+VER_SUITE_COMMUNICATIONS           :: DWORD(0x00000008);
+VER_SUITE_TERMINAL                 :: DWORD(0x00000010);
+VER_SUITE_SMALLBUSINESS_RESTRICTED :: DWORD(0x00000020);
+VER_SUITE_EMBEDDEDNT               :: DWORD(0x00000040);
+VER_SUITE_DATACENTER               :: DWORD(0x00000080);
+VER_SUITE_SINGLEUSERTS             :: DWORD(0x00000100);
+VER_SUITE_PERSONAL                 :: DWORD(0x00000200);
+VER_SUITE_BLADE                    :: DWORD(0x00000400);
+VER_SUITE_EMBEDDED_RESTRICTED      :: DWORD(0x00000800);
+VER_SUITE_SECURITY_APPLIANCE       :: DWORD(0x00001000);
+VER_SUITE_STORAGE_SERVER           :: DWORD(0x00002000);
+VER_SUITE_COMPUTE_SERVER           :: DWORD(0x00004000);
+VER_SUITE_WH_SERVER                :: DWORD(0x00008000);
+PRODUCT_UNDEFINED                           :: DWORD(0x00000000);
+PRODUCT_ULTIMATE                            :: DWORD(0x00000001);
+PRODUCT_HOME_BASIC                          :: DWORD(0x00000002);
+PRODUCT_HOME_PREMIUM                        :: DWORD(0x00000003);
+PRODUCT_ENTERPRISE                          :: DWORD(0x00000004);
+PRODUCT_HOME_BASIC_N                        :: DWORD(0x00000005);
+PRODUCT_BUSINESS                            :: DWORD(0x00000006);
+PRODUCT_STANDARD_SERVER                     :: DWORD(0x00000007);
+PRODUCT_DATACENTER_SERVER                   :: DWORD(0x00000008);
+PRODUCT_SMALLBUSINESS_SERVER                :: DWORD(0x00000009);
+PRODUCT_ENTERPRISE_SERVER                   :: DWORD(0x0000000A);
+PRODUCT_STARTER                             :: DWORD(0x0000000B);
+PRODUCT_DATACENTER_SERVER_CORE              :: DWORD(0x0000000C);
+PRODUCT_STANDARD_SERVER_CORE                :: DWORD(0x0000000D);
+PRODUCT_ENTERPRISE_SERVER_CORE              :: DWORD(0x0000000E);
+PRODUCT_ENTERPRISE_SERVER_IA64              :: DWORD(0x0000000F);
+PRODUCT_BUSINESS_N                          :: DWORD(0x00000010);
+PRODUCT_WEB_SERVER                          :: DWORD(0x00000011);
+PRODUCT_CLUSTER_SERVER                      :: DWORD(0x00000012);
+PRODUCT_HOME_SERVER                         :: DWORD(0x00000013);
+PRODUCT_STORAGE_EXPRESS_SERVER              :: DWORD(0x00000014);
+PRODUCT_STORAGE_STANDARD_SERVER             :: DWORD(0x00000015);
+PRODUCT_STORAGE_WORKGROUP_SERVER            :: DWORD(0x00000016);
+PRODUCT_STORAGE_ENTERPRISE_SERVER           :: DWORD(0x00000017);
+PRODUCT_SERVER_FOR_SMALLBUSINESS            :: DWORD(0x00000018);
+PRODUCT_SMALLBUSINESS_SERVER_PREMIUM        :: DWORD(0x00000019);
+PRODUCT_HOME_PREMIUM_N                      :: DWORD(0x0000001A);
+PRODUCT_ENTERPRISE_N                        :: DWORD(0x0000001B);
+PRODUCT_ULTIMATE_N                          :: DWORD(0x0000001C);
+PRODUCT_WEB_SERVER_CORE                     :: DWORD(0x0000001D);
+PRODUCT_MEDIUMBUSINESS_SERVER_MANAGEMENT    :: DWORD(0x0000001E);
+PRODUCT_MEDIUMBUSINESS_SERVER_SECURITY      :: DWORD(0x0000001F);
+PRODUCT_MEDIUMBUSINESS_SERVER_MESSAGING     :: DWORD(0x00000020);
+PRODUCT_SERVER_FOUNDATION                   :: DWORD(0x00000021);
+PRODUCT_HOME_PREMIUM_SERVER                 :: DWORD(0x00000022);
+PRODUCT_SERVER_FOR_SMALLBUSINESS_V          :: DWORD(0x00000023);
+PRODUCT_STANDARD_SERVER_V                   :: DWORD(0x00000024);
+PRODUCT_DATACENTER_SERVER_V                 :: DWORD(0x00000025);
+PRODUCT_ENTERPRISE_SERVER_V                 :: DWORD(0x00000026);
+PRODUCT_DATACENTER_SERVER_CORE_V            :: DWORD(0x00000027);
+PRODUCT_STANDARD_SERVER_CORE_V              :: DWORD(0x00000028);
+PRODUCT_ENTERPRISE_SERVER_CORE_V            :: DWORD(0x00000029);
+PRODUCT_HYPERV                              :: DWORD(0x0000002A);
+PRODUCT_STORAGE_EXPRESS_SERVER_CORE         :: DWORD(0x0000002B);
+PRODUCT_STORAGE_STANDARD_SERVER_CORE        :: DWORD(0x0000002C);
+PRODUCT_STORAGE_WORKGROUP_SERVER_CORE       :: DWORD(0x0000002D);
+PRODUCT_STORAGE_ENTERPRISE_SERVER_CORE      :: DWORD(0x0000002E);
+PRODUCT_STARTER_N                           :: DWORD(0x0000002F);
+PRODUCT_PROFESSIONAL                        :: DWORD(0x00000030);
+PRODUCT_PROFESSIONAL_N                      :: DWORD(0x00000031);
+PRODUCT_SB_SOLUTION_SERVER                  :: DWORD(0x00000032);
+PRODUCT_SERVER_FOR_SB_SOLUTIONS             :: DWORD(0x00000033);
+PRODUCT_STANDARD_SERVER_SOLUTIONS           :: DWORD(0x00000034);
+PRODUCT_STANDARD_SERVER_SOLUTIONS_CORE      :: DWORD(0x00000035);
+PRODUCT_SB_SOLUTION_SERVER_EM               :: DWORD(0x00000036);
+PRODUCT_SERVER_FOR_SB_SOLUTIONS_EM          :: DWORD(0x00000037);
+PRODUCT_SOLUTION_EMBEDDEDSERVER             :: DWORD(0x00000038);
+PRODUCT_SOLUTION_EMBEDDEDSERVER_CORE        :: DWORD(0x00000039);
+PRODUCT_PROFESSIONAL_EMBEDDED               :: DWORD(0x0000003A);
+PRODUCT_ESSENTIALBUSINESS_SERVER_MGMT       :: DWORD(0x0000003B);
+PRODUCT_ESSENTIALBUSINESS_SERVER_ADDL       :: DWORD(0x0000003C);
+PRODUCT_ESSENTIALBUSINESS_SERVER_MGMTSVC    :: DWORD(0x0000003D);
+PRODUCT_ESSENTIALBUSINESS_SERVER_ADDLSVC    :: DWORD(0x0000003E);
+PRODUCT_SMALLBUSINESS_SERVER_PREMIUM_CORE   :: DWORD(0x0000003F);
+PRODUCT_CLUSTER_SERVER_V                    :: DWORD(0x00000040);
+PRODUCT_EMBEDDED                            :: DWORD(0x00000041);
+PRODUCT_STARTER_E                           :: DWORD(0x00000042);
+PRODUCT_HOME_BASIC_E                        :: DWORD(0x00000043);
+PRODUCT_HOME_PREMIUM_E                      :: DWORD(0x00000044);
+PRODUCT_PROFESSIONAL_E                      :: DWORD(0x00000045);
+PRODUCT_ENTERPRISE_E                        :: DWORD(0x00000046);
+PRODUCT_ULTIMATE_E                          :: DWORD(0x00000047);
+PRODUCT_ENTERPRISE_EVALUATION               :: DWORD(0x00000048);
+PRODUCT_MULTIPOINT_STANDARD_SERVER          :: DWORD(0x0000004C);
+PRODUCT_MULTIPOINT_PREMIUM_SERVER           :: DWORD(0x0000004D);
+PRODUCT_STANDARD_EVALUATION_SERVER          :: DWORD(0x0000004F);
+PRODUCT_DATACENTER_EVALUATION_SERVER        :: DWORD(0x00000050);
+PRODUCT_ENTERPRISE_N_EVALUATION             :: DWORD(0x00000054);
+PRODUCT_EMBEDDED_AUTOMOTIVE                 :: DWORD(0x00000055);
+PRODUCT_EMBEDDED_INDUSTRY_A                 :: DWORD(0x00000056);
+PRODUCT_THINPC                              :: DWORD(0x00000057);
+PRODUCT_EMBEDDED_A                          :: DWORD(0x00000058);
+PRODUCT_EMBEDDED_INDUSTRY                   :: DWORD(0x00000059);
+PRODUCT_EMBEDDED_E                          :: DWORD(0x0000005A);
+PRODUCT_EMBEDDED_INDUSTRY_E                 :: DWORD(0x0000005B);
+PRODUCT_EMBEDDED_INDUSTRY_A_E               :: DWORD(0x0000005C);
+PRODUCT_STORAGE_WORKGROUP_EVALUATION_SERVER :: DWORD(0x0000005F);
+PRODUCT_STORAGE_STANDARD_EVALUATION_SERVER  :: DWORD(0x00000060);
+PRODUCT_CORE_ARM                            :: DWORD(0x00000061);
+PRODUCT_CORE_N                              :: DWORD(0x00000062);
+PRODUCT_CORE_COUNTRYSPECIFIC                :: DWORD(0x00000063);
+PRODUCT_CORE_SINGLELANGUAGE                 :: DWORD(0x00000064);
+PRODUCT_CORE                                :: DWORD(0x00000065);
+PRODUCT_PROFESSIONAL_WMC                    :: DWORD(0x00000067);
+PRODUCT_MOBILE_CORE                         :: DWORD(0x00000068);
+PRODUCT_EMBEDDED_INDUSTRY_EVAL              :: DWORD(0x00000069);
+PRODUCT_EMBEDDED_INDUSTRY_E_EVAL            :: DWORD(0x0000006A);
+PRODUCT_EMBEDDED_EVAL                       :: DWORD(0x0000006B);
+PRODUCT_EMBEDDED_E_EVAL                     :: DWORD(0x0000006C);
+PRODUCT_NANO_SERVER                         :: DWORD(0x0000006D);
+PRODUCT_CLOUD_STORAGE_SERVER                :: DWORD(0x0000006E);
+PRODUCT_CORE_CONNECTED                      :: DWORD(0x0000006F);
+PRODUCT_PROFESSIONAL_STUDENT                :: DWORD(0x00000070);
+PRODUCT_CORE_CONNECTED_N                    :: DWORD(0x00000071);
+PRODUCT_PROFESSIONAL_STUDENT_N              :: DWORD(0x00000072);
+PRODUCT_CORE_CONNECTED_SINGLELANGUAGE       :: DWORD(0x00000073);
+PRODUCT_CORE_CONNECTED_COUNTRYSPECIFIC      :: DWORD(0x00000074);
+PRODUCT_CONNECTED_CAR                       :: DWORD(0x00000075);
+PRODUCT_INDUSTRY_HANDHELD                   :: DWORD(0x00000076);
+PRODUCT_PPI_PRO                             :: DWORD(0x00000077);
+PRODUCT_ARM64_SERVER                        :: DWORD(0x00000078);
+PRODUCT_EDUCATION                           :: DWORD(0x00000079);
+PRODUCT_EDUCATION_N                         :: DWORD(0x0000007A);
+PRODUCT_IOTUAP                              :: DWORD(0x0000007B);
+PRODUCT_CLOUD_HOST_INFRASTRUCTURE_SERVER    :: DWORD(0x0000007C);
+PRODUCT_ENTERPRISE_S                        :: DWORD(0x0000007D);
+PRODUCT_ENTERPRISE_S_N                      :: DWORD(0x0000007E);
+PRODUCT_PROFESSIONAL_S                      :: DWORD(0x0000007F);
+PRODUCT_PROFESSIONAL_S_N                    :: DWORD(0x00000080);
+PRODUCT_ENTERPRISE_S_EVALUATION             :: DWORD(0x00000081);
+PRODUCT_ENTERPRISE_S_N_EVALUATION           :: DWORD(0x00000082);
+PRODUCT_HOLOGRAPHIC                         :: DWORD(0x00000087);
+PRODUCT_PRO_SINGLE_LANGUAGE                 :: DWORD(0x0000008A);
+PRODUCT_PRO_CHINA                           :: DWORD(0x0000008B);
+PRODUCT_ENTERPRISE_SUBSCRIPTION             :: DWORD(0x0000008C);
+PRODUCT_ENTERPRISE_SUBSCRIPTION_N           :: DWORD(0x0000008D);
+PRODUCT_DATACENTER_NANO_SERVER              :: DWORD(0x0000008F);
+PRODUCT_STANDARD_NANO_SERVER                :: DWORD(0x00000090);
+PRODUCT_DATACENTER_A_SERVER_CORE            :: DWORD(0x00000091);
+PRODUCT_STANDARD_A_SERVER_CORE              :: DWORD(0x00000092);
+PRODUCT_DATACENTER_WS_SERVER_CORE           :: DWORD(0x00000093);
+PRODUCT_STANDARD_WS_SERVER_CORE             :: DWORD(0x00000094);
+PRODUCT_UTILITY_VM                          :: DWORD(0x00000095);
+PRODUCT_DATACENTER_EVALUATION_SERVER_CORE   :: DWORD(0x0000009F);
+PRODUCT_STANDARD_EVALUATION_SERVER_CORE     :: DWORD(0x000000A0);
+PRODUCT_PRO_WORKSTATION                     :: DWORD(0x000000A1);
+PRODUCT_PRO_WORKSTATION_N                   :: DWORD(0x000000A2);
+PRODUCT_PRO_FOR_EDUCATION                   :: DWORD(0x000000A4);
+PRODUCT_PRO_FOR_EDUCATION_N                 :: DWORD(0x000000A5);
+PRODUCT_AZURE_SERVER_CORE                   :: DWORD(0x000000A8);
+PRODUCT_AZURE_NANO_SERVER                   :: DWORD(0x000000A9);
+PRODUCT_ENTERPRISEG                         :: DWORD(0x000000AB);
+PRODUCT_ENTERPRISEGN                        :: DWORD(0x000000AC);
+PRODUCT_CLOUD                               :: DWORD(0x000000B2);
+PRODUCT_CLOUDN                              :: DWORD(0x000000B3);
+PRODUCT_UNLICENSED                          :: DWORD(0xABCDABCD);
+LANG_NEUTRAL             :: WORD(0x00);
+LANG_INVARIANT           :: WORD(0x7f);
+LANG_AFRIKAANS           :: WORD(0x36);
+LANG_ALBANIAN            :: WORD(0x1c);
+LANG_ALSATIAN            :: WORD(0x84);
+LANG_AMHARIC             :: WORD(0x5e);
+LANG_ARABIC              :: WORD(0x01);
+LANG_ARMENIAN            :: WORD(0x2b);
+LANG_ASSAMESE            :: WORD(0x4d);
+LANG_AZERI               :: WORD(0x2c);
+LANG_AZERBAIJANI         :: WORD(0x2c);
+LANG_BANGLA              :: WORD(0x45);
+LANG_BASHKIR             :: WORD(0x6d);
+LANG_BASQUE              :: WORD(0x2d);
+LANG_BELARUSIAN          :: WORD(0x23);
+LANG_BENGALI             :: WORD(0x45);
+LANG_BRETON              :: WORD(0x7e);
+LANG_BOSNIAN             :: WORD(0x1a);
+LANG_BOSNIAN_NEUTRAL     :: WORD(0x781a);
+LANG_BULGARIAN           :: WORD(0x02);
+LANG_CATALAN             :: WORD(0x03);
+LANG_CENTRAL_KURDISH     :: WORD(0x92);
+LANG_CHEROKEE            :: WORD(0x5c);
+LANG_CHINESE             :: WORD(0x04);
+LANG_CHINESE_SIMPLIFIED  :: WORD(0x04);
+LANG_CHINESE_TRADITIONAL :: WORD(0x7c04);
+LANG_CORSICAN            :: WORD(0x83);
+LANG_CROATIAN            :: WORD(0x1a);
+LANG_CZECH               :: WORD(0x05);
+LANG_DANISH              :: WORD(0x06);
+LANG_DARI                :: WORD(0x8c);
+LANG_DIVEHI              :: WORD(0x65);
+LANG_DUTCH               :: WORD(0x13);
+LANG_ENGLISH             :: WORD(0x09);
+LANG_ESTONIAN            :: WORD(0x25);
+LANG_FAEROESE            :: WORD(0x38);
+LANG_FARSI               :: WORD(0x29);
+LANG_FILIPINO            :: WORD(0x64);
+LANG_FINNISH             :: WORD(0x0b);
+LANG_FRENCH              :: WORD(0x0c);
+LANG_FRISIAN             :: WORD(0x62);
+LANG_FULAH               :: WORD(0x67);
+LANG_GALICIAN            :: WORD(0x56);
+LANG_GEORGIAN            :: WORD(0x37);
+LANG_GERMAN              :: WORD(0x07);
+LANG_GREEK               :: WORD(0x08);
+LANG_GREENLANDIC         :: WORD(0x6f);
+LANG_GUJARATI            :: WORD(0x47);
+LANG_HAUSA               :: WORD(0x68);
+LANG_HAWAIIAN            :: WORD(0x75);
+LANG_HEBREW              :: WORD(0x0d);
+LANG_HINDI               :: WORD(0x39);
+LANG_HUNGARIAN           :: WORD(0x0e);
+LANG_ICELANDIC           :: WORD(0x0f);
+LANG_IGBO                :: WORD(0x70);
+LANG_INDONESIAN          :: WORD(0x21);
+LANG_INUKTITUT           :: WORD(0x5d);
+LANG_IRISH               :: WORD(0x3c);
+LANG_ITALIAN             :: WORD(0x10);
+LANG_JAPANESE            :: WORD(0x11);
+LANG_KANNADA             :: WORD(0x4b);
+LANG_KASHMIRI            :: WORD(0x60);
+LANG_KAZAK               :: WORD(0x3f);
+LANG_KHMER               :: WORD(0x53);
+LANG_KICHE               :: WORD(0x86);
+LANG_KINYARWANDA         :: WORD(0x87);
+LANG_KONKANI             :: WORD(0x57);
+LANG_KOREAN              :: WORD(0x12);
+LANG_KYRGYZ              :: WORD(0x40);
+LANG_LAO                 :: WORD(0x54);
+LANG_LATVIAN             :: WORD(0x26);
+LANG_LITHUANIAN          :: WORD(0x27);
+LANG_LOWER_SORBIAN       :: WORD(0x2e);
+LANG_LUXEMBOURGISH       :: WORD(0x6e);
+LANG_MACEDONIAN          :: WORD(0x2f);
+LANG_MALAY               :: WORD(0x3e);
+LANG_MALAYALAM           :: WORD(0x4c);
+LANG_MALTESE             :: WORD(0x3a);
+LANG_MANIPURI            :: WORD(0x58);
+LANG_MAORI               :: WORD(0x81);
+LANG_MAPUDUNGUN          :: WORD(0x7a);
+LANG_MARATHI             :: WORD(0x4e);
+LANG_MOHAWK              :: WORD(0x7c);
+LANG_MONGOLIAN           :: WORD(0x50);
+LANG_NEPALI              :: WORD(0x61);
+LANG_NORWEGIAN           :: WORD(0x14);
+LANG_OCCITAN             :: WORD(0x82);
+LANG_ODIA                :: WORD(0x48);
+LANG_ORIYA               :: WORD(0x48);
+LANG_PASHTO              :: WORD(0x63);
+LANG_PERSIAN             :: WORD(0x29);
+LANG_POLISH              :: WORD(0x15);
+LANG_PORTUGUESE          :: WORD(0x16);
+LANG_PULAR               :: WORD(0x67);
+LANG_PUNJABI             :: WORD(0x46);
+LANG_QUECHUA             :: WORD(0x6b);
+LANG_ROMANIAN            :: WORD(0x18);
+LANG_ROMANSH             :: WORD(0x17);
+LANG_RUSSIAN             :: WORD(0x19);
+LANG_SAKHA               :: WORD(0x85);
+LANG_SAMI                :: WORD(0x3b);
+LANG_SANSKRIT            :: WORD(0x4f);
+LANG_SCOTTISH_GAELIC     :: WORD(0x91);
+LANG_SERBIAN             :: WORD(0x1a);
+LANG_SERBIAN_NEUTRAL     :: WORD(0x7c1a);
+LANG_SINDHI              :: WORD(0x59);
+LANG_SINHALESE           :: WORD(0x5b);
+LANG_SLOVAK              :: WORD(0x1b);
+LANG_SLOVENIAN           :: WORD(0x24);
+LANG_SOTHO               :: WORD(0x6c);
+LANG_SPANISH             :: WORD(0x0a);
+LANG_SWAHILI             :: WORD(0x41);
+LANG_SWEDISH             :: WORD(0x1d);
+LANG_SYRIAC              :: WORD(0x5a);
+LANG_TAJIK               :: WORD(0x28);
+LANG_TAMAZIGHT           :: WORD(0x5f);
+LANG_TAMIL               :: WORD(0x49);
+LANG_TATAR               :: WORD(0x44);
+LANG_TELUGU              :: WORD(0x4a);
+LANG_THAI                :: WORD(0x1e);
+LANG_TIBETAN             :: WORD(0x51);
+LANG_TIGRIGNA            :: WORD(0x73);
+LANG_TIGRINYA            :: WORD(0x73);
+LANG_TSWANA              :: WORD(0x32);
+LANG_TURKISH             :: WORD(0x1f);
+LANG_TURKMEN             :: WORD(0x42);
+LANG_UIGHUR              :: WORD(0x80);
+LANG_UKRAINIAN           :: WORD(0x22);
+LANG_UPPER_SORBIAN       :: WORD(0x2e);
+LANG_URDU                :: WORD(0x20);
+LANG_UZBEK               :: WORD(0x43);
+LANG_VALENCIAN           :: WORD(0x03);
+LANG_VIETNAMESE          :: WORD(0x2a);
+LANG_WELSH               :: WORD(0x52);
+LANG_WOLOF               :: WORD(0x88);
+LANG_XHOSA               :: WORD(0x34);
+LANG_YAKUT               :: WORD(0x85);
+LANG_YI                  :: WORD(0x78);
+LANG_YORUBA                                 :: WORD(0x6a);
+LANG_ZULU                                   :: WORD(0x35);
+SUBLANG_NEUTRAL                             :: WORD(0x00);
+SUBLANG_DEFAULT                             :: WORD(0x01);
+SUBLANG_SYS_DEFAULT                         :: WORD(0x02);
+SUBLANG_CUSTOM_DEFAULT                      :: WORD(0x03);
+SUBLANG_CUSTOM_UNSPECIFIED                  :: WORD(0x04);
+SUBLANG_UI_CUSTOM_DEFAULT                   :: WORD(0x05);
+SUBLANG_AFRIKAANS_SOUTH_AFRICA              :: WORD(0x01);
+SUBLANG_ALBANIAN_ALBANIA                    :: WORD(0x01);
+SUBLANG_ALSATIAN_FRANCE                     :: WORD(0x01);
+SUBLANG_AMHARIC_ETHIOPIA                    :: WORD(0x01);
+SUBLANG_ARABIC_SAUDI_ARABIA                 :: WORD(0x01);
+SUBLANG_ARABIC_IRAQ                         :: WORD(0x02);
+SUBLANG_ARABIC_EGYPT                        :: WORD(0x03);
+SUBLANG_ARABIC_LIBYA                        :: WORD(0x04);
+SUBLANG_ARABIC_ALGERIA                      :: WORD(0x05);
+SUBLANG_ARABIC_MOROCCO                      :: WORD(0x06);
+SUBLANG_ARABIC_TUNISIA                      :: WORD(0x07);
+SUBLANG_ARABIC_OMAN                         :: WORD(0x08);
+SUBLANG_ARABIC_YEMEN                        :: WORD(0x09);
+SUBLANG_ARABIC_SYRIA                        :: WORD(0x0a);
+SUBLANG_ARABIC_JORDAN                       :: WORD(0x0b);
+SUBLANG_ARABIC_LEBANON                      :: WORD(0x0c);
+SUBLANG_ARABIC_KUWAIT                       :: WORD(0x0d);
+SUBLANG_ARABIC_UAE                          :: WORD(0x0e);
+SUBLANG_ARABIC_BAHRAIN                      :: WORD(0x0f);
+SUBLANG_ARABIC_QATAR                        :: WORD(0x10);
+SUBLANG_ARMENIAN_ARMENIA                    :: WORD(0x01);
+SUBLANG_ASSAMESE_INDIA                      :: WORD(0x01);
+SUBLANG_AZERI_LATIN                         :: WORD(0x01);
+SUBLANG_AZERI_CYRILLIC                      :: WORD(0x02);
+SUBLANG_AZERBAIJANI_AZERBAIJAN_LATIN        :: WORD(0x01);
+SUBLANG_AZERBAIJANI_AZERBAIJAN_CYRILLIC     :: WORD(0x02);
+SUBLANG_BANGLA_INDIA                        :: WORD(0x01);
+SUBLANG_BANGLA_BANGLADESH                   :: WORD(0x02);
+SUBLANG_BASHKIR_RUSSIA                      :: WORD(0x01);
+SUBLANG_BASQUE_BASQUE                       :: WORD(0x01);
+SUBLANG_BELARUSIAN_BELARUS                  :: WORD(0x01);
+SUBLANG_BENGALI_INDIA                       :: WORD(0x01);
+SUBLANG_BENGALI_BANGLADESH                  :: WORD(0x02);
+SUBLANG_BOSNIAN_BOSNIA_HERZEGOVINA_LATIN    :: WORD(0x05);
+SUBLANG_BOSNIAN_BOSNIA_HERZEGOVINA_CYRILLIC :: WORD(0x08);
+SUBLANG_BRETON_FRANCE                       :: WORD(0x01);
+SUBLANG_BULGARIAN_BULGARIA                  :: WORD(0x01);
+SUBLANG_CATALAN_CATALAN                     :: WORD(0x01);
+SUBLANG_CENTRAL_KURDISH_IRAQ                :: WORD(0x01);
+SUBLANG_CHEROKEE_CHEROKEE                   :: WORD(0x01);
+SUBLANG_CHINESE_TRADITIONAL                 :: WORD(0x01);
+SUBLANG_CHINESE_SIMPLIFIED                  :: WORD(0x02);
+SUBLANG_CHINESE_HONGKONG                    :: WORD(0x03);
+SUBLANG_CHINESE_SINGAPORE                   :: WORD(0x04);
+SUBLANG_CHINESE_MACAU                       :: WORD(0x05);
+SUBLANG_CORSICAN_FRANCE                     :: WORD(0x01);
+SUBLANG_CZECH_CZECH_REPUBLIC                :: WORD(0x01);
+SUBLANG_CROATIAN_CROATIA                    :: WORD(0x01);
+SUBLANG_CROATIAN_BOSNIA_HERZEGOVINA_LATIN   :: WORD(0x04);
+SUBLANG_DANISH_DENMARK                      :: WORD(0x01);
+SUBLANG_DARI_AFGHANISTAN                    :: WORD(0x01);
+SUBLANG_DIVEHI_MALDIVES                     :: WORD(0x01);
+SUBLANG_DUTCH                               :: WORD(0x01);
+SUBLANG_DUTCH_BELGIAN                       :: WORD(0x02);
+SUBLANG_ENGLISH_US                          :: WORD(0x01);
+SUBLANG_ENGLISH_UK                          :: WORD(0x02);
+SUBLANG_ENGLISH_AUS                         :: WORD(0x03);
+SUBLANG_ENGLISH_CAN                         :: WORD(0x04);
+SUBLANG_ENGLISH_NZ                          :: WORD(0x05);
+SUBLANG_ENGLISH_EIRE                        :: WORD(0x06);
+SUBLANG_ENGLISH_SOUTH_AFRICA                :: WORD(0x07);
+SUBLANG_ENGLISH_JAMAICA                     :: WORD(0x08);
+SUBLANG_ENGLISH_CARIBBEAN                   :: WORD(0x09);
+SUBLANG_ENGLISH_BELIZE                      :: WORD(0x0a);
+SUBLANG_ENGLISH_TRINIDAD                    :: WORD(0x0b);
+SUBLANG_ENGLISH_ZIMBABWE                    :: WORD(0x0c);
+SUBLANG_ENGLISH_PHILIPPINES                 :: WORD(0x0d);
+SUBLANG_ENGLISH_INDIA                       :: WORD(0x10);
+SUBLANG_ENGLISH_MALAYSIA                    :: WORD(0x11);
+SUBLANG_ENGLISH_SINGAPORE                   :: WORD(0x12);
+SUBLANG_ESTONIAN_ESTONIA                    :: WORD(0x01);
+SUBLANG_FAEROESE_FAROE_ISLANDS              :: WORD(0x01);
+SUBLANG_FILIPINO_PHILIPPINES                :: WORD(0x01);
+SUBLANG_FINNISH_FINLAND                     :: WORD(0x01);
+SUBLANG_FRENCH                              :: WORD(0x01);
+SUBLANG_FRENCH_BELGIAN                      :: WORD(0x02);
+SUBLANG_FRENCH_CANADIAN                     :: WORD(0x03);
+SUBLANG_FRENCH_SWISS                        :: WORD(0x04);
+SUBLANG_FRENCH_LUXEMBOURG                   :: WORD(0x05);
+SUBLANG_FRENCH_MONACO                       :: WORD(0x06);
+SUBLANG_FRISIAN_NETHERLANDS                 :: WORD(0x01);
+SUBLANG_FULAH_SENEGAL                       :: WORD(0x02);
+SUBLANG_GALICIAN_GALICIAN                   :: WORD(0x01);
+SUBLANG_GEORGIAN_GEORGIA                    :: WORD(0x01);
+SUBLANG_GERMAN                              :: WORD(0x01);
+SUBLANG_GERMAN_SWISS                        :: WORD(0x02);
+SUBLANG_GERMAN_AUSTRIAN                     :: WORD(0x03);
+SUBLANG_GERMAN_LUXEMBOURG                   :: WORD(0x04);
+SUBLANG_GERMAN_LIECHTENSTEIN                :: WORD(0x05);
+SUBLANG_GREEK_GREECE                        :: WORD(0x01);
+SUBLANG_GREENLANDIC_GREENLAND               :: WORD(0x01);
+SUBLANG_GUJARATI_INDIA                      :: WORD(0x01);
+SUBLANG_HAUSA_NIGERIA_LATIN                 :: WORD(0x01);
+SUBLANG_HAWAIIAN_US                         :: WORD(0x01);
+SUBLANG_HEBREW_ISRAEL                       :: WORD(0x01);
+SUBLANG_HINDI_INDIA                         :: WORD(0x01);
+SUBLANG_HUNGARIAN_HUNGARY                   :: WORD(0x01);
+SUBLANG_ICELANDIC_ICELAND                   :: WORD(0x01);
+SUBLANG_IGBO_NIGERIA                        :: WORD(0x01);
+SUBLANG_INDONESIAN_INDONESIA                :: WORD(0x01);
+SUBLANG_INUKTITUT_CANADA                    :: WORD(0x01);
+SUBLANG_INUKTITUT_CANADA_LATIN              :: WORD(0x02);
+SUBLANG_IRISH_IRELAND                       :: WORD(0x02);
+SUBLANG_ITALIAN                             :: WORD(0x01);
+SUBLANG_ITALIAN_SWISS                       :: WORD(0x02);
+SUBLANG_JAPANESE_JAPAN                      :: WORD(0x01);
+SUBLANG_KANNADA_INDIA                       :: WORD(0x01);
+SUBLANG_KASHMIRI_SASIA                      :: WORD(0x02);
+SUBLANG_KASHMIRI_INDIA                      :: WORD(0x02);
+SUBLANG_KAZAK_KAZAKHSTAN                    :: WORD(0x01);
+SUBLANG_KHMER_CAMBODIA                      :: WORD(0x01);
+SUBLANG_KICHE_GUATEMALA                     :: WORD(0x01);
+SUBLANG_KINYARWANDA_RWANDA                  :: WORD(0x01);
+SUBLANG_KONKANI_INDIA                       :: WORD(0x01);
+SUBLANG_KOREAN                              :: WORD(0x01);
+SUBLANG_KYRGYZ_KYRGYZSTAN                   :: WORD(0x01);
+SUBLANG_LAO_LAO                             :: WORD(0x01);
+SUBLANG_LATVIAN_LATVIA                      :: WORD(0x01);
+SUBLANG_LITHUANIAN                          :: WORD(0x01);
+SUBLANG_LOWER_SORBIAN_GERMANY               :: WORD(0x02);
+SUBLANG_LUXEMBOURGISH_LUXEMBOURG            :: WORD(0x01);
+SUBLANG_MACEDONIAN_MACEDONIA                :: WORD(0x01);
+SUBLANG_MALAY_MALAYSIA                      :: WORD(0x01);
+SUBLANG_MALAY_BRUNEI_DARUSSALAM             :: WORD(0x02);
+SUBLANG_MALAYALAM_INDIA                     :: WORD(0x01);
+SUBLANG_MALTESE_MALTA                       :: WORD(0x01);
+SUBLANG_MAORI_NEW_ZEALAND                   :: WORD(0x01);
+SUBLANG_MAPUDUNGUN_CHILE                    :: WORD(0x01);
+SUBLANG_MARATHI_INDIA                       :: WORD(0x01);
+SUBLANG_MOHAWK_MOHAWK                       :: WORD(0x01);
+SUBLANG_MONGOLIAN_CYRILLIC_MONGOLIA         :: WORD(0x01);
+SUBLANG_MONGOLIAN_PRC                       :: WORD(0x02);
+SUBLANG_NEPALI_INDIA                        :: WORD(0x02);
+SUBLANG_NEPALI_NEPAL                        :: WORD(0x01);
+SUBLANG_NORWEGIAN_BOKMAL                    :: WORD(0x01);
+SUBLANG_NORWEGIAN_NYNORSK                   :: WORD(0x02);
+SUBLANG_OCCITAN_FRANCE                      :: WORD(0x01);
+SUBLANG_ODIA_INDIA                          :: WORD(0x01);
+SUBLANG_ORIYA_INDIA                         :: WORD(0x01);
+SUBLANG_PASHTO_AFGHANISTAN                  :: WORD(0x01);
+SUBLANG_PERSIAN_IRAN                        :: WORD(0x01);
+SUBLANG_POLISH_POLAND                       :: WORD(0x01);
+SUBLANG_PORTUGUESE                          :: WORD(0x02);
+SUBLANG_PORTUGUESE_BRAZILIAN                :: WORD(0x01);
+SUBLANG_PULAR_SENEGAL                       :: WORD(0x02);
+SUBLANG_PUNJABI_INDIA                       :: WORD(0x01);
+SUBLANG_PUNJABI_PAKISTAN                    :: WORD(0x02);
+SUBLANG_QUECHUA_BOLIVIA                     :: WORD(0x01);
+SUBLANG_QUECHUA_ECUADOR                     :: WORD(0x02);
+SUBLANG_QUECHUA_PERU                        :: WORD(0x03);
+SUBLANG_ROMANIAN_ROMANIA                    :: WORD(0x01);
+SUBLANG_ROMANSH_SWITZERLAND                 :: WORD(0x01);
+SUBLANG_RUSSIAN_RUSSIA                      :: WORD(0x01);
+SUBLANG_SAKHA_RUSSIA                        :: WORD(0x01);
+SUBLANG_SAMI_NORTHERN_NORWAY                :: WORD(0x01);
+SUBLANG_SAMI_NORTHERN_SWEDEN                :: WORD(0x02);
+SUBLANG_SAMI_NORTHERN_FINLAND               :: WORD(0x03);
+SUBLANG_SAMI_LULE_NORWAY                    :: WORD(0x04);
+SUBLANG_SAMI_LULE_SWEDEN                    :: WORD(0x05);
+SUBLANG_SAMI_SOUTHERN_NORWAY                :: WORD(0x06);
+SUBLANG_SAMI_SOUTHERN_SWEDEN                :: WORD(0x07);
+SUBLANG_SAMI_SKOLT_FINLAND                  :: WORD(0x08);
+SUBLANG_SAMI_INARI_FINLAND                  :: WORD(0x09);
+SUBLANG_SANSKRIT_INDIA                      :: WORD(0x01);
+SUBLANG_SCOTTISH_GAELIC                     :: WORD(0x01);
+SUBLANG_SERBIAN_BOSNIA_HERZEGOVINA_LATIN    :: WORD(0x06);
+SUBLANG_SERBIAN_BOSNIA_HERZEGOVINA_CYRILLIC :: WORD(0x07);
+SUBLANG_SERBIAN_MONTENEGRO_LATIN            :: WORD(0x0b);
+SUBLANG_SERBIAN_MONTENEGRO_CYRILLIC         :: WORD(0x0c);
+SUBLANG_SERBIAN_SERBIA_LATIN                :: WORD(0x09);
+SUBLANG_SERBIAN_SERBIA_CYRILLIC             :: WORD(0x0a);
+SUBLANG_SERBIAN_CROATIA                     :: WORD(0x01);
+SUBLANG_SERBIAN_LATIN                       :: WORD(0x02);
+SUBLANG_SERBIAN_CYRILLIC                    :: WORD(0x03);
+SUBLANG_SINDHI_INDIA                        :: WORD(0x01);
+SUBLANG_SINDHI_PAKISTAN                     :: WORD(0x02);
+SUBLANG_SINDHI_AFGHANISTAN                  :: WORD(0x02);
+SUBLANG_SINHALESE_SRI_LANKA                 :: WORD(0x01);
+SUBLANG_SOTHO_NORTHERN_SOUTH_AFRICA         :: WORD(0x01);
+SUBLANG_SLOVAK_SLOVAKIA                     :: WORD(0x01);
+SUBLANG_SLOVENIAN_SLOVENIA                  :: WORD(0x01);
+SUBLANG_SPANISH                             :: WORD(0x01);
+SUBLANG_SPANISH_MEXICAN                     :: WORD(0x02);
+SUBLANG_SPANISH_MODERN                      :: WORD(0x03);
+SUBLANG_SPANISH_GUATEMALA                   :: WORD(0x04);
+SUBLANG_SPANISH_COSTA_RICA                  :: WORD(0x05);
+SUBLANG_SPANISH_PANAMA                      :: WORD(0x06);
+SUBLANG_SPANISH_DOMINICAN_REPUBLIC          :: WORD(0x07);
+SUBLANG_SPANISH_VENEZUELA                   :: WORD(0x08);
+SUBLANG_SPANISH_COLOMBIA                    :: WORD(0x09);
+SUBLANG_SPANISH_PERU                        :: WORD(0x0a);
+SUBLANG_SPANISH_ARGENTINA                   :: WORD(0x0b);
+SUBLANG_SPANISH_ECUADOR                     :: WORD(0x0c);
+SUBLANG_SPANISH_CHILE                       :: WORD(0x0d);
+SUBLANG_SPANISH_URUGUAY                     :: WORD(0x0e);
+SUBLANG_SPANISH_PARAGUAY                    :: WORD(0x0f);
+SUBLANG_SPANISH_BOLIVIA                     :: WORD(0x10);
+SUBLANG_SPANISH_EL_SALVADOR                 :: WORD(0x11);
+SUBLANG_SPANISH_HONDURAS                    :: WORD(0x12);
+SUBLANG_SPANISH_NICARAGUA                   :: WORD(0x13);
+SUBLANG_SPANISH_PUERTO_RICO                 :: WORD(0x14);
+SUBLANG_SPANISH_US                          :: WORD(0x15);
+SUBLANG_SWAHILI_KENYA                       :: WORD(0x01);
+SUBLANG_SWEDISH                             :: WORD(0x01);
+SUBLANG_SWEDISH_FINLAND                     :: WORD(0x02);
+SUBLANG_SYRIAC_SYRIA                        :: WORD(0x01);
+SUBLANG_TAJIK_TAJIKISTAN                    :: WORD(0x01);
+SUBLANG_TAMAZIGHT_ALGERIA_LATIN             :: WORD(0x02);
+SUBLANG_TAMAZIGHT_MOROCCO_TIFINAGH          :: WORD(0x04);
+SUBLANG_TAMIL_INDIA                         :: WORD(0x01);
+SUBLANG_TAMIL_SRI_LANKA                     :: WORD(0x02);
+SUBLANG_TATAR_RUSSIA                        :: WORD(0x01);
+SUBLANG_TELUGU_INDIA                        :: WORD(0x01);
+SUBLANG_THAI_THAILAND                       :: WORD(0x01);
+SUBLANG_TIBETAN_PRC                         :: WORD(0x01);
+SUBLANG_TIGRIGNA_ERITREA                    :: WORD(0x02);
+SUBLANG_TIGRINYA_ERITREA                    :: WORD(0x02);
+SUBLANG_TIGRINYA_ETHIOPIA                   :: WORD(0x01);
+SUBLANG_TSWANA_BOTSWANA                     :: WORD(0x02);
+SUBLANG_TSWANA_SOUTH_AFRICA                 :: WORD(0x01);
+SUBLANG_TURKISH_TURKEY                      :: WORD(0x01);
+SUBLANG_TURKMEN_TURKMENISTAN                :: WORD(0x01);
+SUBLANG_UIGHUR_PRC                          :: WORD(0x01);
+SUBLANG_UKRAINIAN_UKRAINE                   :: WORD(0x01);
+SUBLANG_UPPER_SORBIAN_GERMANY               :: WORD(0x01);
+SUBLANG_URDU_PAKISTAN                       :: WORD(0x01);
+SUBLANG_URDU_INDIA                          :: WORD(0x02);
+SUBLANG_UZBEK_LATIN                         :: WORD(0x01);
+SUBLANG_UZBEK_CYRILLIC                      :: WORD(0x02);
+SUBLANG_VALENCIAN_VALENCIA                  :: WORD(0x02);
+SUBLANG_VIETNAMESE_VIETNAM                  :: WORD(0x01);
+SUBLANG_WELSH_UNITED_KINGDOM                :: WORD(0x01);
+SUBLANG_WOLOF_SENEGAL                       :: WORD(0x01);
+SUBLANG_XHOSA_SOUTH_AFRICA                  :: WORD(0x01);
+SUBLANG_YAKUT_RUSSIA                        :: WORD(0x01);
+SUBLANG_YI_PRC                              :: WORD(0x01);
+SUBLANG_YORUBA_NIGERIA                      :: WORD(0x01);
+SUBLANG_ZULU_SOUTH_AFRICA                   :: WORD(0x01);
+SORT_DEFAULT                :: WORD(0x0);
+SORT_INVARIANT_MATH         :: WORD(0x1);
+SORT_JAPANESE_XJIS          :: WORD(0x0);
+SORT_JAPANESE_UNICODE       :: WORD(0x1);
+SORT_JAPANESE_RADICALSTROKE :: WORD(0x4);
+SORT_CHINESE_BIG5           :: WORD(0x0);
+SORT_CHINESE_PRCP           :: WORD(0x0);
+SORT_CHINESE_UNICODE        :: WORD(0x1);
+SORT_CHINESE_PRC            :: WORD(0x2);
+SORT_CHINESE_BOPOMOFO       :: WORD(0x3);
+SORT_CHINESE_RADICALSTROKE  :: WORD(0x4);
+SORT_KOREAN_KSC             :: WORD(0x0);
+SORT_KOREAN_UNICODE         :: WORD(0x1);
+SORT_GERMAN_PHONE_BOOK      :: WORD(0x1);
+SORT_HUNGARIAN_DEFAULT      :: WORD(0x0);
+SORT_HUNGARIAN_TECHNICAL    :: WORD(0x1);
+SORT_GEORGIAN_TRADITIONAL   :: WORD(0x0);
+SORT_GEORGIAN_MODERN        :: WORD(0x1);
+
+
+
+MAKELANGID :: inline proc(p: WORD, s: WORD) -> LANGID {
+	return LANGID((s << 10) | p);
+}
+PRIMARYLANGID :: inline proc(lgid: LANGID) -> WORD {
+	return WORD(lgid & 0x3ff);
+}
+SUBLANGID :: inline proc(lgid: LANGID) -> WORD {
+	return WORD(lgid >> 10);
+}
+
+NLS_VALID_LOCALE_MASK :: DWORD(0x000fffff);
+
+MAKELCID :: inline proc(lgid: LANGID, srtid: WORD) -> LCID {
+	return (DWORD(srtid) << 16) | DWORD(lgid);
+}
+
+MAKESORTLCID :: inline proc(lgid: LANGID, srtid: WORD, ver: WORD) -> LCID {
+	return MAKELCID(lgid, srtid) | (DWORD(ver) << 20);
+}
+
+LANGIDFROMLCID :: inline proc(lcid: LCID) -> LANGID {
+	return LANGID(lcid);
+}
+
+SORTIDFROMLCID :: inline proc(lcid: LCID) -> WORD {
+	return WORD((lcid >> 16) & 0xf);
+}
+
+SORTVERSIONFROMLCID :: inline proc(lcid: LCID) -> WORD {
+	return WORD((lcid >> 16) & 0xf);
+}
+
+LOCALE_NAME_MAX_LENGTH :: 85;
+
+@static LANG_SYSTEM_DEFAULT       := MAKELANGID(LANG_NEUTRAL, SUBLANG_SYS_DEFAULT);
+@static LANG_USER_DEFAULT         := MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT);
+@static LOCALE_SYSTEM_DEFAULT     := MAKELCID(LANG_SYSTEM_DEFAULT, SORT_DEFAULT);
+@static LOCALE_USER_DEFAULT       := MAKELCID(LANG_USER_DEFAULT, SORT_DEFAULT);
+@static LOCALE_CUSTOM_DEFAULT     := MAKELCID(MAKELANGID(LANG_NEUTRAL, SUBLANG_CUSTOM_DEFAULT), SORT_DEFAULT);
+@static LOCALE_CUSTOM_UNSPECIFIED := MAKELCID(MAKELANGID(LANG_NEUTRAL, SUBLANG_CUSTOM_UNSPECIFIED), SORT_DEFAULT);
+@static LOCALE_CUSTOM_UI_DEFAULT  := MAKELCID(MAKELANGID(LANG_NEUTRAL, SUBLANG_UI_CUSTOM_DEFAULT), SORT_DEFAULT);
+@static LOCALE_NEUTRAL            := MAKELCID(MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), SORT_DEFAULT);
+@static LOCALE_INVARIANT          := MAKELCID(MAKELANGID(LANG_INVARIANT, SUBLANG_NEUTRAL), SORT_DEFAULT);
+
+LOCALE_TRANSIENT_KEYBOARD1 :: LCID(0x2000);
+LOCALE_TRANSIENT_KEYBOARD2 :: LCID(0x2400);
+LOCALE_TRANSIENT_KEYBOARD3 :: LCID(0x2800);
+LOCALE_TRANSIENT_KEYBOARD4 :: LCID(0x2c00);
+@static LOCALE_UNASSIGNED_LCID := LCID(LOCALE_CUSTOM_UNSPECIFIED);
+
+STATUS_WAIT_0                     :: DWORD(0x00000000);
+STATUS_ABANDONED_WAIT_0           :: DWORD(0x00000080);
+STATUS_USER_APC                   :: DWORD(0x000000C0);
+STATUS_TIMEOUT                    :: DWORD(0x00000102);
+STATUS_PENDING                    :: DWORD(0x00000103);
+DBG_EXCEPTION_HANDLED             :: DWORD(0x00010001);
+DBG_CONTINUE                      :: DWORD(0x00010002);
+STATUS_SEGMENT_NOTIFICATION       :: DWORD(0x40000005);
+STATUS_FATAL_APP_EXIT             :: DWORD(0x40000015);
+DBG_REPLY_LATER                   :: DWORD(0x40010001);
+DBG_TERMINATE_THREAD              :: DWORD(0x40010003);
+DBG_TERMINATE_PROCESS             :: DWORD(0x40010004);
+DBG_CONTROL_C                     :: DWORD(0x40010005);
+DBG_PRINTEXCEPTION_C              :: DWORD(0x40010006);
+DBG_RIPEXCEPTION                  :: DWORD(0x40010007);
+DBG_CONTROL_BREAK                 :: DWORD(0x40010008);
+DBG_COMMAND_EXCEPTION             :: DWORD(0x40010009);
+DBG_PRINTEXCEPTION_WIDE_C         :: DWORD(0x4001000A);
+STATUS_GUARD_PAGE_VIOLATION       :: DWORD(0x80000001);
+STATUS_DATATYPE_MISALIGNMENT      :: DWORD(0x80000002);
+STATUS_BREAKPOINT                 :: DWORD(0x80000003);
+STATUS_SINGLE_STEP                :: DWORD(0x80000004);
+STATUS_LONGJUMP                   :: DWORD(0x80000026);
+STATUS_UNWIND_CONSOLIDATE         :: DWORD(0x80000029);
+DBG_EXCEPTION_NOT_HANDLED         :: DWORD(0x80010001);
+STATUS_ACCESS_VIOLATION           :: DWORD(0xC0000005);
+STATUS_IN_PAGE_ERROR              :: DWORD(0xC0000006);
+STATUS_INVALID_HANDLE             :: DWORD(0xC0000008);
+STATUS_INVALID_PARAMETER          :: DWORD(0xC000000D);
+STATUS_NO_MEMORY                  :: DWORD(0xC0000017);
+STATUS_ILLEGAL_INSTRUCTION        :: DWORD(0xC000001D);
+STATUS_NONCONTINUABLE_EXCEPTION   :: DWORD(0xC0000025);
+STATUS_INVALID_DISPOSITION        :: DWORD(0xC0000026);
+STATUS_ARRAY_BOUNDS_EXCEEDED      :: DWORD(0xC000008C);
+STATUS_FLOAT_DENORMAL_OPERAND     :: DWORD(0xC000008D);
+STATUS_FLOAT_DIVIDE_BY_ZERO       :: DWORD(0xC000008E);
+STATUS_FLOAT_INEXACT_RESULT       :: DWORD(0xC000008F);
+STATUS_FLOAT_INVALID_OPERATION    :: DWORD(0xC0000090);
+STATUS_FLOAT_OVERFLOW             :: DWORD(0xC0000091);
+STATUS_FLOAT_STACK_CHECK          :: DWORD(0xC0000092);
+STATUS_FLOAT_UNDERFLOW            :: DWORD(0xC0000093);
+STATUS_INTEGER_DIVIDE_BY_ZERO     :: DWORD(0xC0000094);
+STATUS_INTEGER_OVERFLOW           :: DWORD(0xC0000095);
+STATUS_PRIVILEGED_INSTRUCTION     :: DWORD(0xC0000096);
+STATUS_STACK_OVERFLOW             :: DWORD(0xC00000FD);
+STATUS_DLL_NOT_FOUND              :: DWORD(0xC0000135);
+STATUS_ORDINAL_NOT_FOUND          :: DWORD(0xC0000138);
+STATUS_ENTRYPOINT_NOT_FOUND       :: DWORD(0xC0000139);
+STATUS_CONTROL_C_EXIT             :: DWORD(0xC000013A);
+STATUS_DLL_INIT_FAILED            :: DWORD(0xC0000142);
+STATUS_FLOAT_MULTIPLE_FAULTS      :: DWORD(0xC00002B4);
+STATUS_FLOAT_MULTIPLE_TRAPS       :: DWORD(0xC00002B5);
+STATUS_REG_NAT_CONSUMPTION        :: DWORD(0xC00002C9);
+STATUS_HEAP_CORRUPTION            :: DWORD(0xC0000374);
+STATUS_STACK_BUFFER_OVERRUN       :: DWORD(0xC0000409);
+STATUS_INVALID_CRUNTIME_PARAMETER :: DWORD(0xC0000417);
+STATUS_ASSERTION_FAILURE          :: DWORD(0xC0000420);
+STATUS_SXS_EARLY_DEACTIVATION     :: DWORD(0xC015000F);
+STATUS_SXS_INVALID_DEACTIVATION   :: DWORD(0xC0150010);
+MAXIMUM_WAIT_OBJECTS              :: DWORD(64);
+MAXIMUM_SUSPEND_COUNT             :: CHAR(MAXCHAR);
+
+
+KSPIN_LOCK :: distinct ULONG_PTR;
+PKSPIN_LOCK :: ^KSPIN_LOCK;
+M128A :: struct #align 16 {
+	Low: ULONGLONG,
+	High: LONGLONG,
+}
+PM128A :: ^M128A;
+
+SCOPE_TABLE_AMD64 :: struct {
+	Count: DWORD,
+	ScopeRecord: [1]SCOPE_TABLE_AMD64_ScopeRecord,
+}
+SCOPE_TABLE_AMD64_ScopeRecord :: struct {
+	BeginAddress: DWORD,
+	EndAddress: DWORD,
+	HandlerAddress: DWORD,
+	JumpTarget: DWORD,
+}
+PSCOPE_TABLE_AMD64 :: ^SCOPE_TABLE_AMD64;
+SCOPE_TABLE_ARM64 :: struct {
+	Count: DWORD,
+	ScopeRecord: [1]SCOPE_TABLE_ARM64_ScopeRecord,
+}
+SCOPE_TABLE_ARM64_ScopeRecord :: struct {
+	BeginAddress: DWORD,
+	EndAddress: DWORD,
+	HandlerAddress: DWORD,
+	JumpTarget: DWORD,
+}
+PSCOPE_TABLE_ARM64 :: ^SCOPE_TABLE_ARM64;
+
+
+
+LDT_ENTRY_Bytes :: struct {
+	BaseMid: BYTE,
+	Flags1:  BYTE,
+	Flags2:  BYTE,
+	BaseHi:  BYTE,
+}
+LDT_ENTRY_Bits :: struct {
+	Bitfield: DWORD,
+}
+LDT_ENTRY_Bits_Bitfield :: bit_field #align align_of(DWORD) {
+	BaseMid     : 8,
+	Type        : 5,
+	Dpl         : 2,
+	Pres        : 1,
+	LimitHi     : 4,
+	Sys         : 1,
+	Reserved_0  : 1,
+	Default_Big : 1,
+	Granularity : 1,
+	BaseHi      : 8,
+}
+LDT_ENTRY_HighWord :: struct #raw_union {
+	u:     [1]u32,
+	Bytes: LDT_ENTRY_Bytes,
+	Bits:  LDT_ENTRY_Bits,
+}
+LDT_ENTRY :: struct {
+	LimitLow: WORD,
+	BaseLow:  WORD,
+	HighWord: LDT_ENTRY_HighWord,
+}
+PLDT_ENTRY :: ^LDT_ENTRY;
+
+
+
+WOW64_CONTEXT_i386                :: DWORD(0x00010000);
+WOW64_CONTEXT_i486                :: DWORD(0x00010000);
+WOW64_CONTEXT_CONTROL             :: DWORD(WOW64_CONTEXT_i386 | 0x00000001);
+WOW64_CONTEXT_INTEGER             :: DWORD(WOW64_CONTEXT_i386 | 0x00000002);
+WOW64_CONTEXT_SEGMENTS            :: DWORD(WOW64_CONTEXT_i386 | 0x00000004);
+WOW64_CONTEXT_FLOATING_POINT      :: DWORD(WOW64_CONTEXT_i386 | 0x00000008);
+WOW64_CONTEXT_DEBUG_REGISTERS     :: DWORD(WOW64_CONTEXT_i386 | 0x00000010);
+WOW64_CONTEXT_EXTENDED_REGISTERS  :: DWORD(WOW64_CONTEXT_i386 | 0x00000020);
+WOW64_CONTEXT_FULL                :: DWORD(WOW64_CONTEXT_CONTROL | WOW64_CONTEXT_INTEGER | WOW64_CONTEXT_SEGMENTS);
+WOW64_CONTEXT_ALL                 :: DWORD(WOW64_CONTEXT_CONTROL | WOW64_CONTEXT_INTEGER | WOW64_CONTEXT_SEGMENTS |
+                                           WOW64_CONTEXT_FLOATING_POINT | WOW64_CONTEXT_DEBUG_REGISTERS |
+                                           WOW64_CONTEXT_EXTENDED_REGISTERS);
+WOW64_CONTEXT_XSTATE              :: DWORD(WOW64_CONTEXT_i386 | 0x00000040);
+WOW64_CONTEXT_EXCEPTION_ACTIVE    :: DWORD(0x08000000);
+WOW64_CONTEXT_SERVICE_ACTIVE      :: DWORD(0x10000000);
+WOW64_CONTEXT_EXCEPTION_REQUEST   :: DWORD(0x40000000);
+WOW64_CONTEXT_EXCEPTION_REPORTING :: DWORD(0x80000000);
+
+WOW64_SIZE_OF_80387_REGISTERS     :: 80;
+WOW64_MAXIMUM_SUPPORTED_EXTENSION :: 512;
+
+
+WOW64_FLOATING_SAVE_AREA :: struct {
+	ControlWord:   DWORD,
+	StatusWord:    DWORD,
+	TagWord:       DWORD,
+	ErrorOffset:   DWORD,
+	ErrorSelector: DWORD,
+	DataOffset:    DWORD,
+	DataSelector:  DWORD,
+	RegisterArea:  [WOW64_SIZE_OF_80387_REGISTERS]BYTE,
+	Cr0NpxState:   DWORD,
+}
+PWOW64_FLOATING_SAVE_AREA :: ^WOW64_FLOATING_SAVE_AREA;
+
+WOW64_CONTEXT :: struct {
+	ContextFlags:      DWORD,
+	Dr0:               DWORD,
+	Dr1:               DWORD,
+	Dr2:               DWORD,
+	Dr3:               DWORD,
+	Dr6:               DWORD,
+	Dr7:               DWORD,
+	FloatSave:         WOW64_FLOATING_SAVE_AREA,
+	SegGs:             DWORD,
+	SegFs:             DWORD,
+	SegEs:             DWORD,
+	SegDs:             DWORD,
+	Edi:               DWORD,
+	Esi:               DWORD,
+	Ebx:               DWORD,
+	Edx:               DWORD,
+	Ecx:               DWORD,
+	Eax:               DWORD,
+	Ebp:               DWORD,
+	Eip:               DWORD,
+	SegCs:             DWORD,
+	EFlags:            DWORD,
+	Esp:               DWORD,
+	SegSs:             DWORD,
+	ExtendedRegisters: [WOW64_MAXIMUM_SUPPORTED_EXTENSION]BYTE,
+}
+PWOW64_CONTEXT :: ^WOW64_CONTEXT;
+WOW64_LDT_ENTRY_Bytes :: struct {
+	BaseMid: BYTE,
+	Flags1:  BYTE,
+	Flags2:  BYTE,
+	BaseHi:  BYTE,
+}
+WOW64_LDT_ENTRY_Bits :: struct {
+	BitFields: DWORD,
+}
+WOW64_LDT_ENTRY_Bits_Bitfield :: bit_field #align align_of(DWORD) {
+	BaseMid     : 8,
+	Type        : 5,
+	Dpl         : 2,
+	Pres        : 1,
+	LimitHi     : 4,
+	Sys         : 1,
+	Reserved_0  : 1,
+	Default_Big : 1,
+	Granularity : 1,
+	BaseHi      : 8,
+}
+WOW64_LDT_ENTRY_HighWord :: struct #raw_union {
+	u:     [1]u32,
+	Bytes: WOW64_LDT_ENTRY_Bytes,
+	Bits:  WOW64_LDT_ENTRY_Bits,
+}
+WOW64_LDT_ENTRY :: struct {
+	LimitLow: WORD,
+	BaseLow:  WORD,
+	HighWord: WOW64_LDT_ENTRY_HighWord,
+}
+PWOW64_LDT_ENTRY :: ^WOW64_LDT_ENTRY;
+WOW64_DESCRIPTOR_TABLE_ENTRY :: struct {
+	Selector:   DWORD,
+	Descriptor: WOW64_LDT_ENTRY,
+}
+PWOW64_DESCRIPTOR_TABLE_ENTRY :: ^WOW64_DESCRIPTOR_TABLE_ENTRY;
+
+EXCEPTION_NONCONTINUABLE  :: DWORD(0x1);
+EXCEPTION_UNWINDING       :: DWORD(0x2);
+EXCEPTION_EXIT_UNWIND     :: DWORD(0x4);
+EXCEPTION_STACK_INVALID   :: DWORD(0x8);
+EXCEPTION_NESTED_CALL     :: DWORD(0x10);
+EXCEPTION_TARGET_UNWIND   :: DWORD(0x20);
+EXCEPTION_COLLIDED_UNWIND :: DWORD(0x40);
+EXCEPTION_UNWIND          :: DWORD(EXCEPTION_UNWINDING | EXCEPTION_EXIT_UNWIND | EXCEPTION_TARGET_UNWIND | EXCEPTION_COLLIDED_UNWIND);
+
+
+IS_UNWINDING :: inline proc(Flag: DWORD) -> bool {
+	return (Flag & EXCEPTION_UNWIND) != 0;
+}
+
+IS_DISPATCHING :: inline proc(Flag: DWORD) -> bool {
+	return (Flag & EXCEPTION_UNWIND) == 0;
+}
+
+IS_TARGET_UNWIND :: inline proc(Flag: DWORD) -> bool {
+	return (Flag & EXCEPTION_TARGET_UNWIND) != 0;
+}
+
+EXCEPTION_MAXIMUM_PARAMETERS :: 15;
+
+EXCEPTION_RECORD :: struct {
+	ExceptionCode:        DWORD,
+	ExceptionFlags:       DWORD,
+	ExceptionRecord:      ^EXCEPTION_RECORD,
+	ExceptionAddress:     PVOID,
+	NumberParameters:     DWORD,
+	ExceptionInformation: [EXCEPTION_MAXIMUM_PARAMETERS]ULONG_PTR,
+}
+PEXCEPTION_RECORD :: ^EXCEPTION_RECORD;
+EXCEPTION_RECORD32 :: struct {
+	ExceptionCode: DWORD,
+	ExceptionFlags: DWORD,
+	ExceptionRecord: DWORD,
+	ExceptionAddress: DWORD,
+	NumberParameters: DWORD,
+	ExceptionInformation: [EXCEPTION_MAXIMUM_PARAMETERS]DWORD,
+}
+PEXCEPTION_RECORD32 :: ^EXCEPTION_RECORD32;
+EXCEPTION_RECORD64 :: struct {
+	ExceptionCode: DWORD,
+	ExceptionFlags: DWORD,
+	ExceptionRecord: DWORD64,
+	ExceptionAddress: DWORD64,
+	NumberParameters: DWORD,
+	__unusedAlignment: DWORD,
+	ExceptionInformation: [EXCEPTION_MAXIMUM_PARAMETERS]DWORD64,
+}
+PEXCEPTION_RECORD64 :: ^EXCEPTION_RECORD64;
+EXCEPTION_POINTERS :: struct {
+	ExceptionRecord: PEXCEPTION_RECORD,
+	ContextRecord: PCONTEXT,
+}
+
+PEXCEPTION_POINTERS  :: ^EXCEPTION_POINTERS;
+PACCESS_TOKEN        :: distinct PVOID;
+PSECURITY_DESCRIPTOR :: distinct PVOID;
+PSID                 :: distinct PVOID;
+PCLAIMS_BLOB         :: distinct PVOID;
+ACCESS_MASK          :: DWORD;
+PACCESS_MASK         :: ^ACCESS_MASK;
+DELETE                   :: DWORD(0x00010000);
+READ_CONTROL             :: DWORD(0x00020000);
+WRITE_DAC                :: DWORD(0x00040000);
+WRITE_OWNER              :: DWORD(0x00080000);
+SYNCHRONIZE              :: DWORD(0x00100000);
+STANDARD_RIGHTS_REQUIRED :: DWORD(0x000F0000);
+STANDARD_RIGHTS_READ     :: DWORD(READ_CONTROL);
+STANDARD_RIGHTS_WRITE    :: DWORD(READ_CONTROL);
+STANDARD_RIGHTS_EXECUTE  :: DWORD(READ_CONTROL);
+STANDARD_RIGHTS_ALL      :: DWORD(0x001F0000);
+SPECIFIC_RIGHTS_ALL      :: DWORD(0x0000FFFF);
+ACCESS_SYSTEM_SECURITY   :: DWORD(0x01000000);
+MAXIMUM_ALLOWED          :: DWORD(0x02000000);
+GENERIC_READ             :: DWORD(0x80000000);
+GENERIC_WRITE            :: DWORD(0x40000000);
+GENERIC_EXECUTE          :: DWORD(0x20000000);
+GENERIC_ALL              :: DWORD(0x10000000);
+
+GENERIC_MAPPING :: struct {
+	GenericRead:    ACCESS_MASK,
+	GenericWrite:   ACCESS_MASK,
+	GenericExecute: ACCESS_MASK,
+	GenericAll:     ACCESS_MASK,
+}
+PGENERIC_MAPPING :: ^GENERIC_MAPPING;
+LUID_AND_ATTRIBUTES :: struct {
+	Luid: LUID,
+	Attributes: DWORD,
+}
+PLUID_AND_ATTRIBUTES       :: ^LUID_AND_ATTRIBUTES;
+LUID_AND_ATTRIBUTES_ARRAY  :: LUID_AND_ATTRIBUTES;
+PLUID_AND_ATTRIBUTES_ARRAY :: ^LUID_AND_ATTRIBUTES;
+SID_IDENTIFIER_AUTHORITY :: struct {
+	Value: [6]BYTE,
+}
+PSID_IDENTIFIER_AUTHORITY :: ^SID_IDENTIFIER_AUTHORITY;
+SID :: struct {
+	Revision:            BYTE,
+	SubAuthorityCount:   BYTE,
+	IdentifierAuthority: SID_IDENTIFIER_AUTHORITY,
+	SubAuthority:        [1]DWORD,
+}
+PISID :: ^SID;
+
+SID_REVISION                       :: BYTE(1);
+SID_MAX_SUB_AUTHORITIES            :: BYTE(15);
+SID_RECOMMENDED_SUB_AUTHORITIES    :: BYTE(1);
+SECURITY_MAX_SID_SIZE              :: uint(12 - 4 + (uint(SID_MAX_SUB_AUTHORITIES) * 4));
+SECURITY_MAX_SID_STRING_CHARACTERS :: BYTE(2 + 4 + 15 + (11 * SID_MAX_SUB_AUTHORITIES) + 1);
+
+SE_SID :: struct #raw_union {
+	u:      [17]u32,
+	Sid:    SID,
+	Buffer: [SECURITY_MAX_SID_SIZE]BYTE,
+}
+PSE_SID :: ^SE_SID;
+
+using SID_NAME_USE :: enum c.int {
+	SidTypeUser = 1,
+	SidTypeGroup,
+	SidTypeDomain,
+	SidTypeAlias,
+	SidTypeWellKnownGroup,
+	SidTypeDeletedAccount,
+	SidTypeInvalid,
+	SidTypeUnknown,
+	SidTypeComputer,
+	SidTypeLabel,
+	SidTypeLogonSession,
+}
+PSID_NAME_USE :: ^SID_NAME_USE;
+
+
+SID_AND_ATTRIBUTES :: struct {
+	Sid:        PSID,
+	Attributes: DWORD,
+}
+PSID_AND_ATTRIBUTES       :: ^SID_AND_ATTRIBUTES;
+SID_AND_ATTRIBUTES_ARRAY  :: SID_AND_ATTRIBUTES;
+PSID_AND_ATTRIBUTES_ARRAY :: ^SID_AND_ATTRIBUTES;
+
+SID_HASH_SIZE :: 32;
+
+SID_HASH_ENTRY  :: ULONG_PTR;
+PSID_HASH_ENTRY :: ^ULONG_PTR;
+SID_AND_ATTRIBUTES_HASH :: struct {
+	SidCount: DWORD,
+	SidAttr:  PSID_AND_ATTRIBUTES,
+	Hash:     [SID_HASH_SIZE]SID_HASH_ENTRY,
+}
+PSID_AND_ATTRIBUTES_HASH :: ^SID_AND_ATTRIBUTES_HASH;
+
+@static SECURITY_NULL_SID_AUTHORITY         := [6]BYTE{0, 0, 0, 0, 0, 0};
+@static SECURITY_WORLD_SID_AUTHORITY        := [6]BYTE{0, 0, 0, 0, 0, 1};
+@static SECURITY_LOCAL_SID_AUTHORITY        := [6]BYTE{0, 0, 0, 0, 0, 2};
+@static SECURITY_CREATOR_SID_AUTHORITY      := [6]BYTE{0, 0, 0, 0, 0, 3};
+@static SECURITY_NON_UNIQUE_AUTHORITY       := [6]BYTE{0, 0, 0, 0, 0, 4};
+@static SECURITY_RESOURCE_MANAGER_AUTHORITY := [6]BYTE{0, 0, 0, 0, 0, 9};
+
+SECURITY_NULL_RID                                       :: DWORD(0x00000000);
+SECURITY_WORLD_RID                                      :: DWORD(0x00000000);
+SECURITY_LOCAL_RID                                      :: DWORD(0x00000000);
+SECURITY_LOCAL_LOGON_RID                                :: DWORD(0x00000001);
+SECURITY_CREATOR_OWNER_RID                              :: DWORD(0x00000000);
+SECURITY_CREATOR_GROUP_RID                              :: DWORD(0x00000001);
+SECURITY_CREATOR_OWNER_SERVER_RID                       :: DWORD(0x00000002);
+SECURITY_CREATOR_GROUP_SERVER_RID                       :: DWORD(0x00000003);
+SECURITY_CREATOR_OWNER_RIGHTS_RID                       :: DWORD(0x00000004);
+@static SECURITY_NT_AUTHORITY := [6]BYTE{0, 0, 0, 0, 0, 5};
+SECURITY_DIALUP_RID                                     :: DWORD(0x00000001);
+SECURITY_NETWORK_RID                                    :: DWORD(0x00000002);
+SECURITY_BATCH_RID                                      :: DWORD(0x00000003);
+SECURITY_INTERACTIVE_RID                                :: DWORD(0x00000004);
+SECURITY_LOGON_IDS_RID                                  :: DWORD(0x00000005);
+SECURITY_LOGON_IDS_RID_COUNT                            :: DWORD(3);
+SECURITY_SERVICE_RID                                    :: DWORD(0x00000006);
+SECURITY_ANONYMOUS_LOGON_RID                            :: DWORD(0x00000007);
+SECURITY_PROXY_RID                                      :: DWORD(0x00000008);
+SECURITY_ENTERPRISE_CONTROLLERS_RID                     :: DWORD(0x00000009);
+SECURITY_SERVER_LOGON_RID                               :: DWORD(SECURITY_ENTERPRISE_CONTROLLERS_RID);
+SECURITY_PRINCIPAL_SELF_RID                             :: DWORD(0x0000000A);
+SECURITY_AUTHENTICATED_USER_RID                         :: DWORD(0x0000000B);
+SECURITY_RESTRICTED_CODE_RID                            :: DWORD(0x0000000C);
+SECURITY_TERMINAL_SERVER_RID                            :: DWORD(0x0000000D);
+SECURITY_REMOTE_LOGON_RID                               :: DWORD(0x0000000E);
+SECURITY_THIS_ORGANIZATION_RID                          :: DWORD(0x0000000F);
+SECURITY_IUSER_RID                                      :: DWORD(0x00000011);
+SECURITY_LOCAL_SYSTEM_RID                               :: DWORD(0x00000012);
+SECURITY_LOCAL_SERVICE_RID                              :: DWORD(0x00000013);
+SECURITY_NETWORK_SERVICE_RID                            :: DWORD(0x00000014);
+SECURITY_NT_NON_UNIQUE                                  :: DWORD(0x00000015);
+SECURITY_NT_NON_UNIQUE_SUB_AUTH_COUNT                   :: DWORD(3);
+SECURITY_ENTERPRISE_READONLY_CONTROLLERS_RID            :: DWORD(0x00000016);
+SECURITY_BUILTIN_DOMAIN_RID                             :: DWORD(0x00000020);
+SECURITY_WRITE_RESTRICTED_CODE_RID                      :: DWORD(0x00000021);
+SECURITY_PACKAGE_BASE_RID                               :: DWORD(0x00000040);
+SECURITY_PACKAGE_RID_COUNT                              :: DWORD(2);
+SECURITY_PACKAGE_NTLM_RID                               :: DWORD(0x0000000A);
+SECURITY_PACKAGE_SCHANNEL_RID                           :: DWORD(0x0000000E);
+SECURITY_PACKAGE_DIGEST_RID                             :: DWORD(0x00000015);
+SECURITY_CRED_TYPE_BASE_RID                             :: DWORD(0x00000041);
+SECURITY_CRED_TYPE_RID_COUNT                            :: DWORD(2);
+SECURITY_CRED_TYPE_THIS_ORG_CERT_RID                    :: DWORD(0x00000001);
+SECURITY_MIN_BASE_RID                                   :: DWORD(0x00000050);
+SECURITY_SERVICE_ID_BASE_RID                            :: DWORD(0x00000050);
+SECURITY_SERVICE_ID_RID_COUNT                           :: DWORD(6);
+SECURITY_RESERVED_ID_BASE_RID                           :: DWORD(0x00000051);
+SECURITY_APPPOOL_ID_BASE_RID                            :: DWORD(0x00000052);
+SECURITY_APPPOOL_ID_RID_COUNT                           :: DWORD(6);
+SECURITY_VIRTUALSERVER_ID_BASE_RID                      :: DWORD(0x00000053);
+SECURITY_VIRTUALSERVER_ID_RID_COUNT                     :: DWORD(6);
+SECURITY_USERMODEDRIVERHOST_ID_BASE_RID                 :: DWORD(0x00000054);
+SECURITY_USERMODEDRIVERHOST_ID_RID_COUNT                :: DWORD(6);
+SECURITY_CLOUD_INFRASTRUCTURE_SERVICES_ID_BASE_RID      :: DWORD(0x00000055);
+SECURITY_CLOUD_INFRASTRUCTURE_SERVICES_ID_RID_COUNT     :: DWORD(6);
+SECURITY_WMIHOST_ID_BASE_RID                            :: DWORD(0x00000056);
+SECURITY_WMIHOST_ID_RID_COUNT                           :: DWORD(6);
+SECURITY_TASK_ID_BASE_RID                               :: DWORD(0x00000057);
+SECURITY_NFS_ID_BASE_RID                                :: DWORD(0x00000058);
+SECURITY_COM_ID_BASE_RID                                :: DWORD(0x00000059);
+SECURITY_WINDOW_MANAGER_BASE_RID                        :: DWORD(0x0000005A);
+SECURITY_RDV_GFX_BASE_RID                               :: DWORD(0x0000005B);
+SECURITY_DASHOST_ID_BASE_RID                            :: DWORD(0x0000005C);
+SECURITY_DASHOST_ID_RID_COUNT                           :: DWORD(6);
+SECURITY_USERMANAGER_ID_BASE_RID                        :: DWORD(0x0000005D);
+SECURITY_USERMANAGER_ID_RID_COUNT                       :: DWORD(6);
+SECURITY_WINRM_ID_BASE_RID                              :: DWORD(0x0000005E);
+SECURITY_WINRM_ID_RID_COUNT                             :: DWORD(6);
+SECURITY_CCG_ID_BASE_RID                                :: DWORD(0x0000005F);
+SECURITY_UMFD_BASE_RID                                  :: DWORD(0x00000060);
+SECURITY_VIRTUALACCOUNT_ID_RID_COUNT                    :: DWORD(6);
+SECURITY_MAX_BASE_RID                                   :: DWORD(0x0000006F);
+SECURITY_MAX_ALWAYS_FILTERED                            :: DWORD(0x000003E7);
+SECURITY_MIN_NEVER_FILTERED                             :: DWORD(0x000003E8);
+SECURITY_OTHER_ORGANIZATION_RID                         :: DWORD(0x000003E8);
+SECURITY_WINDOWSMOBILE_ID_BASE_RID                      :: DWORD(0x00000070);
+SECURITY_INSTALLER_GROUP_CAPABILITY_BASE                :: DWORD(0x20);
+SECURITY_INSTALLER_GROUP_CAPABILITY_RID_COUNT           :: DWORD(9);
+SECURITY_INSTALLER_CAPABILITY_RID_COUNT                 :: DWORD(10);
+SECURITY_LOCAL_ACCOUNT_RID                              :: DWORD(0x00000071);
+SECURITY_LOCAL_ACCOUNT_AND_ADMIN_RID                    :: DWORD(0x00000072);
+DOMAIN_GROUP_RID_AUTHORIZATION_DATA_IS_COMPOUNDED       :: DWORD(0x000001F0);
+DOMAIN_GROUP_RID_AUTHORIZATION_DATA_CONTAINS_CLAIMS     :: DWORD(0x000001F1);
+DOMAIN_GROUP_RID_ENTERPRISE_READONLY_DOMAIN_CONTROLLERS :: DWORD(0x000001F2);
+FOREST_USER_RID_MAX                                     :: DWORD(0x000001F3);
+DOMAIN_USER_RID_ADMIN                                   :: DWORD(0x000001F4);
+DOMAIN_USER_RID_GUEST                                   :: DWORD(0x000001F5);
+DOMAIN_USER_RID_KRBTGT                                  :: DWORD(0x000001F6);
+DOMAIN_USER_RID_DEFAULT_ACCOUNT                         :: DWORD(0x000001F7);
+DOMAIN_USER_RID_MAX                                     :: DWORD(0x000003E7);
+DOMAIN_GROUP_RID_ADMINS                                 :: DWORD(0x00000200);
+DOMAIN_GROUP_RID_USERS                                  :: DWORD(0x00000201);
+DOMAIN_GROUP_RID_GUESTS                                 :: DWORD(0x00000202);
+DOMAIN_GROUP_RID_COMPUTERS                              :: DWORD(0x00000203);
+DOMAIN_GROUP_RID_CONTROLLERS                            :: DWORD(0x00000204);
+DOMAIN_GROUP_RID_CERT_ADMINS                            :: DWORD(0x00000205);
+DOMAIN_GROUP_RID_SCHEMA_ADMINS                          :: DWORD(0x00000206);
+DOMAIN_GROUP_RID_ENTERPRISE_ADMINS                      :: DWORD(0x00000207);
+DOMAIN_GROUP_RID_POLICY_ADMINS                          :: DWORD(0x00000208);
+DOMAIN_GROUP_RID_READONLY_CONTROLLERS                   :: DWORD(0x00000209);
+DOMAIN_GROUP_RID_CLONEABLE_CONTROLLERS                  :: DWORD(0x0000020A);
+DOMAIN_GROUP_RID_CDC_RESERVED                           :: DWORD(0x0000020C);
+DOMAIN_GROUP_RID_PROTECTED_USERS                        :: DWORD(0x0000020D);
+DOMAIN_GROUP_RID_KEY_ADMINS                             :: DWORD(0x0000020E);
+DOMAIN_GROUP_RID_ENTERPRISE_KEY_ADMINS                  :: DWORD(0x0000020F);
+DOMAIN_ALIAS_RID_ADMINS                                 :: DWORD(0x00000220);
+DOMAIN_ALIAS_RID_USERS                                  :: DWORD(0x00000221);
+DOMAIN_ALIAS_RID_GUESTS                                 :: DWORD(0x00000222);
+DOMAIN_ALIAS_RID_POWER_USERS                            :: DWORD(0x00000223);
+DOMAIN_ALIAS_RID_ACCOUNT_OPS                            :: DWORD(0x00000224);
+DOMAIN_ALIAS_RID_SYSTEM_OPS                             :: DWORD(0x00000225);
+DOMAIN_ALIAS_RID_PRINT_OPS                              :: DWORD(0x00000226);
+DOMAIN_ALIAS_RID_BACKUP_OPS                             :: DWORD(0x00000227);
+DOMAIN_ALIAS_RID_REPLICATOR                             :: DWORD(0x00000228);
+DOMAIN_ALIAS_RID_RAS_SERVERS                            :: DWORD(0x00000229);
+DOMAIN_ALIAS_RID_PREW2KCOMPACCESS                       :: DWORD(0x0000022A);
+DOMAIN_ALIAS_RID_REMOTE_DESKTOP_USERS                   :: DWORD(0x0000022B);
+DOMAIN_ALIAS_RID_NETWORK_CONFIGURATION_OPS              :: DWORD(0x0000022C);
+DOMAIN_ALIAS_RID_INCOMING_FOREST_TRUST_BUILDERS         :: DWORD(0x0000022D);
+DOMAIN_ALIAS_RID_MONITORING_USERS                       :: DWORD(0x0000022E);
+DOMAIN_ALIAS_RID_LOGGING_USERS                          :: DWORD(0x0000022F);
+DOMAIN_ALIAS_RID_AUTHORIZATIONACCESS                    :: DWORD(0x00000230);
+DOMAIN_ALIAS_RID_TS_LICENSE_SERVERS                     :: DWORD(0x00000231);
+DOMAIN_ALIAS_RID_DCOM_USERS                             :: DWORD(0x00000232);
+DOMAIN_ALIAS_RID_IUSERS                                 :: DWORD(0x00000238);
+DOMAIN_ALIAS_RID_CRYPTO_OPERATORS                       :: DWORD(0x00000239);
+DOMAIN_ALIAS_RID_CACHEABLE_PRINCIPALS_GROUP             :: DWORD(0x0000023B);
+DOMAIN_ALIAS_RID_NON_CACHEABLE_PRINCIPALS_GROUP         :: DWORD(0x0000023C);
+DOMAIN_ALIAS_RID_EVENT_LOG_READERS_GROUP                :: DWORD(0x0000023D);
+DOMAIN_ALIAS_RID_CERTSVC_DCOM_ACCESS_GROUP              :: DWORD(0x0000023E);
+DOMAIN_ALIAS_RID_RDS_REMOTE_ACCESS_SERVERS              :: DWORD(0x0000023F);
+DOMAIN_ALIAS_RID_RDS_ENDPOINT_SERVERS                   :: DWORD(0x00000240);
+DOMAIN_ALIAS_RID_RDS_MANAGEMENT_SERVERS                 :: DWORD(0x00000241);
+DOMAIN_ALIAS_RID_HYPER_V_ADMINS                         :: DWORD(0x00000242);
+DOMAIN_ALIAS_RID_ACCESS_CONTROL_ASSISTANCE_OPS          :: DWORD(0x00000243);
+DOMAIN_ALIAS_RID_REMOTE_MANAGEMENT_USERS                :: DWORD(0x00000244);
+DOMAIN_ALIAS_RID_DEFAULT_ACCOUNT                        :: DWORD(0x00000245);
+DOMAIN_ALIAS_RID_STORAGE_REPLICA_ADMINS                 :: DWORD(0x00000246);
+@static SECURITY_APP_PACKAGE_AUTHORITY := [6]BYTE{0, 0, 0, 0, 0, 15};
+SECURITY_APP_PACKAGE_BASE_RID                           :: DWORD(0x00000002);
+SECURITY_BUILTIN_APP_PACKAGE_RID_COUNT                  :: DWORD(2);
+SECURITY_APP_PACKAGE_RID_COUNT                          :: DWORD(8);
+SECURITY_CAPABILITY_BASE_RID                            :: DWORD(0x00000003);
+SECURITY_CAPABILITY_APP_RID                             :: DWORD(0x00000040);
+SECURITY_BUILTIN_CAPABILITY_RID_COUNT                   :: DWORD(2);
+SECURITY_CAPABILITY_RID_COUNT                           :: DWORD(5);
+SECURITY_PARENT_PACKAGE_RID_COUNT                       :: DWORD(SECURITY_APP_PACKAGE_RID_COUNT);
+SECURITY_CHILD_PACKAGE_RID_COUNT                        :: DWORD(12);
+SECURITY_BUILTIN_PACKAGE_ANY_PACKAGE                    :: DWORD(0x00000001);
+SECURITY_BUILTIN_PACKAGE_ANY_RESTRICTED_PACKAGE         :: DWORD(0x00000002);
+SECURITY_CAPABILITY_INTERNET_CLIENT                     :: DWORD(0x00000001);
+SECURITY_CAPABILITY_INTERNET_CLIENT_SERVER              :: DWORD(0x00000002);
+SECURITY_CAPABILITY_PRIVATE_NETWORK_CLIENT_SERVER       :: DWORD(0x00000003);
+SECURITY_CAPABILITY_PICTURES_LIBRARY                    :: DWORD(0x00000004);
+SECURITY_CAPABILITY_VIDEOS_LIBRARY                      :: DWORD(0x00000005);
+SECURITY_CAPABILITY_MUSIC_LIBRARY                       :: DWORD(0x00000006);
+SECURITY_CAPABILITY_DOCUMENTS_LIBRARY                   :: DWORD(0x00000007);
+SECURITY_CAPABILITY_ENTERPRISE_AUTHENTICATION           :: DWORD(0x00000008);
+SECURITY_CAPABILITY_SHARED_USER_CERTIFICATES            :: DWORD(0x00000009);
+SECURITY_CAPABILITY_REMOVABLE_STORAGE                   :: DWORD(0x0000000A);
+SECURITY_CAPABILITY_APPOINTMENTS                        :: DWORD(0x0000000B);
+SECURITY_CAPABILITY_CONTACTS                            :: DWORD(0x0000000C);
+SECURITY_CAPABILITY_INTERNET_EXPLORER                   :: DWORD(0x00001000);
+@static SECURITY_MANDATORY_LABEL_AUTHORITY := [6]BYTE{0, 0, 0, 0, 0, 16};
+SECURITY_MANDATORY_UNTRUSTED_RID                        :: DWORD(0x00000000);
+SECURITY_MANDATORY_LOW_RID                              :: DWORD(0x00001000);
+SECURITY_MANDATORY_MEDIUM_RID                           :: DWORD(0x00002000);
+SECURITY_MANDATORY_MEDIUM_PLUS_RID                      :: DWORD(SECURITY_MANDATORY_MEDIUM_RID + 0x10);
+SECURITY_MANDATORY_HIGH_RID                             :: DWORD(0x00003000);
+SECURITY_MANDATORY_SYSTEM_RID                           :: DWORD(0x00004000);
+SECURITY_MANDATORY_MAXIMUM_USER_RID                     :: DWORD(SECURITY_MANDATORY_SYSTEM_RID);
+
+
+MANDATORY_LEVEL_TO_MANDATORY_RID :: inline proc(IL: DWORD) -> DWORD {
+	return IL * 0x1000;
+}
+
+@static SECURITY_SCOPED_POLICY_ID_AUTHORITY := [6]BYTE{0, 0, 0, 0, 0, 17};
+@static SECURITY_AUTHENTICATION_AUTHORITY   := [6]BYTE{0, 0, 0, 0, 0, 18};
+
+SECURITY_AUTHENTICATION_AUTHORITY_RID_COUNT          :: DWORD(1);
+SECURITY_AUTHENTICATION_AUTHORITY_ASSERTED_RID       :: DWORD(0x00000001);
+SECURITY_AUTHENTICATION_SERVICE_ASSERTED_RID         :: DWORD(0x00000002);
+SECURITY_AUTHENTICATION_FRESH_KEY_AUTH_RID           :: DWORD(0x00000003);
+SECURITY_AUTHENTICATION_KEY_TRUST_RID                :: DWORD(0x00000004);
+SECURITY_AUTHENTICATION_KEY_PROPERTY_MFA_RID         :: DWORD(0x00000005);
+SECURITY_AUTHENTICATION_KEY_PROPERTY_ATTESTATION_RID :: DWORD(0x00000006);
+@static SECURITY_PROCESS_TRUST_AUTHORITY := [6]BYTE{0, 0, 0, 0, 0, 19};
+SECURITY_PROCESS_TRUST_AUTHORITY_RID_COUNT    :: DWORD(2);
+SECURITY_PROCESS_PROTECTION_TYPE_FULL_RID     :: DWORD(0x00000400);
+SECURITY_PROCESS_PROTECTION_TYPE_LITE_RID     :: DWORD(0x00000200);
+SECURITY_PROCESS_PROTECTION_TYPE_NONE_RID     :: DWORD(0x00000000);
+SECURITY_PROCESS_PROTECTION_LEVEL_WINTCB_RID  :: DWORD(0x00002000);
+SECURITY_PROCESS_PROTECTION_LEVEL_WINDOWS_RID :: DWORD(0x00001000);
+SECURITY_PROCESS_PROTECTION_LEVEL_APP_RID     :: DWORD(0x00000800);
+SECURITY_PROCESS_PROTECTION_LEVEL_NONE_RID    :: DWORD(0x00000000);
+SECURITY_TRUSTED_INSTALLER_RID1               :: DWORD(95600888);
+SECURITY_TRUSTED_INSTALLER_RID2               :: DWORD(341852264);
+SECURITY_TRUSTED_INSTALLER_RID3               :: DWORD(183103804);
+SECURITY_TRUSTED_INSTALLER_RID4               :: DWORD(185329263);
+SECURITY_TRUSTED_INSTALLER_RID5               :: DWORD(227147846);
+
+using WELL_KNOWN_SID_TYPE :: enum c.int {
+	WinNullSid = 0,
+	WinWorldSid = 1,
+	WinLocalSid = 2,
+	WinCreatorOwnerSid = 3,
+	WinCreatorGroupSid = 4,
+	WinCreatorOwnerServerSid = 5,
+	WinCreatorGroupServerSid = 6,
+	WinNtAuthoritySid = 7,
+	WinDialupSid = 8,
+	WinNetworkSid = 9,
+	WinBatchSid = 10,
+	WinInteractiveSid = 11,
+	WinServiceSid = 12,
+	WinAnonymousSid = 13,
+	WinProxySid = 14,
+	WinEnterpriseControllersSid = 15,
+	WinSelfSid = 16,
+	WinAuthenticatedUserSid = 17,
+	WinRestrictedCodeSid = 18,
+	WinTerminalServerSid = 19,
+	WinRemoteLogonIdSid = 20,
+	WinLogonIdsSid = 21,
+	WinLocalSystemSid = 22,
+	WinLocalServiceSid = 23,
+	WinNetworkServiceSid = 24,
+	WinBuiltinDomainSid = 25,
+	WinBuiltinAdministratorsSid = 26,
+	WinBuiltinUsersSid = 27,
+	WinBuiltinGuestsSid = 28,
+	WinBuiltinPowerUsersSid = 29,
+	WinBuiltinAccountOperatorsSid = 30,
+	WinBuiltinSystemOperatorsSid = 31,
+	WinBuiltinPrintOperatorsSid = 32,
+	WinBuiltinBackupOperatorsSid = 33,
+	WinBuiltinReplicatorSid = 34,
+	WinBuiltinPreWindows2000CompatibleAccessSid = 35,
+	WinBuiltinRemoteDesktopUsersSid = 36,
+	WinBuiltinNetworkConfigurationOperatorsSid = 37,
+	WinAccountAdministratorSid = 38,
+	WinAccountGuestSid = 39,
+	WinAccountKrbtgtSid = 40,
+	WinAccountDomainAdminsSid = 41,
+	WinAccountDomainUsersSid = 42,
+	WinAccountDomainGuestsSid = 43,
+	WinAccountComputersSid = 44,
+	WinAccountControllersSid = 45,
+	WinAccountCertAdminsSid = 46,
+	WinAccountSchemaAdminsSid = 47,
+	WinAccountEnterpriseAdminsSid = 48,
+	WinAccountPolicyAdminsSid = 49,
+	WinAccountRasAndIasServersSid = 50,
+	WinNTLMAuthenticationSid = 51,
+	WinDigestAuthenticationSid = 52,
+	WinSChannelAuthenticationSid = 53,
+	WinThisOrganizationSid = 54,
+	WinOtherOrganizationSid = 55,
+	WinBuiltinIncomingForestTrustBuildersSid = 56,
+	WinBuiltinPerfMonitoringUsersSid = 57,
+	WinBuiltinPerfLoggingUsersSid = 58,
+	WinBuiltinAuthorizationAccessSid = 59,
+	WinBuiltinTerminalServerLicenseServersSid = 60,
+	WinBuiltinDCOMUsersSid = 61,
+	WinBuiltinIUsersSid = 62,
+	WinIUserSid = 63,
+	WinBuiltinCryptoOperatorsSid = 64,
+	WinUntrustedLabelSid = 65,
+	WinLowLabelSid = 66,
+	WinMediumLabelSid = 67,
+	WinHighLabelSid = 68,
+	WinSystemLabelSid = 69,
+	WinWriteRestrictedCodeSid = 70,
+	WinCreatorOwnerRightsSid = 71,
+	WinCacheablePrincipalsGroupSid = 72,
+	WinNonCacheablePrincipalsGroupSid = 73,
+	WinEnterpriseReadonlyControllersSid = 74,
+	WinAccountReadonlyControllersSid = 75,
+	WinBuiltinEventLogReadersGroup = 76,
+	WinNewEnterpriseReadonlyControllersSid = 77,
+	WinBuiltinCertSvcDComAccessGroup = 78,
+	WinMediumPlusLabelSid = 79,
+	WinLocalLogonSid = 80,
+	WinConsoleLogonSid = 81,
+	WinThisOrganizationCertificateSid = 82,
+	WinApplicationPackageAuthoritySid = 83,
+	WinBuiltinAnyPackageSid = 84,
+	WinCapabilityInternetClientSid = 85,
+	WinCapabilityInternetClientServerSid = 86,
+	WinCapabilityPrivateNetworkClientServerSid = 87,
+	WinCapabilityPicturesLibrarySid = 88,
+	WinCapabilityVideosLibrarySid = 89,
+	WinCapabilityMusicLibrarySid = 90,
+	WinCapabilityDocumentsLibrarySid = 91,
+	WinCapabilitySharedUserCertificatesSid = 92,
+	WinCapabilityEnterpriseAuthenticationSid = 93,
+	WinCapabilityRemovableStorageSid = 94,
+	WinBuiltinRDSRemoteAccessServersSid = 95,
+	WinBuiltinRDSEndpointServersSid = 96,
+	WinBuiltinRDSManagementServersSid = 97,
+	WinUserModeDriversSid = 98,
+	WinBuiltinHyperVAdminsSid = 99,
+	WinAccountCloneableControllersSid = 100,
+	WinBuiltinAccessControlAssistanceOperatorsSid = 101,
+	WinBuiltinRemoteManagementUsersSid = 102,
+	WinAuthenticationAuthorityAssertedSid = 103,
+	WinAuthenticationServiceAssertedSid = 104,
+	WinLocalAccountSid = 105,
+	WinLocalAccountAndAdministratorSid = 106,
+	WinAccountProtectedUsersSid = 107,
+	WinCapabilityAppointmentsSid = 108,
+	WinCapabilityContactsSid = 109,
+	WinAccountDefaultSystemManagedSid = 110,
+	WinBuiltinDefaultSystemManagedGroupSid = 111,
+	WinBuiltinStorageReplicaAdminsSid = 112,
+	WinAccountKeyAdminsSid = 113,
+	WinAccountEnterpriseKeyAdminsSid = 114,
+	WinAuthenticationKeyTrustSid = 115,
+	WinAuthenticationKeyPropertyMFASid = 116,
+	WinAuthenticationKeyPropertyAttestationSid = 117,
+	WinAuthenticationFreshKeyAuthSid = 118,
+}
+
+@static SYSTEM_LUID          := LUID{ LowPart = 0x3e7, HighPart = 0x0};
+@static ANONYMOUS_LOGON_LUID := LUID{ LowPart = 0x3e6, HighPart = 0x0};
+@static LOCALSERVICE_LUID    := LUID{ LowPart = 0x3e5, HighPart = 0x0};
+@static NETWORKSERVICE_LUID  := LUID{ LowPart = 0x3e4, HighPart = 0x0};
+@static IUSER_LUID           := LUID{ LowPart = 0x3e3, HighPart = 0x0};
+
+SE_GROUP_MANDATORY          :: DWORD(0x00000001);
+SE_GROUP_ENABLED_BY_DEFAULT :: DWORD(0x00000002);
+SE_GROUP_ENABLED            :: DWORD(0x00000004);
+SE_GROUP_OWNER              :: DWORD(0x00000008);
+SE_GROUP_USE_FOR_DENY_ONLY  :: DWORD(0x00000010);
+SE_GROUP_INTEGRITY          :: DWORD(0x00000020);
+SE_GROUP_INTEGRITY_ENABLED  :: DWORD(0x00000040);
+SE_GROUP_LOGON_ID           :: DWORD(0xC0000000);
+SE_GROUP_RESOURCE           :: DWORD(0x20000000);
+SE_GROUP_VALID_ATTRIBUTES :: DWORD(SE_GROUP_MANDATORY | SE_GROUP_ENABLED_BY_DEFAULT | SE_GROUP_ENABLED |
+                                   SE_GROUP_OWNER | SE_GROUP_USE_FOR_DENY_ONLY | SE_GROUP_LOGON_ID |
+                                   SE_GROUP_RESOURCE | SE_GROUP_INTEGRITY | SE_GROUP_INTEGRITY_ENABLED);
+ACL_REVISION     :: BYTE(2);
+ACL_REVISION_DS  :: BYTE(4);
+ACL_REVISION1    :: BYTE(1);
+MIN_ACL_REVISION :: BYTE(ACL_REVISION2);
+ACL_REVISION2    :: BYTE(2);
+ACL_REVISION3    :: BYTE(3);
+ACL_REVISION4    :: BYTE(4);
+MAX_ACL_REVISION :: BYTE(ACL_REVISION4);
+
+ACL :: struct {
+	AclRevision: BYTE,
+	Sbz1: BYTE,
+	AclSize: WORD,
+	AceCount: WORD,
+	Sbz2: WORD,
+}
+PACL :: ^ACL;
+ACE_HEADER :: struct {
+	AceType: BYTE,
+	AceFlags: BYTE,
+	AceSize: WORD,
+}
+PACE_HEADER :: ^ACE_HEADER;
+
+ACCESS_MIN_MS_ACE_TYPE                  :: BYTE(0x0);
+ACCESS_ALLOWED_ACE_TYPE                 :: BYTE(0x0);
+ACCESS_DENIED_ACE_TYPE                  :: BYTE(0x1);
+SYSTEM_AUDIT_ACE_TYPE                   :: BYTE(0x2);
+SYSTEM_ALARM_ACE_TYPE                   :: BYTE(0x3);
+ACCESS_MAX_MS_V2_ACE_TYPE               :: BYTE(0x3);
+ACCESS_ALLOWED_COMPOUND_ACE_TYPE        :: BYTE(0x4);
+ACCESS_MAX_MS_V3_ACE_TYPE               :: BYTE(0x4);
+ACCESS_MIN_MS_OBJECT_ACE_TYPE           :: BYTE(0x5);
+ACCESS_ALLOWED_OBJECT_ACE_TYPE          :: BYTE(0x5);
+ACCESS_DENIED_OBJECT_ACE_TYPE           :: BYTE(0x6);
+SYSTEM_AUDIT_OBJECT_ACE_TYPE            :: BYTE(0x7);
+SYSTEM_ALARM_OBJECT_ACE_TYPE            :: BYTE(0x8);
+ACCESS_MAX_MS_OBJECT_ACE_TYPE           :: BYTE(0x8);
+ACCESS_MAX_MS_V4_ACE_TYPE               :: BYTE(0x8);
+ACCESS_MAX_MS_ACE_TYPE                  :: BYTE(0x8);
+ACCESS_ALLOWED_CALLBACK_ACE_TYPE        :: BYTE(0x9);
+ACCESS_DENIED_CALLBACK_ACE_TYPE         :: BYTE(0xA);
+ACCESS_ALLOWED_CALLBACK_OBJECT_ACE_TYPE :: BYTE(0xB);
+ACCESS_DENIED_CALLBACK_OBJECT_ACE_TYPE  :: BYTE(0xC);
+SYSTEM_AUDIT_CALLBACK_ACE_TYPE          :: BYTE(0xD);
+SYSTEM_ALARM_CALLBACK_ACE_TYPE          :: BYTE(0xE);
+SYSTEM_AUDIT_CALLBACK_OBJECT_ACE_TYPE   :: BYTE(0xF);
+SYSTEM_ALARM_CALLBACK_OBJECT_ACE_TYPE   :: BYTE(0x10);
+SYSTEM_MANDATORY_LABEL_ACE_TYPE         :: BYTE(0x11);
+SYSTEM_RESOURCE_ATTRIBUTE_ACE_TYPE      :: BYTE(0x12);
+SYSTEM_SCOPED_POLICY_ID_ACE_TYPE        :: BYTE(0x13);
+SYSTEM_PROCESS_TRUST_LABEL_ACE_TYPE     :: BYTE(0x14);
+SYSTEM_ACCESS_FILTER_ACE_TYPE           :: BYTE(0x15);
+ACCESS_MAX_MS_V5_ACE_TYPE               :: BYTE(0x15);
+OBJECT_INHERIT_ACE                      :: BYTE(0x1);
+CONTAINER_INHERIT_ACE                   :: BYTE(0x2);
+NO_PROPAGATE_INHERIT_ACE                :: BYTE(0x4);
+INHERIT_ONLY_ACE                        :: BYTE(0x8);
+INHERITED_ACE                           :: BYTE(0x10);
+VALID_INHERIT_FLAGS                     :: BYTE(0x1F);
+SUCCESSFUL_ACCESS_ACE_FLAG              :: BYTE(0x40);
+FAILED_ACCESS_ACE_FLAG                  :: BYTE(0x80);
+TRUST_PROTECTED_FILTER_ACE_FLAG         :: BYTE(0x40);
+
+ACCESS_ALLOWED_ACE :: struct {
+	Header:   ACE_HEADER,
+	Mask:     ACCESS_MASK,
+	SidStart: DWORD,
+}
+PACCESS_ALLOWED_ACE :: ^ACCESS_ALLOWED_ACE;
+ACCESS_DENIED_ACE :: struct {
+	Header:   ACE_HEADER,
+	Mask:     ACCESS_MASK,
+	SidStart: DWORD,
+}
+PACCESS_DENIED_ACE :: ^ACCESS_DENIED_ACE;
+SYSTEM_AUDIT_ACE :: struct {
+	Header:   ACE_HEADER,
+	Mask:     ACCESS_MASK,
+	SidStart: DWORD,
+}
+PSYSTEM_AUDIT_ACE :: ^SYSTEM_AUDIT_ACE;
+SYSTEM_ALARM_ACE :: struct {
+	Header:   ACE_HEADER,
+	Mask:     ACCESS_MASK,
+	SidStart: DWORD,
+}
+PSYSTEM_ALARM_ACE :: ^SYSTEM_ALARM_ACE;
+SYSTEM_RESOURCE_ATTRIBUTE_ACE :: struct {
+	Header:   ACE_HEADER,
+	Mask:     ACCESS_MASK,
+	SidStart: DWORD,
+}
+PSYSTEM_RESOURCE_ATTRIBUTE_ACE :: ^SYSTEM_RESOURCE_ATTRIBUTE_ACE;
+SYSTEM_SCOPED_POLICY_ID_ACE :: struct {
+	Header:   ACE_HEADER,
+	Mask:     ACCESS_MASK,
+	SidStart: DWORD,
+}
+PSYSTEM_SCOPED_POLICY_ID_ACE :: ^SYSTEM_SCOPED_POLICY_ID_ACE;
+SYSTEM_MANDATORY_LABEL_ACE :: struct {
+	Header:   ACE_HEADER,
+	Mask:     ACCESS_MASK,
+	SidStart: DWORD,
+}
+PSYSTEM_MANDATORY_LABEL_ACE :: ^SYSTEM_MANDATORY_LABEL_ACE;
+SYSTEM_PROCESS_TRUST_LABEL_ACE :: struct {
+	Header:   ACE_HEADER,
+	Mask:     ACCESS_MASK,
+	SidStart: DWORD,
+}
+PSYSTEM_PROCESS_TRUST_LABEL_ACE :: ^SYSTEM_PROCESS_TRUST_LABEL_ACE;
+SYSTEM_ACCESS_FILTER_ACE :: struct {
+	Header:   ACE_HEADER,
+	Mask:     ACCESS_MASK,
+	SidStart: DWORD,
+}
+PSYSTEM_ACCESS_FILTER_ACE :: ^SYSTEM_ACCESS_FILTER_ACE;
+
+SYSTEM_MANDATORY_LABEL_NO_WRITE_UP     :: ACCESS_MASK(0x1);
+SYSTEM_MANDATORY_LABEL_NO_READ_UP      :: ACCESS_MASK(0x2);
+SYSTEM_MANDATORY_LABEL_NO_EXECUTE_UP   :: ACCESS_MASK(0x4);
+SYSTEM_MANDATORY_LABEL_VALID_MASK      :: ACCESS_MASK(SYSTEM_MANDATORY_LABEL_NO_WRITE_UP | SYSTEM_MANDATORY_LABEL_NO_READ_UP | SYSTEM_MANDATORY_LABEL_NO_EXECUTE_UP);
+SYSTEM_PROCESS_TRUST_LABEL_VALID_MASK  :: ACCESS_MASK(0x00ffffff);
+SYSTEM_PROCESS_TRUST_NOCONSTRAINT_MASK :: ACCESS_MASK(0xffffffff);
+SYSTEM_ACCESS_FILTER_VALID_MASK        :: ACCESS_MASK(0x00ffffff);
+SYSTEM_ACCESS_FILTER_NOCONSTRAINT_MASK :: ACCESS_MASK(0xffffffff);
+
+ACCESS_ALLOWED_OBJECT_ACE :: struct {
+	Header: ACE_HEADER,
+	Mask: ACCESS_MASK,
+	Flags: DWORD,
+	ObjectType: GUID,
+	InheritedObjectType: GUID,
+	SidStart: DWORD,
+}
+PACCESS_ALLOWED_OBJECT_ACE :: ^ACCESS_ALLOWED_OBJECT_ACE;
+ACCESS_DENIED_OBJECT_ACE :: struct {
+	Header: ACE_HEADER,
+	Mask: ACCESS_MASK,
+	Flags: DWORD,
+	ObjectType: GUID,
+	InheritedObjectType: GUID,
+	SidStart: DWORD,
+}
+PACCESS_DENIED_OBJECT_ACE :: ^ACCESS_DENIED_OBJECT_ACE;
+SYSTEM_AUDIT_OBJECT_ACE :: struct {
+	Header: ACE_HEADER,
+	Mask: ACCESS_MASK,
+	Flags: DWORD,
+	ObjectType: GUID,
+	InheritedObjectType: GUID,
+	SidStart: DWORD,
+}
+PSYSTEM_AUDIT_OBJECT_ACE :: ^SYSTEM_AUDIT_OBJECT_ACE;
+SYSTEM_ALARM_OBJECT_ACE :: struct {
+	Header: ACE_HEADER,
+	Mask: ACCESS_MASK,
+	Flags: DWORD,
+	ObjectType: GUID,
+	InheritedObjectType: GUID,
+	SidStart: DWORD,
+}
+PSYSTEM_ALARM_OBJECT_ACE :: ^SYSTEM_ALARM_OBJECT_ACE;
+ACCESS_ALLOWED_CALLBACK_ACE :: struct {
+	Header: ACE_HEADER,
+	Mask: ACCESS_MASK,
+	SidStart: DWORD,
+}
+PACCESS_ALLOWED_CALLBACK_ACE :: ^ACCESS_ALLOWED_CALLBACK_ACE;
+ACCESS_DENIED_CALLBACK_ACE :: struct {
+	Header: ACE_HEADER,
+	Mask: ACCESS_MASK,
+	SidStart: DWORD,
+}
+PACCESS_DENIED_CALLBACK_ACE :: ^ACCESS_DENIED_CALLBACK_ACE;
+SYSTEM_AUDIT_CALLBACK_ACE :: struct {
+	Header: ACE_HEADER,
+	Mask: ACCESS_MASK,
+	SidStart: DWORD,
+}
+PSYSTEM_AUDIT_CALLBACK_ACE :: ^SYSTEM_AUDIT_CALLBACK_ACE;
+SYSTEM_ALARM_CALLBACK_ACE :: struct {
+	Header: ACE_HEADER,
+	Mask: ACCESS_MASK,
+	SidStart: DWORD,
+}
+PSYSTEM_ALARM_CALLBACK_ACE :: ^SYSTEM_ALARM_CALLBACK_ACE;
+ACCESS_ALLOWED_CALLBACK_OBJECT_ACE :: struct {
+	Header: ACE_HEADER,
+	Mask: ACCESS_MASK,
+	Flags: DWORD,
+	ObjectType: GUID,
+	InheritedObjectType: GUID,
+	SidStart: DWORD,
+}
+PACCESS_ALLOWED_CALLBACK_OBJECT_ACE :: ^ACCESS_ALLOWED_CALLBACK_OBJECT_ACE;
+ACCESS_DENIED_CALLBACK_OBJECT_ACE :: struct {
+	Header: ACE_HEADER,
+	Mask: ACCESS_MASK,
+	Flags: DWORD,
+	ObjectType: GUID,
+	InheritedObjectType: GUID,
+	SidStart: DWORD,
+}
+PACCESS_DENIED_CALLBACK_OBJECT_ACE :: ^ACCESS_DENIED_CALLBACK_OBJECT_ACE;
+SYSTEM_AUDIT_CALLBACK_OBJECT_ACE :: struct {
+	Header: ACE_HEADER,
+	Mask: ACCESS_MASK,
+	Flags: DWORD,
+	ObjectType: GUID,
+	InheritedObjectType: GUID,
+	SidStart: DWORD,
+}
+PSYSTEM_AUDIT_CALLBACK_OBJECT_ACE :: ^SYSTEM_AUDIT_CALLBACK_OBJECT_ACE;
+SYSTEM_ALARM_CALLBACK_OBJECT_ACE :: struct {
+	Header: ACE_HEADER,
+	Mask: ACCESS_MASK,
+	Flags: DWORD,
+	ObjectType: GUID,
+	InheritedObjectType: GUID,
+	SidStart: DWORD,
+}
+PSYSTEM_ALARM_CALLBACK_OBJECT_ACE :: ^SYSTEM_ALARM_CALLBACK_OBJECT_ACE;
+
+ACE_OBJECT_TYPE_PRESENT           :: DWORD(0x1);
+ACE_INHERITED_OBJECT_TYPE_PRESENT :: DWORD(0x2);
+
+using ACL_INFORMATION_CLASS :: enum c.int {
+	AclRevisionInformation = 1,
+	AclSizeInformation,
+}
+ACL_REVISION_INFORMATION :: struct {
+	AclRevision: DWORD,
+}
+PACL_REVISION_INFORMATION :: ^ACL_REVISION_INFORMATION;
+ACL_SIZE_INFORMATION :: struct {
+	AceCount: DWORD,
+	AclBytesInUse: DWORD,
+	AclBytesFree: DWORD,
+}
+PACL_SIZE_INFORMATION :: ^ACL_SIZE_INFORMATION;
+
+SECURITY_DESCRIPTOR_REVISION  :: DWORD(1);
+SECURITY_DESCRIPTOR_REVISION1 :: DWORD(1);
+
+SECURITY_DESCRIPTOR_MIN_LENGTH :: size_of(uintptr) == 8 ? 40 : 20;
+
+SECURITY_DESCRIPTOR_CONTROL  :: distinct WORD;
+PSECURITY_DESCRIPTOR_CONTROL :: ^WORD;
+
+SE_OWNER_DEFAULTED       :: SECURITY_DESCRIPTOR_CONTROL(0x0001);
+SE_GROUP_DEFAULTED       :: SECURITY_DESCRIPTOR_CONTROL(0x0002);
+SE_DACL_PRESENT          :: SECURITY_DESCRIPTOR_CONTROL(0x0004);
+SE_DACL_DEFAULTED        :: SECURITY_DESCRIPTOR_CONTROL(0x0008);
+SE_SACL_PRESENT          :: SECURITY_DESCRIPTOR_CONTROL(0x0010);
+SE_SACL_DEFAULTED        :: SECURITY_DESCRIPTOR_CONTROL(0x0020);
+SE_DACL_AUTO_INHERIT_REQ :: SECURITY_DESCRIPTOR_CONTROL(0x0100);
+SE_SACL_AUTO_INHERIT_REQ :: SECURITY_DESCRIPTOR_CONTROL(0x0200);
+SE_DACL_AUTO_INHERITED   :: SECURITY_DESCRIPTOR_CONTROL(0x0400);
+SE_SACL_AUTO_INHERITED   :: SECURITY_DESCRIPTOR_CONTROL(0x0800);
+SE_DACL_PROTECTED        :: SECURITY_DESCRIPTOR_CONTROL(0x1000);
+SE_SACL_PROTECTED        :: SECURITY_DESCRIPTOR_CONTROL(0x2000);
+SE_RM_CONTROL_VALID      :: SECURITY_DESCRIPTOR_CONTROL(0x4000);
+SE_SELF_RELATIVE         :: SECURITY_DESCRIPTOR_CONTROL(0x8000);
+
+SECURITY_DESCRIPTOR_RELATIVE :: struct {
+	Revision: BYTE,
+	Sbz1: BYTE,
+	Control: SECURITY_DESCRIPTOR_CONTROL,
+	Owner: DWORD,
+	Group: DWORD,
+	Sacl: DWORD,
+	Dacl: DWORD,
+}
+PISECURITY_DESCRIPTOR_RELATIVE :: ^SECURITY_DESCRIPTOR_RELATIVE;
+SECURITY_DESCRIPTOR :: struct {
+	Revision: BYTE,
+	Sbz1: BYTE,
+	Control: SECURITY_DESCRIPTOR_CONTROL,
+	Owner: PSID,
+	Group: PSID,
+	Sacl: PACL,
+	Dacl: PACL,
+}
+PISECURITY_DESCRIPTOR :: ^SECURITY_DESCRIPTOR;
+SECURITY_OBJECT_AI_PARAMS :: struct {
+	Size: DWORD,
+	ConstraintMask: DWORD,
+}
+PSECURITY_OBJECT_AI_PARAMS :: ^SECURITY_OBJECT_AI_PARAMS;
+OBJECT_TYPE_LIST :: struct {
+	Level: WORD,
+	Sbz: WORD,
+	ObjectType: ^GUID,
+}
+POBJECT_TYPE_LIST :: ^OBJECT_TYPE_LIST;
+
+ACCESS_OBJECT_GUID       :: WORD(0);
+ACCESS_PROPERTY_SET_GUID :: WORD(1);
+ACCESS_PROPERTY_GUID     :: WORD(2);
+ACCESS_MAX_LEVEL         :: WORD(4);
+using AUDIT_EVENT_TYPE :: enum c.int {
+	AuditEventObjectAccess,
+	AuditEventDirectoryServiceAccess,
+}
+
+AUDIT_ALLOW_NO_PRIVILEGE :: DWORD(0x1);
+ACCESS_DS_SOURCE           :: "DS";
+ACCESS_DS_OBJECT_TYPE_NAME :: "Directory Service Object";
+SE_PRIVILEGE_ENABLED_BY_DEFAULT :: DWORD(0x00000001);
+SE_PRIVILEGE_ENABLED            :: DWORD(0x00000002);
+SE_PRIVILEGE_REMOVED            :: DWORD(0x00000004);
+SE_PRIVILEGE_USED_FOR_ACCESS    :: DWORD(0x80000000);
+SE_PRIVILEGE_VALID_ATTRIBUTES   :: DWORD(SE_PRIVILEGE_ENABLED_BY_DEFAULT | SE_PRIVILEGE_ENABLED | SE_PRIVILEGE_REMOVED | SE_PRIVILEGE_USED_FOR_ACCESS);
+PRIVILEGE_SET_ALL_NECESSARY     :: DWORD(1);
+
+PRIVILEGE_SET :: struct {
+	PrivilegeCount: DWORD,
+	Control: DWORD,
+	Privilege: [ANYSIZE_ARRAY]LUID_AND_ATTRIBUTES,
+}
+
+PPRIVILEGE_SET :: ^PRIVILEGE_SET;
+ACCESS_REASON_TYPE_MASK    :: ACCESS_REASON(0x00ff0000);
+ACCESS_REASON_DATA_MASK    :: ACCESS_REASON(0x0000ffff);
+ACCESS_REASON_STAGING_MASK :: ACCESS_REASON(0x80000000);
+ACCESS_REASON_EXDATA_MASK  :: ACCESS_REASON(0x7f000000);
+
+using ACCESS_REASON_TYPE :: enum c.int {
+	AccessReasonNone = 0x00000000,
+	AccessReasonAllowedAce = 0x00010000,
+	AccessReasonDeniedAce = 0x00020000,
+	AccessReasonAllowedParentAce = 0x00030000,
+	AccessReasonDeniedParentAce = 0x00040000,
+	AccessReasonNotGrantedByCape = 0x00050000,
+	AccessReasonNotGrantedByParentCape = 0x00060000,
+	AccessReasonNotGrantedToAppContainer = 0x00070000,
+	AccessReasonMissingPrivilege = 0x00100000,
+	AccessReasonFromPrivilege = 0x00200000,
+	AccessReasonIntegrityLevel = 0x00300000,
+	AccessReasonOwnership = 0x00400000,
+	AccessReasonNullDacl = 0x00500000,
+	AccessReasonEmptyDacl = 0x00600000,
+	AccessReasonNoSD = 0x00700000,
+	AccessReasonNoGrant = 0x00800000,
+	AccessReasonTrustLabel = 0x00900000,
+	AccessReasonFilterAce = 0x00a00000,
+}
+ACCESS_REASON :: DWORD;
+ACCESS_REASONS :: struct {
+	Data: [32]ACCESS_REASON,
+}
+PACCESS_REASONS :: ^ACCESS_REASONS;
+
+SE_SECURITY_DESCRIPTOR_FLAG_NO_OWNER_ACE         :: DWORD(0x00000001);
+SE_SECURITY_DESCRIPTOR_FLAG_NO_LABEL_ACE         :: DWORD(0x00000002);
+SE_SECURITY_DESCRIPTOR_FLAG_NO_ACCESS_FILTER_ACE :: DWORD(0x00000004);
+SE_SECURITY_DESCRIPTOR_VALID_FLAGS               :: DWORD(0x00000007);
+
+SE_SECURITY_DESCRIPTOR :: struct {
+	Size: DWORD,
+	Flags: DWORD,
+	SecurityDescriptor: PSECURITY_DESCRIPTOR,
+}
+PSE_SECURITY_DESCRIPTOR :: ^SE_SECURITY_DESCRIPTOR;
+SE_ACCESS_REQUEST :: struct {
+	Size: DWORD,
+	SeSecurityDescriptor: PSE_SECURITY_DESCRIPTOR,
+	DesiredAccess: ACCESS_MASK,
+	PreviouslyGrantedAccess: ACCESS_MASK,
+	PrincipalSelfSid: PSID,
+	GenericMapping: PGENERIC_MAPPING,
+	ObjectTypeListCount: DWORD,
+	ObjectTypeList: POBJECT_TYPE_LIST,
+}
+PSE_ACCESS_REQUEST :: ^SE_ACCESS_REQUEST;
+SE_ACCESS_REPLY :: struct {
+	Size: DWORD,
+	ResultListCount: DWORD,
+	GrantedAccess: PACCESS_MASK,
+	AccessStatus: PDWORD,
+	AccessReason: PACCESS_REASONS,
+	Privileges: ^PPRIVILEGE_SET,
+}
+PSE_ACCESS_REPLY :: ^SE_ACCESS_REPLY;
+
+SE_CREATE_TOKEN_NAME                      :: "SeCreateTokenPrivilege";
+SE_ASSIGNPRIMARYTOKEN_NAME                :: "SeAssignPrimaryTokenPrivilege";
+SE_LOCK_MEMORY_NAME                       :: "SeLockMemoryPrivilege";
+SE_INCREASE_QUOTA_NAME                    :: "SeIncreaseQuotaPrivilege";
+SE_UNSOLICITED_INPUT_NAME                 :: "SeUnsolicitedInputPrivilege";
+SE_MACHINE_ACCOUNT_NAME                   :: "SeMachineAccountPrivilege";
+SE_TCB_NAME                               :: "SeTcbPrivilege";
+SE_SECURITY_NAME                          :: "SeSecurityPrivilege";
+SE_TAKE_OWNERSHIP_NAME                    :: "SeTakeOwnershipPrivilege";
+SE_LOAD_DRIVER_NAME                       :: "SeLoadDriverPrivilege";
+SE_SYSTEM_PROFILE_NAME                    :: "SeSystemProfilePrivilege";
+SE_SYSTEMTIME_NAME                        :: "SeSystemtimePrivilege";
+SE_PROF_SINGLE_PROCESS_NAME               :: "SeProfileSingleProcessPrivilege";
+SE_INC_BASE_PRIORITY_NAME                 :: "SeIncreaseBasePriorityPrivilege";
+SE_CREATE_PAGEFILE_NAME                   :: "SeCreatePagefilePrivilege";
+SE_CREATE_PERMANENT_NAME                  :: "SeCreatePermanentPrivilege";
+SE_BACKUP_NAME                            :: "SeBackupPrivilege";
+SE_RESTORE_NAME                           :: "SeRestorePrivilege";
+SE_SHUTDOWN_NAME                          :: "SeShutdownPrivilege";
+SE_DEBUG_NAME                             :: "SeDebugPrivilege";
+SE_AUDIT_NAME                             :: "SeAuditPrivilege";
+SE_SYSTEM_ENVIRONMENT_NAME                :: "SeSystemEnvironmentPrivilege";
+SE_CHANGE_NOTIFY_NAME                     :: "SeChangeNotifyPrivilege";
+SE_REMOTE_SHUTDOWN_NAME                   :: "SeRemoteShutdownPrivilege";
+SE_UNDOCK_NAME                            :: "SeUndockPrivilege";
+SE_SYNC_AGENT_NAME                        :: "SeSyncAgentPrivilege";
+SE_ENABLE_DELEGATION_NAME                 :: "SeEnableDelegationPrivilege";
+SE_MANAGE_VOLUME_NAME                     :: "SeManageVolumePrivilege";
+SE_IMPERSONATE_NAME                       :: "SeImpersonatePrivilege";
+SE_CREATE_GLOBAL_NAME                     :: "SeCreateGlobalPrivilege";
+SE_TRUSTED_CREDMAN_ACCESS_NAME            :: "SeTrustedCredManAccessPrivilege";
+SE_RELABEL_NAME                           :: "SeRelabelPrivilege";
+SE_INC_WORKING_SET_NAME                   :: "SeIncreaseWorkingSetPrivilege";
+SE_TIME_ZONE_NAME                         :: "SeTimeZonePrivilege";
+SE_CREATE_SYMBOLIC_LINK_NAME              :: "SeCreateSymbolicLinkPrivilege";
+SE_DELEGATE_SESSION_USER_IMPERSONATE_NAME :: "SeDelegateSessionUserImpersonatePrivilege";
+SE_ACTIVATE_AS_USER_CAPABILITY            :: "activateAsUser";
+SE_CONSTRAINED_IMPERSONATION_CAPABILITY   :: "constrainedImpersonation";
+SE_SESSION_IMPERSONATION_CAPABILITY       :: "sessionImpersonation";
+SE_MUMA_CAPABILITY                        :: "muma";
+SE_DEVELOPMENT_MODE_NETWORK_CAPABILITY    :: "developmentModeNetwork";
+
+using SECURITY_IMPERSONATION_LEVEL :: enum c.int {
+	SecurityAnonymous,
+	SecurityIdentification,
+	SecurityImpersonation,
+	SecurityDelegation,
+}
+PSECURITY_IMPERSONATION_LEVEL :: ^SECURITY_IMPERSONATION_LEVEL;
+
+SECURITY_MAX_IMPERSONATION_LEVEL :: SECURITY_IMPERSONATION_LEVEL(SecurityDelegation);
+SECURITY_MIN_IMPERSONATION_LEVEL :: SECURITY_IMPERSONATION_LEVEL(SecurityAnonymous);
+DEFAULT_IMPERSONATION_LEVEL      :: SECURITY_IMPERSONATION_LEVEL(SecurityImpersonation);
+
+VALID_IMPERSONATION_LEVEL :: inline proc(L: SECURITY_IMPERSONATION_LEVEL) -> bool {
+	return (L >= SECURITY_MIN_IMPERSONATION_LEVEL) && (L <= SECURITY_MAX_IMPERSONATION_LEVEL);
+}
+
+TOKEN_ASSIGN_PRIMARY            :: DWORD(0x0001);
+TOKEN_DUPLICATE                 :: DWORD(0x0002);
+TOKEN_IMPERSONATE               :: DWORD(0x0004);
+TOKEN_QUERY                     :: DWORD(0x0008);
+TOKEN_QUERY_SOURCE              :: DWORD(0x0010);
+TOKEN_ADJUST_PRIVILEGES         :: DWORD(0x0020);
+TOKEN_ADJUST_GROUPS             :: DWORD(0x0040);
+TOKEN_ADJUST_DEFAULT            :: DWORD(0x0080);
+TOKEN_ADJUST_SESSIONID          :: DWORD(0x0100);
+TOKEN_ALL_ACCESS_P              :: DWORD(STANDARD_RIGHTS_REQUIRED | TOKEN_ASSIGN_PRIMARY | TOKEN_DUPLICATE |
+                                         TOKEN_IMPERSONATE | TOKEN_QUERY | TOKEN_QUERY_SOURCE |
+                                         TOKEN_ADJUST_PRIVILEGES | TOKEN_ADJUST_GROUPS | TOKEN_ADJUST_DEFAULT);
+TOKEN_ALL_ACCESS                :: DWORD(TOKEN_ALL_ACCESS_P | TOKEN_ADJUST_SESSIONID);
+TOKEN_READ                      :: DWORD(STANDARD_RIGHTS_READ | TOKEN_QUERY);
+TOKEN_WRITE                     :: DWORD(STANDARD_RIGHTS_WRITE | TOKEN_ADJUST_PRIVILEGES |
+                                         TOKEN_ADJUST_GROUPS | TOKEN_ADJUST_DEFAULT);
+TOKEN_EXECUTE                   :: DWORD(STANDARD_RIGHTS_EXECUTE);
+TOKEN_TRUST_CONSTRAINT_MASK     :: DWORD(STANDARD_RIGHTS_READ | TOKEN_QUERY | TOKEN_QUERY_SOURCE);
+TOKEN_ACCESS_PSEUDO_HANDLE_WIN8 :: DWORD(TOKEN_QUERY | TOKEN_QUERY_SOURCE);
+TOKEN_ACCESS_PSEUDO_HANDLE      :: DWORD(TOKEN_ACCESS_PSEUDO_HANDLE_WIN8);
+
+using TOKEN_TYPE :: enum c.int {
+	TokenPrimary = 1,
+	TokenImpersonation,
+}
+PTOKEN_TYPE :: ^TOKEN_TYPE;
+using TOKEN_ELEVATION_TYPE :: enum c.int {
+	TokenElevationTypeDefault = 1,
+	TokenElevationTypeFull,
+	TokenElevationTypeLimited,
+}
+PTOKEN_ELEVATION_TYPE :: ^TOKEN_ELEVATION_TYPE;
+using TOKEN_INFORMATION_CLASS :: enum c.int {
+	TokenUser = 1,
+	TokenGroups,
+	TokenPrivileges,
+	TokenOwner,
+	TokenPrimaryGroup,
+	TokenDefaultDacl,
+	TokenSource,
+	TokenType,
+	TokenImpersonationLevel,
+	TokenStatistics,
+	TokenRestrictedSids,
+	TokenSessionId,
+	TokenGroupsAndPrivileges,
+	TokenSessionReference,
+	TokenSandBoxInert,
+	TokenAuditPolicy,
+	TokenOrigin,
+	TokenElevationType,
+	TokenLinkedToken,
+	TokenElevation,
+	TokenHasRestrictions,
+	TokenAccessInformation,
+	TokenVirtualizationAllowed,
+	TokenVirtualizationEnabled,
+	TokenIntegrityLevel,
+	TokenUIAccess,
+	TokenMandatoryPolicy,
+	TokenLogonSid,
+	TokenIsAppContainer,
+	TokenCapabilities,
+	TokenAppContainerSid,
+	TokenAppContainerNumber,
+	TokenUserClaimAttributes,
+	TokenDeviceClaimAttributes,
+	TokenRestrictedUserClaimAttributes,
+	TokenRestrictedDeviceClaimAttributes,
+	TokenDeviceGroups,
+	TokenRestrictedDeviceGroups,
+	TokenSecurityAttributes,
+	TokenIsRestricted,
+	TokenProcessTrustLevel,
+	TokenPrivateNameSpace,
+	TokenSingletonAttributes,
+	TokenBnoIsolation,
+	MaxTokenInfoClass,
+}
+PTOKEN_INFORMATION_CLASS :: ^TOKEN_INFORMATION_CLASS;
+TOKEN_USER :: struct {
+	User: SID_AND_ATTRIBUTES,
+}
+PTOKEN_USER :: ^TOKEN_USER;
+SE_TOKEN_USER_u1 :: struct #raw_union {
+	u: [2]uint,
+	TokenUser: TOKEN_USER,
+	User: SID_AND_ATTRIBUTES,
+}
+SE_TOKEN_USER_u2 :: struct #raw_union {
+	u: [17]u32,
+	Sid: SID,
+	Buffer: [SECURITY_MAX_SID_SIZE]BYTE,
+}
+SE_TOKEN_USER :: struct {
+	u1: SE_TOKEN_USER_u1,
+	u2: SE_TOKEN_USER_u2,
+}
+PSE_TOKEN_USER :: ^SE_TOKEN_USER;
+TOKEN_GROUPS :: struct {
+	GroupCount: DWORD,
+	Groups: [ANYSIZE_ARRAY]SID_AND_ATTRIBUTES,
+}
+PTOKEN_GROUPS :: ^TOKEN_GROUPS;
+TOKEN_PRIVILEGES :: struct {
+	PrivilegeCount: DWORD,
+	Privileges: [ANYSIZE_ARRAY]LUID_AND_ATTRIBUTES,
+}
+PTOKEN_PRIVILEGES :: ^TOKEN_PRIVILEGES;
+TOKEN_OWNER :: struct {
+	Owner: PSID,
+}
+PTOKEN_OWNER :: ^TOKEN_OWNER;
+TOKEN_PRIMARY_GROUP :: struct {
+	PrimaryGroup: PSID,
+}
+PTOKEN_PRIMARY_GROUP :: ^TOKEN_PRIMARY_GROUP;
+TOKEN_DEFAULT_DACL :: struct {
+	DefaultDacl: PACL,
+}
+PTOKEN_DEFAULT_DACL :: ^TOKEN_DEFAULT_DACL;
+TOKEN_USER_CLAIMS :: struct {
+	UserClaims: PCLAIMS_BLOB,
+}
+PTOKEN_USER_CLAIMS :: ^TOKEN_USER_CLAIMS;
+TOKEN_DEVICE_CLAIMS :: struct {
+	DeviceClaims: PCLAIMS_BLOB,
+}
+PTOKEN_DEVICE_CLAIMS :: ^TOKEN_DEVICE_CLAIMS;
+TOKEN_GROUPS_AND_PRIVILEGES :: struct {
+	SidCount: DWORD,
+	SidLength: DWORD,
+	Sids: PSID_AND_ATTRIBUTES,
+	RestrictedSidCount: DWORD,
+	RestrictedSidLength: DWORD,
+	RestrictedSids: PSID_AND_ATTRIBUTES,
+	PrivilegeCount: DWORD,
+	PrivilegeLength: DWORD,
+	Privileges: PLUID_AND_ATTRIBUTES,
+	AuthenticationId: LUID,
+}
+PTOKEN_GROUPS_AND_PRIVILEGES :: ^TOKEN_GROUPS_AND_PRIVILEGES;
+TOKEN_LINKED_TOKEN :: struct {
+	LinkedToken: HANDLE,
+}
+PTOKEN_LINKED_TOKEN :: ^TOKEN_LINKED_TOKEN;
+TOKEN_ELEVATION :: struct {
+	TokenIsElevated: DWORD,
+}
+PTOKEN_ELEVATION :: ^TOKEN_ELEVATION;
+TOKEN_MANDATORY_LABEL :: struct {
+	Label: SID_AND_ATTRIBUTES,
+}
+PTOKEN_MANDATORY_LABEL :: ^TOKEN_MANDATORY_LABEL;
+
+TOKEN_MANDATORY_POLICY_OFF             :: DWORD(0x0);
+TOKEN_MANDATORY_POLICY_NO_WRITE_UP     :: DWORD(0x1);
+TOKEN_MANDATORY_POLICY_NEW_PROCESS_MIN :: DWORD(0x2);
+TOKEN_MANDATORY_POLICY_VALID_MASK      :: DWORD(TOKEN_MANDATORY_POLICY_NO_WRITE_UP | TOKEN_MANDATORY_POLICY_NEW_PROCESS_MIN);
+
+TOKEN_MANDATORY_POLICY :: struct {
+	Policy: DWORD,
+}
+PTOKEN_MANDATORY_POLICY :: ^TOKEN_MANDATORY_POLICY;
+PSECURITY_ATTRIBUTES_OPAQUE :: opaque PVOID;
+TOKEN_ACCESS_INFORMATION :: struct {
+	SidHash: PSID_AND_ATTRIBUTES_HASH,
+	RestrictedSidHash: PSID_AND_ATTRIBUTES_HASH,
+	Privileges: PTOKEN_PRIVILEGES,
+	AuthenticationId: LUID,
+	TokenType: TOKEN_TYPE,
+	ImpersonationLevel: SECURITY_IMPERSONATION_LEVEL,
+	MandatoryPolicy: TOKEN_MANDATORY_POLICY,
+	Flags: DWORD,
+	AppContainerNumber: DWORD,
+	PackageSid: PSID,
+	CapabilitiesHash: PSID_AND_ATTRIBUTES_HASH,
+	TrustLevelSid: PSID,
+	SecurityAttributes: PSECURITY_ATTRIBUTES_OPAQUE,
+}
+PTOKEN_ACCESS_INFORMATION :: ^TOKEN_ACCESS_INFORMATION;
+
+POLICY_AUDIT_SUBCATEGORY_COUNT :: 59;
+
+TOKEN_AUDIT_POLICY :: struct {
+	PerUserPolicy: [(POLICY_AUDIT_SUBCATEGORY_COUNT >> 1) + 1]BYTE,
+}
+PTOKEN_AUDIT_POLICY :: ^TOKEN_AUDIT_POLICY;
+
+TOKEN_SOURCE_LENGTH :: 8;
+
+TOKEN_SOURCE :: struct {
+	SourceName: [TOKEN_SOURCE_LENGTH]CHAR,
+	SourceIdentifier: LUID,
+}
+PTOKEN_SOURCE :: ^TOKEN_SOURCE;
+TOKEN_STATISTICS :: struct {
+	TokenId: LUID,
+	AuthenticationId: LUID,
+	ExpirationTime: LARGE_INTEGER,
+	TokenType: TOKEN_TYPE,
+	ImpersonationLevel: SECURITY_IMPERSONATION_LEVEL,
+	DynamicCharged: DWORD,
+	DynamicAvailable: DWORD,
+	GroupCount: DWORD,
+	PrivilegeCount: DWORD,
+	ModifiedId: LUID,
+}
+PTOKEN_STATISTICS :: ^TOKEN_STATISTICS;
+TOKEN_CONTROL :: struct {
+	TokenId: LUID,
+	AuthenticationId: LUID,
+	ModifiedId: LUID,
+	TokenSource: TOKEN_SOURCE,
+}
+PTOKEN_CONTROL :: ^TOKEN_CONTROL;
+TOKEN_ORIGIN :: struct {
+	OriginatingLogonSession: LUID,
+}
+PTOKEN_ORIGIN :: ^TOKEN_ORIGIN;
+using MANDATORY_LEVEL :: enum c.int {
+	MandatoryLevelUntrusted = 0,
+	MandatoryLevelLow,
+	MandatoryLevelMedium,
+	MandatoryLevelHigh,
+	MandatoryLevelSystem,
+	MandatoryLevelSecureProcess,
+	MandatoryLevelCount,
+}
+PMANDATORY_LEVEL :: ^MANDATORY_LEVEL;
+TOKEN_APPCONTAINER_INFORMATION :: struct {
+	TokenAppContainer: PSID,
+}
+PTOKEN_APPCONTAINER_INFORMATION :: ^TOKEN_APPCONTAINER_INFORMATION;
+TOKEN_SID_INFORMATION :: struct {
+	Sid: PSID,
+}
+PTOKEN_SID_INFORMATION :: ^TOKEN_SID_INFORMATION;
+TOKEN_BNO_ISOLATION_INFORMATION :: struct {
+	IsolationPrefix: PWSTR,
+	IsolationEnabled: BOOLEAN,
+}
+PTOKEN_BNO_ISOLATION_INFORMATION :: ^TOKEN_BNO_ISOLATION_INFORMATION;
+
+/*
+
+pub const CLAIM_SECURITY_ATTRIBUTE_TYPE_INVALID: WORD = 0x00;
+pub const CLAIM_SECURITY_ATTRIBUTE_TYPE_INT64: WORD = 0x01;
+pub const CLAIM_SECURITY_ATTRIBUTE_TYPE_UINT64: WORD = 0x02;
+pub const CLAIM_SECURITY_ATTRIBUTE_TYPE_STRING: WORD = 0x03;
+CLAIM_SECURITY_ATTRIBUTE_FQBN_VALUE :: struct {
+	Version: DWORD64,
+	Name: PWSTR,
+}
+PCLAIM_SECURITY_ATTRIBUTE_FQBN_VALUE :: ^CLAIM_SECURITY_ATTRIBUTE_FQBN_VALUE;
+pub const CLAIM_SECURITY_ATTRIBUTE_TYPE_FQBN: WORD = 0x04;
+pub const CLAIM_SECURITY_ATTRIBUTE_TYPE_SID: WORD = 0x05;
+pub const CLAIM_SECURITY_ATTRIBUTE_TYPE_BOOLEAN: WORD = 0x06;
+CLAIM_SECURITY_ATTRIBUTE_OCTET_STRING_VALUE :: struct {
+	pValue: PVOID,
+	ValueLength: DWORD,
+}
+PCLAIM_SECURITY_ATTRIBUTE_OCTET_STRING_VALUE ::
+	^CLAIM_SECURITY_ATTRIBUTE_OCTET_STRING_VALUE;
+pub const CLAIM_SECURITY_ATTRIBUTE_TYPE_OCTET_STRING: WORD = 0x10;
+pub const CLAIM_SECURITY_ATTRIBUTE_NON_INHERITABLE: DWORD = 0x0001;
+pub const CLAIM_SECURITY_ATTRIBUTE_VALUE_CASE_SENSITIVE: DWORD = 0x0002;
+pub const CLAIM_SECURITY_ATTRIBUTE_USE_FOR_DENY_ONLY: DWORD = 0x0004;
+pub const CLAIM_SECURITY_ATTRIBUTE_DISABLED_BY_DEFAULT: DWORD = 0x0008;
+pub const CLAIM_SECURITY_ATTRIBUTE_DISABLED: DWORD = 0x0010;
+pub const CLAIM_SECURITY_ATTRIBUTE_MANDATORY: DWORD = 0x0020;
+pub const CLAIM_SECURITY_ATTRIBUTE_VALID_FLAGS: DWORD = CLAIM_SECURITY_ATTRIBUTE_NON_INHERITABLE
+	| CLAIM_SECURITY_ATTRIBUTE_VALUE_CASE_SENSITIVE | CLAIM_SECURITY_ATTRIBUTE_USE_FOR_DENY_ONLY
+	| CLAIM_SECURITY_ATTRIBUTE_DISABLED_BY_DEFAULT | CLAIM_SECURITY_ATTRIBUTE_DISABLED
+	| CLAIM_SECURITY_ATTRIBUTE_MANDATORY;
+pub const CLAIM_SECURITY_ATTRIBUTE_CUSTOM_FLAGS: DWORD = 0xFFFF0000;
+CLAIM_SECURITY_ATTRIBUTE_V1_Values :: struct #raw_union {
+	[1]usize,
+	pInt64 pInt64_mut: PLONG64,
+	pUint64 pUint64_mut: PDWORD64,
+	ppString ppString_mut: PWSTR,
+	pFqbn pFqbn_mut: PCLAIM_SECURITY_ATTRIBUTE_FQBN_VALUE,
+	pOctetString pOctetString_mut: PCLAIM_SECURITY_ATTRIBUTE_OCTET_STRING_VALUE,
+}
+CLAIM_SECURITY_ATTRIBUTE_V1 :: struct {
+	Name: PWSTR,
+	ValueType: WORD,
+	Reserved: WORD,
+	Flags: DWORD,
+	ValueCount: DWORD,
+	Values: CLAIM_SECURITY_ATTRIBUTE_V1_Values,
+}
+PCLAIM_SECURITY_ATTRIBUTE_V1 :: ^CLAIM_SECURITY_ATTRIBUTE_V1;
+CLAIM_SECURITY_ATTRIBUTE_RELATIVE_V1_Values :: struct #raw_union {
+	[1]u32,
+	pInt64 pInt64_mut: [ANYSIZE_ARRAY]DWORD,
+	pUint64 pUint64_mut: [ANYSIZE_ARRAY]DWORD,
+	ppString ppString_mut: [ANYSIZE_ARRAY]DWORD,
+	pFqbn pFqbn_mut: [ANYSIZE_ARRAY]DWORD,
+	pOctetString pOctetString_mut: [ANYSIZE_ARRAY]DWORD,
+}
+CLAIM_SECURITY_ATTRIBUTE_RELATIVE_V1 :: struct {
+	Name: DWORD,
+	ValueType: WORD,
+	Reserved: WORD,
+	Flags: DWORD,
+	ValueCount: DWORD,
+	Values: CLAIM_SECURITY_ATTRIBUTE_RELATIVE_V1_Values,
+}
+PCLAIM_SECURITY_ATTRIBUTE_RELATIVE_V1 :: ^CLAIM_SECURITY_ATTRIBUTE_RELATIVE_V1;
+pub const CLAIM_SECURITY_ATTRIBUTES_INFORMATION_VERSION_V1: WORD = 1;
+pub const CLAIM_SECURITY_ATTRIBUTES_INFORMATION_VERSION: WORD =
+	CLAIM_SECURITY_ATTRIBUTES_INFORMATION_VERSION_V1;
+CLAIM_SECURITY_ATTRIBUTES_INFORMATION_Attribute :: struct #raw_union {
+	[1]usize,
+	pAttributeV1 pAttributeV1_mut: PCLAIM_SECURITY_ATTRIBUTE_V1,
+}
+CLAIM_SECURITY_ATTRIBUTES_INFORMATION :: struct {
+	Version: WORD,
+	Reserved: WORD,
+	AttributeCount: DWORD,
+	Attribute: CLAIM_SECURITY_ATTRIBUTES_INFORMATION_Attribute,
+}
+PCLAIM_SECURITY_ATTRIBUTES_INFORMATION :: ^CLAIM_SECURITY_ATTRIBUTES_INFORMATION;
+pub const SECURITY_DYNAMIC_TRACKING: BOOLEAN = TRUE as u8;
+pub const SECURITY_STATIC_TRACKING: BOOLEAN = FALSE as u8;
+SECURITY_CONTEXT_TRACKING_MODE :: BOOLEAN;
+PSECURITY_CONTEXT_TRACKING_MODE :: ^BOOLEAN;
+SECURITY_QUALITY_OF_SERVICE :: struct {
+	Length: DWORD,
+	ImpersonationLevel: SECURITY_IMPERSONATION_LEVEL,
+	ContextTrackingMode: SECURITY_CONTEXT_TRACKING_MODE,
+	EffectiveOnly: BOOLEAN,
+}
+PSECURITY_QUALITY_OF_SERVICE :: ^SECURITY_QUALITY_OF_SERVICE;
+SE_IMPERSONATION_STATE :: struct {
+	Token: PACCESS_TOKEN,
+	CopyOnOpen: BOOLEAN,
+	EffectiveOnly: BOOLEAN,
+	Level: SECURITY_IMPERSONATION_LEVEL,
+}
+PSE_IMPERSONATION_STATE :: ^SE_IMPERSONATION_STATE;
+pub const DISABLE_MAX_PRIVILEGE: DWORD = 0x1;
+pub const SANDBOX_INERT: DWORD = 0x2;
+pub const LUA_TOKEN: DWORD = 0x4;
+pub const WRITE_RESTRICTED: DWORD = 0x8;
+SECURITY_INFORMATION :: DWORD;
+PSECURITY_INFORMATION :: ^DWORD;
+pub const OWNER_SECURITY_INFORMATION: SECURITY_INFORMATION = 0x00000001;
+pub const GROUP_SECURITY_INFORMATION: SECURITY_INFORMATION = 0x00000002;
+pub const DACL_SECURITY_INFORMATION: SECURITY_INFORMATION = 0x00000004;
+pub const SACL_SECURITY_INFORMATION: SECURITY_INFORMATION = 0x00000008;
+pub const LABEL_SECURITY_INFORMATION: SECURITY_INFORMATION = 0x00000010;
+pub const ATTRIBUTE_SECURITY_INFORMATION: SECURITY_INFORMATION = 0x00000020;
+pub const SCOPE_SECURITY_INFORMATION: SECURITY_INFORMATION = 0x00000040;
+pub const PROCESS_TRUST_LABEL_SECURITY_INFORMATION: SECURITY_INFORMATION = 0x00000080;
+pub const ACCESS_FILTER_SECURITY_INFORMATION: SECURITY_INFORMATION = 0x00000100;
+pub const BACKUP_SECURITY_INFORMATION: SECURITY_INFORMATION = 0x00010000;
+pub const PROTECTED_DACL_SECURITY_INFORMATION: SECURITY_INFORMATION = 0x80000000;
+pub const PROTECTED_SACL_SECURITY_INFORMATION: SECURITY_INFORMATION = 0x40000000;
+pub const UNPROTECTED_DACL_SECURITY_INFORMATION: SECURITY_INFORMATION = 0x20000000;
+pub const UNPROTECTED_SACL_SECURITY_INFORMATION: SECURITY_INFORMATION = 0x10000000;
+SE_SIGNING_LEVEL :: BYTE;
+PSE_SIGNING_LEVEL :: ^BYTE;
+pub const SE_SIGNING_LEVEL_UNCHECKED: BYTE = 0x00000000;
+pub const SE_SIGNING_LEVEL_UNSIGNED: BYTE = 0x00000001;
+pub const SE_SIGNING_LEVEL_ENTERPRISE: BYTE = 0x00000002;
+pub const SE_SIGNING_LEVEL_CUSTOM_1: BYTE = 0x00000003;
+pub const SE_SIGNING_LEVEL_AUTHENTICODE: BYTE = 0x00000004;
+pub const SE_SIGNING_LEVEL_CUSTOM_2: BYTE = 0x00000005;
+pub const SE_SIGNING_LEVEL_STORE: BYTE = 0x00000006;
+pub const SE_SIGNING_LEVEL_CUSTOM_3: BYTE = 0x00000007;
+pub const SE_SIGNING_LEVEL_ANTIMALWARE: BYTE = SE_SIGNING_LEVEL_CUSTOM_3;
+pub const SE_SIGNING_LEVEL_MICROSOFT: BYTE = 0x00000008;
+pub const SE_SIGNING_LEVEL_CUSTOM_4: BYTE = 0x00000009;
+pub const SE_SIGNING_LEVEL_CUSTOM_5: BYTE = 0x0000000A;
+pub const SE_SIGNING_LEVEL_DYNAMIC_CODEGEN: BYTE = 0x0000000B;
+pub const SE_SIGNING_LEVEL_WINDOWS: BYTE = 0x0000000C;
+pub const SE_SIGNING_LEVEL_CUSTOM_7: BYTE = 0x0000000D;
+pub const SE_SIGNING_LEVEL_WINDOWS_TCB: BYTE = 0x0000000E;
+pub const SE_SIGNING_LEVEL_CUSTOM_6: BYTE = 0x0000000F;
+using SE_IMAGE_SIGNATURE_TYPE :: enum c.int {
+	SeImageSignatureNone = 0,
+	SeImageSignatureEmbedded,
+	SeImageSignatureCache,
+	SeImageSignatureCatalogCached,
+	SeImageSignatureCatalogNotCached,
+	SeImageSignatureCatalogHint,
+	SeImageSignaturePackageCatalog,
+}
+PSE_IMAGE_SIGNATURE_TYPE :: ^SE_IMAGE_SIGNATURE_TYPE;
+using SE_LEARNING_MODE_DATA_TYPE :: enum c.int {
+	SeLearningModeInvalidType = 0,
+	SeLearningModeSettings,
+	SeLearningModeMax,
+}
+SECURITY_CAPABILITIES :: struct {
+	AppContainerSid: PSID,
+	Capabilities: PSID_AND_ATTRIBUTES,
+	CapabilityCount: DWORD,
+	Reserved: DWORD,
+}
+PSECURITY_CAPABILITIES :: ^SECURITY_CAPABILITIES;
+LPSECURITY_CAPABILITIES :: ^SECURITY_CAPABILITIES;
+pub const PROCESS_TERMINATE: DWORD = 0x0001;
+pub const PROCESS_CREATE_THREAD: DWORD = 0x0002;
+pub const PROCESS_SET_SESSIONID: DWORD = 0x0004;
+pub const PROCESS_VM_OPERATION: DWORD = 0x0008;
+pub const PROCESS_VM_READ: DWORD = 0x0010;
+pub const PROCESS_VM_WRITE: DWORD = 0x0020;
+pub const PROCESS_DUP_HANDLE: DWORD = 0x0040;
+pub const PROCESS_CREATE_PROCESS: DWORD = 0x0080;
+pub const PROCESS_SET_QUOTA: DWORD = 0x0100;
+pub const PROCESS_SET_INFORMATION: DWORD = 0x0200;
+pub const PROCESS_QUERY_INFORMATION: DWORD = 0x0400;
+pub const PROCESS_SUSPEND_RESUME: DWORD = 0x0800;
+pub const PROCESS_QUERY_LIMITED_INFORMATION: DWORD = 0x1000;
+pub const PROCESS_SET_LIMITED_INFORMATION: DWORD = 0x2000;
+pub const PROCESS_ALL_ACCESS: DWORD = STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0xFFFF;
+pub const THREAD_TERMINATE: DWORD = 0x0001;
+pub const THREAD_SUSPEND_RESUME: DWORD = 0x0002;
+pub const THREAD_GET_CONTEXT: DWORD = 0x0008;
+pub const THREAD_SET_CONTEXT: DWORD = 0x0010;
+pub const THREAD_QUERY_INFORMATION: DWORD = 0x0040;
+pub const THREAD_SET_INFORMATION: DWORD = 0x0020;
+pub const THREAD_SET_THREAD_TOKEN: DWORD = 0x0080;
+pub const THREAD_IMPERSONATE: DWORD = 0x0100;
+pub const THREAD_DIRECT_IMPERSONATION: DWORD = 0x0200;
+pub const THREAD_SET_LIMITED_INFORMATION: DWORD = 0x0400;
+pub const THREAD_QUERY_LIMITED_INFORMATION: DWORD = 0x0800;
+pub const THREAD_RESUME: DWORD = 0x1000;
+pub const THREAD_ALL_ACCESS: DWORD = STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0xFFFF;
+pub const JOB_OBJECT_ASSIGN_PROCESS: DWORD = 0x0001;
+pub const JOB_OBJECT_SET_ATTRIBUTES: DWORD = 0x0002;
+pub const JOB_OBJECT_QUERY: DWORD = 0x0004;
+pub const JOB_OBJECT_TERMINATE: DWORD = 0x0008;
+pub const JOB_OBJECT_SET_SECURITY_ATTRIBUTES: DWORD = 0x0010;
+pub const JOB_OBJECT_IMPERSONATE: DWORD = 0x0020;
+pub const JOB_OBJECT_ALL_ACCESS: DWORD = STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0x3F;
+JOB_SET_ARRAY :: struct {
+	JobHandle: HANDLE,
+	MemberLevel: DWORD,
+	Flags: DWORD,
+}
+PJOB_SET_ARRAY :: ^JOB_SET_ARRAY;
+pub const FLS_MAXIMUM_AVAILABLE: DWORD = 128;
+pub const TLS_MINIMUM_AVAILABLE: DWORD = 64;
+EXCEPTION_REGISTRATION_RECORD :: struct {
+	Next: ^EXCEPTION_REGISTRATION_RECORD,
+	Handler: PEXCEPTION_ROUTINE,
+}
+PEXCEPTION_REGISTRATION_RECORD :: ^EXCEPTION_REGISTRATION_RECORD;
+NT_TIB_u :: struct #raw_union {
+	[1]usize,
+	FiberData FiberData_mut: PVOID,
+	Version Version_mut: DWORD,
+}
+NT_TIB :: struct {
+	ExceptionList: ^EXCEPTION_REGISTRATION_RECORD,
+	StackBase: PVOID,
+	StackLimit: PVOID,
+	SubSystemTib: PVOID,
+	u: NT_TIB_u,
+	ArbitraryUserPointer: PVOID,
+	_Self: ^NT_TIB,
+}
+PNT_TIB :: ^NT_TIB;
+NT_TIB32_u :: struct #raw_union {
+	[1]u32,
+	FiberData FiberData_mut: DWORD,
+	Version Version_mut: DWORD,
+}
+NT_TIB32 :: struct {
+	ExceptionList: DWORD,
+	StackBase: DWORD,
+	StackLimit: DWORD,
+	SubSystemTib: DWORD,
+	u: NT_TIB32_u,
+	ArbitraryUserPointer: DWORD,
+	Self_: DWORD,
+}
+PNT_TIB32 :: ^NT_TIB32;
+NT_TIB64_u :: struct #raw_union {
+	[1]u64,
+	FiberData FiberData_mut: DWORD64,
+	Version Version_mut: DWORD,
+}
+NT_TIB64 :: struct {
+	ExceptionList: DWORD64,
+	StackBase: DWORD64,
+	StackLimit: DWORD64,
+	SubSystemTib: DWORD64,
+	u: NT_TIB64_u,
+	ArbitraryUserPointer: DWORD64,
+	_Self: DWORD64,
+}
+PNT_TIB64 :: ^NT_TIB64;
+pub const THREAD_DYNAMIC_CODE_ALLOW: DWORD = 1;
+pub const THREAD_BASE_PRIORITY_LOWRT: DWORD = 15;
+pub const THREAD_BASE_PRIORITY_MAX: DWORD = 2;
+pub const THREAD_BASE_PRIORITY_MIN: DWORD = -2i32 as u32;
+pub const THREAD_BASE_PRIORITY_IDLE: DWORD = -15i32 as u32;
+UMS_CREATE_THREAD_ATTRIBUTES :: struct {
+	UmsVersion: DWORD,
+	UmsContext: PVOID,
+	UmsCompletionList: PVOID,
+}
+PUMS_CREATE_THREAD_ATTRIBUTES :: ^UMS_CREATE_THREAD_ATTRIBUTES;
+WOW64_ARCHITECTURE_INFORMATION :: struct {
+	BitFields: DWORD,
+}
+PWOW64_ARCHITECTURE_INFORMATION :: ^WOW64_ARCHITECTURE_INFORMATION;
+BITFIELD!{WOW64_ARCHITECTURE_INFORMATION BitFields: DWORD [
+	Machine set_Machine[0..16],
+	KernelMode set_KernelMode[16..17],
+	UserMode set_UserMode[17..18],
+	Native set_Native[18..19],
+	Process set_Process[19..20],
+	ReservedZero0 set_ReservedZero0[20..32],
+}
+pub const MEMORY_PRIORITY_LOWEST: ULONG = 0;
+pub const MEMORY_PRIORITY_VERY_LOW: ULONG = 1;
+pub const MEMORY_PRIORITY_LOW: ULONG = 2;
+pub const MEMORY_PRIORITY_MEDIUM: ULONG = 3;
+pub const MEMORY_PRIORITY_BELOW_NORMAL: ULONG = 4;
+pub const MEMORY_PRIORITY_NORMAL: ULONG = 5;
+QUOTA_LIMITS :: struct {
+	PagedPoolLimit: SIZE_T,
+	NonPagedPoolLimit: SIZE_T,
+	MinimumWorkingSetSize: SIZE_T,
+	MaximumWorkingSetSize: SIZE_T,
+	PagefileLimit: SIZE_T,
+	TimeLimit: LARGE_INTEGER,
+}
+PQUOTA_LIMITS :: ^QUOTA_LIMITS;
+pub const QUOTA_LIMITS_HARDWS_MIN_ENABLE: DWORD = 0x00000001;
+pub const QUOTA_LIMITS_HARDWS_MIN_DISABLE: DWORD = 0x00000002;
+pub const QUOTA_LIMITS_HARDWS_MAX_ENABLE: DWORD = 0x00000004;
+pub const QUOTA_LIMITS_HARDWS_MAX_DISABLE: DWORD = 0x00000008;
+pub const QUOTA_LIMITS_USE_DEFAULT_LIMITS: DWORD = 0x00000010;
+RATE_QUOTA_LIMIT :: struct {
+	RateData: DWORD,
+}
+BITFIELD!{RATE_QUOTA_LIMIT RateData: DWORD [
+	RatePercent set_RatePercent[0..7],
+	Reserved0 set_Reserved0[7..32],
+}
+PRATE_QUOTA_LIMIT :: ^RATE_QUOTA_LIMIT;
+QUOTA_LIMITS_EX :: struct {
+	PagedPoolLimit: SIZE_T,
+	NonPagedPoolLimit: SIZE_T,
+	MinimumWorkingSetSize: SIZE_T,
+	MaximumWorkingSetSize: SIZE_T,
+	PagefileLimit: SIZE_T,
+	TimeLimit: LARGE_INTEGER,
+	WorkingSetLimit: SIZE_T,
+	Reserved2: SIZE_T,
+	Reserved3: SIZE_T,
+	Reserved4: SIZE_T,
+	Flags: DWORD,
+	CpuRateLimit: RATE_QUOTA_LIMIT,
+}
+PQUOTA_LIMITS_EX :: ^QUOTA_LIMITS_EX;
+IO_COUNTERS :: struct {
+	ReadOperationCount: ULONGLONG,
+	WriteOperationCount: ULONGLONG,
+	OtherOperationCount: ULONGLONG,
+	ReadTransferCount: ULONGLONG,
+	WriteTransferCount: ULONGLONG,
+	OtherTransferCount: ULONGLONG,
+}
+PIO_COUNTERS :: ^IO_COUNTERS;
+pub const MAX_HW_COUNTERS: usize = 16;
+pub const THREAD_PROFILING_FLAG_DISPATCH: DWORD = 0x00000001;
+using HARDWARE_COUNTER_TYPE :: enum c.int {
+	PMCCounter,
+	MaxHardwareCounterType,
+}
+PHARDWARE_COUNTER_TYPE :: ^HARDWARE_COUNTER_TYPE;
+using PROCESS_MITIGATION_POLICY :: enum c.int {
+	ProcessDEPPolicy,
+	ProcessASLRPolicy,
+	ProcessDynamicCodePolicy,
+	ProcessStrictHandleCheckPolicy,
+	ProcessSystemCallDisablePolicy,
+	ProcessMitigationOptionsMask,
+	ProcessExtensionPointDisablePolicy,
+	ProcessControlFlowGuardPolicy,
+	ProcessSignaturePolicy,
+	ProcessFontDisablePolicy,
+	ProcessImageLoadPolicy,
+	MaxProcessMitigationPolicy,
+}
+PPROCESS_MITIGATION_POLICY :: ^PROCESS_MITIGATION_POLICY;
+PROCESS_MITIGATION_ASLR_POLICY :: struct {
+	Flags: DWORD,
+}
+BITFIELD!{PROCESS_MITIGATION_ASLR_POLICY Flags: DWORD [
+	EnableBottomUpRandomization set_EnableBottomUpRandomization[0..1],
+	EnableForceRelocateImages set_EnableForceRelocateImages[1..2],
+	EnableHighEntropy set_EnableHighEntropy[2..3],
+	DisallowStrippedImages set_DisallowStrippedImages[3..4],
+	ReservedFlags set_ReservedFlags[4..32],
+}
+PPROCESS_MITIGATION_ASLR_POLICY :: ^PROCESS_MITIGATION_ASLR_POLICY;
+PROCESS_MITIGATION_DEP_POLICY :: struct {
+	Flags: DWORD,
+	Permanent: BOOLEAN,
+}
+BITFIELD!{PROCESS_MITIGATION_DEP_POLICY Flags: DWORD [
+	Enable set_Enable[0..1],
+	DisableAtlThunkEmulation set_DisableAtlThunkEmulation[1..2],
+	ReservedFlags set_ReservedFlags[2..32],
+}
+PPROCESS_MITIGATION_DEP_POLICY :: ^PROCESS_MITIGATION_DEP_POLICY;
+PROCESS_MITIGATION_STRICT_HANDLE_CHECK_POLICY :: struct {
+	Flags: DWORD,
+}
+BITFIELD!{PROCESS_MITIGATION_STRICT_HANDLE_CHECK_POLICY Flags: DWORD [
+	RaiseExceptionOnInvalidHandleReference set_RaiseExceptionOnInvalidHandleReference[0..1],
+	HandleExceptionsPermanentlyEnabled set_HandleExceptionsPermanentlyEnabled[1..2],
+	ReservedFlags set_ReservedFlags[2..32],
+}
+pub type PPROCESS_MITIGATION_STRICT_HANDLE_CHECK_POLICY
+	= ^PROCESS_MITIGATION_STRICT_HANDLE_CHECK_POLICY;
+PROCESS_MITIGATION_SYSTEM_CALL_DISABLE_POLICY :: struct {
+	Flags: DWORD,
+}
+BITFIELD!{PROCESS_MITIGATION_SYSTEM_CALL_DISABLE_POLICY Flags: DWORD [
+	DisallowWin32kSystemCalls set_DisallowWin32kSystemCalls[0..1],
+	ReservedFlags set_ReservedFlags[1..32],
+}
+pub type PPROCESS_MITIGATION_SYSTEM_CALL_DISABLE_POLICY
+	= ^PROCESS_MITIGATION_SYSTEM_CALL_DISABLE_POLICY;
+PROCESS_MITIGATION_EXTENSION_POINT_DISABLE_POLICY :: struct {
+	Flags: DWORD,
+}
+BITFIELD!{PROCESS_MITIGATION_EXTENSION_POINT_DISABLE_POLICY Flags: DWORD [
+	DisableExtensionPoints set_DisableExtensionPoints[0..1],
+	ReservedFlags set_ReservedFlags[1..32],
+}
+pub type PPROCESS_MITIGATION_EXTENSION_POINT_DISABLE_POLICY
+	= ^PROCESS_MITIGATION_EXTENSION_POINT_DISABLE_POLICY;
+PROCESS_MITIGATION_DYNAMIC_CODE_POLICY :: struct {
+	Flags: DWORD,
+}
+BITFIELD!{PROCESS_MITIGATION_DYNAMIC_CODE_POLICY Flags: DWORD [
+	ProhibitDynamicCode set_ProhibitDynamicCode[0..1],
+	AllowThreadOptOut set_AllowThreadOptOut[1..2],
+	AllowRemoteDowngrade set_AllowRemoteDowngrade[2..3],
+	ReservedFlags set_ReservedFlags[3..32],
+}
+PPROCESS_MITIGATION_DYNAMIC_CODE_POLICY :: ^PROCESS_MITIGATION_DYNAMIC_CODE_POLICY;
+PROCESS_MITIGATION_CONTROL_FLOW_GUARD_POLICY :: struct {
+	Flags: DWORD,
+}
+BITFIELD!{PROCESS_MITIGATION_CONTROL_FLOW_GUARD_POLICY Flags: DWORD [
+	EnableControlFlowGuard set_EnableControlFlowGuard[0..1],
+	EnableExportSuppression set_EnableExportSuppression[1..2],
+	StrictMode set_StrictMode[2..3],
+	ReservedFlags set_ReservedFlags[3..32],
+}
+pub type PPROCESS_MITIGATION_CONTROL_FLOW_GUARD_POLICY
+	= ^PROCESS_MITIGATION_CONTROL_FLOW_GUARD_POLICY;
+PROCESS_MITIGATION_BINARY_SIGNATURE_POLICY :: struct {
+	Flags: DWORD,
+}
+BITFIELD!{PROCESS_MITIGATION_BINARY_SIGNATURE_POLICY Flags: DWORD [
+	MicrosoftSignedOnly set_MicrosoftSignedOnly[0..1],
+	StoreSignedOnly set_StoreSignedOnly[1..2],
+	MitigationOptIn set_MitigationOptIn[2..3],
+	ReservedFlags set_ReservedFlags[3..32],
+}
+pub type PPROCESS_MITIGATION_BINARY_SIGNATURE_POLICY
+	= ^PROCESS_MITIGATION_BINARY_SIGNATURE_POLICY;
+PROCESS_MITIGATION_FONT_DISABLE_POLICY :: struct {
+	Flags: DWORD,
+}
+BITFIELD!{PROCESS_MITIGATION_FONT_DISABLE_POLICY Flags: DWORD [
+	DisableNonSystemFonts set_DisableNonSystemFonts[0..1],
+	AuditNonSystemFontLoading set_AuditNonSystemFontLoading[1..2],
+	ReservedFlags set_ReservedFlags[2..32],
+}
+PPROCESS_MITIGATION_FONT_DISABLE_POLICY :: ^PROCESS_MITIGATION_FONT_DISABLE_POLICY;
+PROCESS_MITIGATION_IMAGE_LOAD_POLICY :: struct {
+	Flags: DWORD,
+}
+BITFIELD!{PROCESS_MITIGATION_IMAGE_LOAD_POLICY Flags: DWORD [
+	NoRemoteImages set_NoRemoteImages[0..1],
+	NoLowMandatoryLabelImages set_NoLowMandatoryLabelImages[1..2],
+	PreferSystem32Images set_PreferSystem32Images[2..3],
+	ReservedFlags set_ReservedFlags[3..32],
+}
+PPROCESS_MITIGATION_IMAGE_LOAD_POLICY :: ^PROCESS_MITIGATION_IMAGE_LOAD_POLICY;
+PROCESS_MITIGATION_SYSTEM_CALL_FILTER_POLICY :: struct {
+	Flags: DWORD,
+}
+PPPROCESS_MITIGATION_SYSTEM_CALL_FILTER_POLICY ::
+	^PROCESS_MITIGATION_SYSTEM_CALL_FILTER_POLICY;
+BITFIELD!{PROCESS_MITIGATION_SYSTEM_CALL_FILTER_POLICY Flags: DWORD [
+	FilterId set_FilterId[0..4],
+	ReservedFlags set_ReservedFlags[4..32],
+}
+PROCESS_MITIGATION_PAYLOAD_RESTRICTION_POLICY :: struct {
+	Flags: DWORD,
+}
+PPROCESS_MITIGATION_PAYLOAD_RESTRICTION_POLICY ::
+	^PROCESS_MITIGATION_PAYLOAD_RESTRICTION_POLICY;
+BITFIELD!{PROCESS_MITIGATION_PAYLOAD_RESTRICTION_POLICY Flags: DWORD [
+	EnableExportAddressFilter set_EnableExportAddressFilter[0..1],
+	AuditExportAddressFilter set_AuditExportAddressFilter[1..2],
+	EnableExportAddressFilterPlus set_EnableExportAddressFilterPlus[2..3],
+	AuditExportAddressFilterPlus set_AuditExportAddressFilterPlus[3..4],
+	EnableImportAddressFilter set_EnableImportAddressFilter[4..5],
+	AuditImportAddressFilter set_AuditImportAddressFilter[5..6],
+	EnableRopStackPivot set_EnableRopStackPivot[6..7],
+	AuditRopStackPivot set_AuditRopStackPivot[7..8],
+	EnableRopCallerCheck set_EnableRopCallerCheck[8..9],
+	AuditRopCallerCheck set_AuditRopCallerCheck[9..10],
+	EnableRopSimExec set_EnableRopSimExec[10..11],
+	AuditRopSimExec set_AuditRopSimExec[11..12],
+	ReservedFlags set_ReservedFlags[12..32],
+}
+PROCESS_MITIGATION_CHILD_PROCESS_POLICY :: struct {
+	Flags: DWORD,
+}
+PPROCESS_MITIGATION_CHILD_PROCESS_POLICY :: ^PROCESS_MITIGATION_CHILD_PROCESS_POLICY;
+BITFIELD!{PROCESS_MITIGATION_CHILD_PROCESS_POLICY Flags: DWORD [
+	NoChildProcessCreation set_NoChildProcessCreation[0..1],
+	AuditNoChildProcessCreation set_AuditNoChildProcessCreation[1..2],
+	AllowSecureProcessCreation set_AllowSecureProcessCreation[2..3],
+	ReservedFlags set_ReservedFlags[3..32],
+}
+JOBOBJECT_BASIC_ACCOUNTING_INFORMATION :: struct {
+	TotalUserTime: LARGE_INTEGER,
+	TotalKernelTime: LARGE_INTEGER,
+	ThisPeriodTotalUserTime: LARGE_INTEGER,
+	ThisPeriodTotalKernelTime: LARGE_INTEGER,
+	TotalPageFaultCount: DWORD,
+	TotalProcesses: DWORD,
+	ActiveProcesses: DWORD,
+	TotalTerminatedProcesses: DWORD,
+}
+PJOBOBJECT_BASIC_ACCOUNTING_INFORMATION :: ^JOBOBJECT_BASIC_ACCOUNTING_INFORMATION;
+JOBOBJECT_BASIC_LIMIT_INFORMATION :: struct {
+	PerProcessUserTimeLimit: LARGE_INTEGER,
+	PerJobUserTimeLimit: LARGE_INTEGER,
+	LimitFlags: DWORD,
+	MinimumWorkingSetSize: SIZE_T,
+	MaximumWorkingSetSize: SIZE_T,
+	ActiveProcessLimit: DWORD,
+	Affinity: ULONG_PTR,
+	PriorityClass: DWORD,
+	SchedulingClass: DWORD,
+}
+PJOBOBJECT_BASIC_LIMIT_INFORMATION :: ^JOBOBJECT_BASIC_LIMIT_INFORMATION;
+JOBOBJECT_EXTENDED_LIMIT_INFORMATION :: struct {
+	BasicLimitInformation: JOBOBJECT_BASIC_LIMIT_INFORMATION,
+	IoInfo: IO_COUNTERS,
+	ProcessMemoryLimit: SIZE_T,
+	JobMemoryLimit: SIZE_T,
+	PeakProcessMemoryUsed: SIZE_T,
+	PeakJobMemoryUsed: SIZE_T,
+}
+PJOBOBJECT_EXTENDED_LIMIT_INFORMATION :: ^JOBOBJECT_EXTENDED_LIMIT_INFORMATION;
+JOBOBJECT_BASIC_PROCESS_ID_LIST :: struct {
+	NumberOfAssignedProcesses: DWORD,
+	NumberOfProcessIdsInList: DWORD,
+	ProcessIdList: [1]ULONG_PTR,
+}
+PJOBOBJECT_BASIC_PROCESS_ID_LIST :: ^JOBOBJECT_BASIC_PROCESS_ID_LIST;
+JOBOBJECT_BASIC_UI_RESTRICTIONS :: struct {
+	UIRestrictionsClass: DWORD,
+}
+PJOBOBJECT_BASIC_UI_RESTRICTIONS :: ^JOBOBJECT_BASIC_UI_RESTRICTIONS;
+JOBOBJECT_SECURITY_LIMIT_INFORMATION :: struct {
+	SecurityLimitFlags: DWORD,
+	JobToken: HANDLE,
+	SidsToDisable: PTOKEN_GROUPS,
+	PrivilegesToDelete: PTOKEN_PRIVILEGES,
+	RestrictedSids: PTOKEN_GROUPS,
+}
+PJOBOBJECT_SECURITY_LIMIT_INFORMATION :: ^JOBOBJECT_SECURITY_LIMIT_INFORMATION;
+JOBOBJECT_END_OF_JOB_TIME_INFORMATION :: struct {
+	EndOfJobTimeAction: DWORD,
+}
+PJOBOBJECT_END_OF_JOB_TIME_INFORMATION :: ^JOBOBJECT_END_OF_JOB_TIME_INFORMATION;
+JOBOBJECT_ASSOCIATE_COMPLETION_PORT :: struct {
+	CompletionKey: PVOID,
+	CompletionPort: HANDLE,
+}
+PJOBOBJECT_ASSOCIATE_COMPLETION_PORT :: ^JOBOBJECT_ASSOCIATE_COMPLETION_PORT;
+JOBOBJECT_BASIC_AND_IO_ACCOUNTING_INFORMATION :: struct {
+	BasicInfo: JOBOBJECT_BASIC_ACCOUNTING_INFORMATION,
+	IoInfo: IO_COUNTERS,
+}
+pub type PJOBOBJECT_BASIC_AND_IO_ACCOUNTING_INFORMATION
+	= ^JOBOBJECT_BASIC_AND_IO_ACCOUNTING_INFORMATION;
+JOBOBJECT_JOBSET_INFORMATION :: struct {
+	MemberLevel: DWORD,
+}
+PJOBOBJECT_JOBSET_INFORMATION :: ^JOBOBJECT_JOBSET_INFORMATION;
+using JOBOBJECT_RATE_CONTROL_TOLERANCE :: enum c.int {
+	ToleranceLow = 1,
+	ToleranceMedium,
+	ToleranceHigh,
+}
+PJOBOBJECT_RATE_CONTROL_TOLERANCE :: ^JOBOBJECT_RATE_CONTROL_TOLERANCE;
+using JOBOBJECT_RATE_CONTROL_TOLERANCE_INTERVAL :: enum c.int {
+	ToleranceIntervalShort = 1,
+	ToleranceIntervalMedium,
+	ToleranceIntervalLong,
+}
+pub type PJOBOBJECT_RATE_CONTROL_TOLERANCE_INTERVAL
+	= ^JOBOBJECT_RATE_CONTROL_TOLERANCE_INTERVAL;
+JOBOBJECT_NOTIFICATION_LIMIT_INFORMATION :: struct {
+	IoReadBytesLimit: DWORD64,
+	IoWriteBytesLimit: DWORD64,
+	PerJobUserTimeLimit: LARGE_INTEGER,
+	JobMemoryLimit: DWORD64,
+	RateControlTolerance: JOBOBJECT_RATE_CONTROL_TOLERANCE,
+	RateControlToleranceInterval: JOBOBJECT_RATE_CONTROL_TOLERANCE_INTERVAL,
+	LimitFlags: DWORD,
+}
+PJOBOBJECT_NOTIFICATION_LIMIT_INFORMATION :: ^JOBOBJECT_NOTIFICATION_LIMIT_INFORMATION;
+JOBOBJECT_NOTIFICATION_LIMIT_INFORMATION_2_u1 :: struct #raw_union {
+	[1]u64,
+	JobHighMemoryLimit JobHighMemoryLimit_mut: DWORD64,
+	JobMemoryLimit JobMemoryLimit_mut: DWORD64,
+}
+JOBOBJECT_NOTIFICATION_LIMIT_INFORMATION_2_u2 :: struct #raw_union {
+	[1]u32,
+	RateControlTolerance RateControlTolerance_mut: JOBOBJECT_RATE_CONTROL_TOLERANCE,
+	CpuRateControlTolerance CpuRateControlTolerance_mut: JOBOBJECT_RATE_CONTROL_TOLERANCE,
+}
+JOBOBJECT_NOTIFICATION_LIMIT_INFORMATION_2_u3 :: struct #raw_union {
+	[1]u32,
+	RateControlToleranceInterval RateControlToleranceInterval_mut:
+		JOBOBJECT_RATE_CONTROL_TOLERANCE_INTERVAL,
+	CpuRateControlToleranceInterval CpuRateControlToleranceInterval_mut:
+		JOBOBJECT_RATE_CONTROL_TOLERANCE_INTERVAL,
+}
+JOBOBJECT_NOTIFICATION_LIMIT_INFORMATION_2 :: struct {
+	IoReadBytesLimit: DWORD64,
+	IoWriteBytesLimit: DWORD64,
+	PerJobUserTimeLimit: LARGE_INTEGER,
+	u1: JOBOBJECT_NOTIFICATION_LIMIT_INFORMATION_2_u1,
+	u2: JOBOBJECT_NOTIFICATION_LIMIT_INFORMATION_2_u2,
+	u3: JOBOBJECT_NOTIFICATION_LIMIT_INFORMATION_2_u3,
+	LimitFlags: DWORD,
+	IoRateControlTolerance: JOBOBJECT_RATE_CONTROL_TOLERANCE,
+	JobLowMemoryLimit: DWORD64,
+	IoRateControlToleranceInterval: JOBOBJECT_RATE_CONTROL_TOLERANCE_INTERVAL,
+	NetRateControlTolerance: JOBOBJECT_RATE_CONTROL_TOLERANCE,
+	NetRateControlToleranceInterval: JOBOBJECT_RATE_CONTROL_TOLERANCE_INTERVAL,
+}
+JOBOBJECT_LIMIT_VIOLATION_INFORMATION :: struct {
+	LimitFlags: DWORD,
+	ViolationLimitFlags: DWORD,
+	IoReadBytes: DWORD64,
+	IoReadBytesLimit: DWORD64,
+	IoWriteBytes: DWORD64,
+	IoWriteBytesLimit: DWORD64,
+	PerJobUserTime: LARGE_INTEGER,
+	PerJobUserTimeLimit: LARGE_INTEGER,
+	JobMemory: DWORD64,
+	JobMemoryLimit: DWORD64,
+	RateControlTolerance: JOBOBJECT_RATE_CONTROL_TOLERANCE,
+	RateControlToleranceLimit: JOBOBJECT_RATE_CONTROL_TOLERANCE,
+}
+PJOBOBJECT_LIMIT_VIOLATION_INFORMATION :: ^JOBOBJECT_LIMIT_VIOLATION_INFORMATION;
+JOBOBJECT_LIMIT_VIOLATION_INFORMATION_2_u1 :: struct #raw_union {
+	[1]u64,
+	JobHighMemoryLimit JobHighMemoryLimit_mut: DWORD64,
+	JobMemoryLimit JobMemoryLimit_mut: DWORD64,
+}
+JOBOBJECT_LIMIT_VIOLATION_INFORMATION_2_u2 :: struct #raw_union {
+	[1]u32,
+	RateControlTolerance RateControlTolerance_mut: JOBOBJECT_RATE_CONTROL_TOLERANCE,
+	CpuRateControlTolerance CpuRateControlTolerance_mut: JOBOBJECT_RATE_CONTROL_TOLERANCE,
+}
+JOBOBJECT_LIMIT_VIOLATION_INFORMATION_2_u3 :: struct #raw_union {
+	[1]u32,
+	RateControlToleranceLimit RateControlToleranceLimit_mut: JOBOBJECT_RATE_CONTROL_TOLERANCE,
+	CpuRateControlToleranceLimit CpuRateControlToleranceLimit_mut:
+		JOBOBJECT_RATE_CONTROL_TOLERANCE,
+}
+JOBOBJECT_LIMIT_VIOLATION_INFORMATION_2 :: struct {
+	LimitFlags: DWORD,
+	ViolationLimitFlags: DWORD,
+	IoReadBytes: DWORD64,
+	IoReadBytesLimit: DWORD64,
+	IoWriteBytes: DWORD64,
+	IoWriteBytesLimit: DWORD64,
+	PerJobUserTime: LARGE_INTEGER,
+	PerJobUserTimeLimit: LARGE_INTEGER,
+	JobMemory: DWORD64,
+	u1: JOBOBJECT_LIMIT_VIOLATION_INFORMATION_2_u1,
+	u2: JOBOBJECT_LIMIT_VIOLATION_INFORMATION_2_u2,
+	u3: JOBOBJECT_LIMIT_VIOLATION_INFORMATION_2_u3,
+	JobLowMemoryLimit: DWORD64,
+	IoRateControlTolerance: JOBOBJECT_RATE_CONTROL_TOLERANCE,
+	IoRateControlToleranceLimit: JOBOBJECT_RATE_CONTROL_TOLERANCE,
+	NetRateControlTolerance: JOBOBJECT_RATE_CONTROL_TOLERANCE,
+	NetRateControlToleranceLimit: JOBOBJECT_RATE_CONTROL_TOLERANCE,
+}
+JOBOBJECT_CPU_RATE_CONTROL_INFORMATION_u_s :: struct {
+	MinRate: WORD,
+	MaxRate: WORD,
+}
+JOBOBJECT_CPU_RATE_CONTROL_INFORMATION_u :: struct #raw_union {
+	[1]u32,
+	CpuRate CpuRate_mut: DWORD,
+	Weight Weight_mut: DWORD,
+	s s_mut: JOBOBJECT_CPU_RATE_CONTROL_INFORMATION_u_s,
+}
+JOBOBJECT_CPU_RATE_CONTROL_INFORMATION :: struct {
+	ControlFlags: DWORD,
+	u: JOBOBJECT_CPU_RATE_CONTROL_INFORMATION_u,
+}
+PJOBOBJECT_CPU_RATE_CONTROL_INFORMATION :: ^JOBOBJECT_CPU_RATE_CONTROL_INFORMATION;
+using JOB_OBJECT_NET_RATE_CONTROL_FLAGS :: enum c.int {
+	JOB_OBJECT_NET_RATE_CONTROL_ENABLE = 0x1,
+	JOB_OBJECT_NET_RATE_CONTROL_MAX_BANDWIDTH = 0x2,
+	JOB_OBJECT_NET_RATE_CONTROL_DSCP_TAG = 0x4,
+	JOB_OBJECT_NET_RATE_CONTROL_VALID_FLAGS = 0x7,
+}
+pub const JOB_OBJECT_NET_RATE_CONTROL_MAX_DSCP_TAG: DWORD = 64;
+JOBOBJECT_NET_RATE_CONTROL_INFORMATION :: struct {
+	MaxBandwidth: DWORD64,
+	ControlFlags: JOB_OBJECT_NET_RATE_CONTROL_FLAGS,
+	DscpTag: BYTE,
+}
+using JOB_OBJECT_IO_RATE_CONTROL_FLAGS :: enum c.int {
+	JOB_OBJECT_IO_RATE_CONTROL_ENABLE = 0x1,
+	JOB_OBJECT_IO_RATE_CONTROL_STANDALONE_VOLUME = 0x2,
+	JOB_OBJECT_IO_RATE_CONTROL_VALID_FLAGS = JOB_OBJECT_IO_RATE_CONTROL_ENABLE
+		| JOB_OBJECT_IO_RATE_CONTROL_STANDALONE_VOLUME,
+}
+JOBOBJECT_IO_RATE_CONTROL_INFORMATION_NATIVE :: struct {
+	MaxIops: LONG64,
+	MaxBandwidth: LONG64,
+	ReservationIops: LONG64,
+	VolumeName: PWSTR,
+	BaseIoSize: DWORD,
+	ControlFlags: JOB_OBJECT_IO_RATE_CONTROL_FLAGS,
+	VolumeNameLength: WORD,
+}
+pub type JOBOBJECT_IO_RATE_CONTROL_INFORMATION_NATIVE_V1
+	= JOBOBJECT_IO_RATE_CONTROL_INFORMATION_NATIVE;
+JOBOBJECT_IO_RATE_CONTROL_INFORMATION_NATIVE_V2 :: struct {
+	MaxIops: LONG64,
+	MaxBandwidth: LONG64,
+	ReservationIops: LONG64,
+	VolumeName: PWSTR,
+	BaseIoSize: DWORD,
+	ControlFlags: JOB_OBJECT_IO_RATE_CONTROL_FLAGS,
+	VolumeNameLength: WORD,
+	CriticalReservationIops: LONG64,
+	ReservationBandwidth: LONG64,
+	CriticalReservationBandwidth: LONG64,
+	MaxTimePercent: LONG64,
+	ReservationTimePercent: LONG64,
+	CriticalReservationTimePercent: LONG64,
+}
+JOBOBJECT_IO_RATE_CONTROL_INFORMATION_NATIVE_V3 :: struct {
+	MaxIops: LONG64,
+	MaxBandwidth: LONG64,
+	ReservationIops: LONG64,
+	VolumeName: PWSTR,
+	BaseIoSize: DWORD,
+	ControlFlags: JOB_OBJECT_IO_RATE_CONTROL_FLAGS,
+	VolumeNameLength: WORD,
+	CriticalReservationIops: LONG64,
+	ReservationBandwidth: LONG64,
+	CriticalReservationBandwidth: LONG64,
+	MaxTimePercent: LONG64,
+	ReservationTimePercent: LONG64,
+	CriticalReservationTimePercent: LONG64,
+	SoftMaxIops: LONG64,
+	SoftMaxBandwidth: LONG64,
+	SoftMaxTimePercent: LONG64,
+	LimitExcessNotifyIops: LONG64,
+	LimitExcessNotifyBandwidth: LONG64,
+	LimitExcessNotifyTimePercent: LONG64,
+}
+using JOBOBJECT_IO_ATTRIBUTION_CONTROL_FLAGS :: enum c.int {
+	JOBOBJECT_IO_ATTRIBUTION_CONTROL_ENABLE = 0x1,
+	JOBOBJECT_IO_ATTRIBUTION_CONTROL_DISABLE = 0x2,
+	JOBOBJECT_IO_ATTRIBUTION_CONTROL_VALID_FLAGS = 0x3,
+}
+JOBOBJECT_IO_ATTRIBUTION_STATS :: struct {
+	IoCount: ULONG_PTR,
+	TotalNonOverlappedQueueTime: ULONGLONG,
+	TotalNonOverlappedServiceTime: ULONGLONG,
+	TotalSize: ULONGLONG,
+}
+PJOBOBJECT_IO_ATTRIBUTION_STATS :: ^JOBOBJECT_IO_ATTRIBUTION_STATS;
+JOBOBJECT_IO_ATTRIBUTION_INFORMATION :: struct {
+	ControlFlags: DWORD,
+	ReadStats: JOBOBJECT_IO_ATTRIBUTION_STATS,
+	WriteStats: JOBOBJECT_IO_ATTRIBUTION_STATS,
+}
+PJOBOBJECT_IO_ATTRIBUTION_INFORMATION :: ^JOBOBJECT_IO_ATTRIBUTION_INFORMATION;
+pub const JOB_OBJECT_TERMINATE_AT_END_OF_JOB: DWORD = 0;
+pub const JOB_OBJECT_POST_AT_END_OF_JOB: DWORD = 1;
+pub const JOB_OBJECT_MSG_END_OF_JOB_TIME: DWORD = 1;
+pub const JOB_OBJECT_MSG_END_OF_PROCESS_TIME: DWORD = 2;
+pub const JOB_OBJECT_MSG_ACTIVE_PROCESS_LIMIT: DWORD = 3;
+pub const JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO: DWORD = 4;
+pub const JOB_OBJECT_MSG_NEW_PROCESS: DWORD = 6;
+pub const JOB_OBJECT_MSG_EXIT_PROCESS: DWORD = 7;
+pub const JOB_OBJECT_MSG_ABNORMAL_EXIT_PROCESS: DWORD = 8;
+pub const JOB_OBJECT_MSG_PROCESS_MEMORY_LIMIT: DWORD = 9;
+pub const JOB_OBJECT_MSG_JOB_MEMORY_LIMIT: DWORD = 10;
+pub const JOB_OBJECT_MSG_NOTIFICATION_LIMIT: DWORD = 11;
+pub const JOB_OBJECT_MSG_JOB_CYCLE_TIME_LIMIT: DWORD = 12;
+pub const JOB_OBJECT_MSG_SILO_TERMINATED: DWORD = 13;
+pub const JOB_OBJECT_MSG_MINIMUM: DWORD = 1;
+pub const JOB_OBJECT_MSG_MAXIMUM: DWORD = 13;
+pub const JOB_OBJECT_VALID_COMPLETION_FILTER: DWORD = ((1 << (JOB_OBJECT_MSG_MAXIMUM + 1)) - 1)
+	- ((1 << JOB_OBJECT_MSG_MINIMUM) - 1);
+pub const JOB_OBJECT_LIMIT_WORKINGSET: DWORD = 0x00000001;
+pub const JOB_OBJECT_LIMIT_PROCESS_TIME: DWORD = 0x00000002;
+pub const JOB_OBJECT_LIMIT_JOB_TIME: DWORD = 0x00000004;
+pub const JOB_OBJECT_LIMIT_ACTIVE_PROCESS: DWORD = 0x00000008;
+pub const JOB_OBJECT_LIMIT_AFFINITY: DWORD = 0x00000010;
+pub const JOB_OBJECT_LIMIT_PRIORITY_CLASS: DWORD = 0x00000020;
+pub const JOB_OBJECT_LIMIT_PRESERVE_JOB_TIME: DWORD = 0x00000040;
+pub const JOB_OBJECT_LIMIT_SCHEDULING_CLASS: DWORD = 0x00000080;
+pub const JOB_OBJECT_LIMIT_PROCESS_MEMORY: DWORD = 0x00000100;
+pub const JOB_OBJECT_LIMIT_JOB_MEMORY: DWORD = 0x00000200;
+pub const JOB_OBJECT_LIMIT_JOB_MEMORY_HIGH: DWORD = JOB_OBJECT_LIMIT_JOB_MEMORY;
+pub const JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION: DWORD = 0x00000400;
+pub const JOB_OBJECT_LIMIT_BREAKAWAY_OK: DWORD = 0x00000800;
+pub const JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK: DWORD = 0x00001000;
+pub const JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE: DWORD = 0x00002000;
+pub const JOB_OBJECT_LIMIT_SUBSET_AFFINITY: DWORD = 0x00004000;
+pub const JOB_OBJECT_LIMIT_JOB_MEMORY_LOW: DWORD = 0x00008000;
+pub const JOB_OBJECT_LIMIT_JOB_READ_BYTES: DWORD = 0x00010000;
+pub const JOB_OBJECT_LIMIT_JOB_WRITE_BYTES: DWORD = 0x00020000;
+pub const JOB_OBJECT_LIMIT_RATE_CONTROL: DWORD = 0x00040000;
+pub const JOB_OBJECT_LIMIT_CPU_RATE_CONTROL: DWORD = JOB_OBJECT_LIMIT_RATE_CONTROL;
+pub const JOB_OBJECT_LIMIT_IO_RATE_CONTROL: DWORD = 0x00008000;
+pub const JOB_OBJECT_LIMIT_NET_RATE_CONTROL: DWORD = 0x00010000;
+pub const JOB_OBJECT_LIMIT_VALID_FLAGS: DWORD = 0x0007ffff;
+pub const JOB_OBJECT_BASIC_LIMIT_VALID_FLAGS: DWORD = 0x000000ff;
+pub const JOB_OBJECT_EXTENDED_LIMIT_VALID_FLAGS: DWORD = 0x00007fff;
+pub const JOB_OBJECT_NOTIFICATION_LIMIT_VALID_FLAGS: DWORD = JOB_OBJECT_LIMIT_JOB_READ_BYTES
+	| JOB_OBJECT_LIMIT_JOB_WRITE_BYTES | JOB_OBJECT_LIMIT_JOB_TIME
+	| JOB_OBJECT_LIMIT_JOB_MEMORY_LOW | JOB_OBJECT_LIMIT_JOB_MEMORY_HIGH
+	| JOB_OBJECT_LIMIT_CPU_RATE_CONTROL | JOB_OBJECT_LIMIT_IO_RATE_CONTROL
+	| JOB_OBJECT_LIMIT_NET_RATE_CONTROL;
+pub const JOB_OBJECT_UILIMIT_NONE: DWORD = 0x00000000;
+pub const JOB_OBJECT_UILIMIT_HANDLES: DWORD = 0x00000001;
+pub const JOB_OBJECT_UILIMIT_READCLIPBOARD: DWORD = 0x00000002;
+pub const JOB_OBJECT_UILIMIT_WRITECLIPBOARD: DWORD = 0x00000004;
+pub const JOB_OBJECT_UILIMIT_SYSTEMPARAMETERS: DWORD = 0x00000008;
+pub const JOB_OBJECT_UILIMIT_DISPLAYSETTINGS: DWORD = 0x00000010;
+pub const JOB_OBJECT_UILIMIT_GLOBALATOMS: DWORD = 0x00000020;
+pub const JOB_OBJECT_UILIMIT_DESKTOP: DWORD = 0x00000040;
+pub const JOB_OBJECT_UILIMIT_EXITWINDOWS: DWORD = 0x00000080;
+pub const JOB_OBJECT_UILIMIT_ALL: DWORD = 0x000000FF;
+pub const JOB_OBJECT_UI_VALID_FLAGS: DWORD = 0x000000FF;
+pub const JOB_OBJECT_SECURITY_NO_ADMIN: DWORD = 0x00000001;
+pub const JOB_OBJECT_SECURITY_RESTRICTED_TOKEN: DWORD = 0x00000002;
+pub const JOB_OBJECT_SECURITY_ONLY_TOKEN: DWORD = 0x00000004;
+pub const JOB_OBJECT_SECURITY_FILTER_TOKENS: DWORD = 0x00000008;
+pub const JOB_OBJECT_SECURITY_VALID_FLAGS: DWORD = 0x0000000f;
+pub const JOB_OBJECT_CPU_RATE_CONTROL_ENABLE: DWORD = 0x1;
+pub const JOB_OBJECT_CPU_RATE_CONTROL_WEIGHT_BASED: DWORD = 0x2;
+pub const JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP: DWORD = 0x4;
+pub const JOB_OBJECT_CPU_RATE_CONTROL_NOTIFY: DWORD = 0x8;
+pub const JOB_OBJECT_CPU_RATE_CONTROL_MIN_MAX_RATE: DWORD = 0x10;
+pub const JOB_OBJECT_CPU_RATE_CONTROL_VALID_FLAGS: DWORD = 0x1f;
+using JOBOBJECTINFOCLASS :: enum c.int {
+	JobObjectBasicAccountingInformation = 1,
+	JobObjectBasicLimitInformation,
+	JobObjectBasicProcessIdList,
+	JobObjectBasicUIRestrictions,
+	JobObjectSecurityLimitInformation,
+	JobObjectEndOfJobTimeInformation,
+	JobObjectAssociateCompletionPortInformation,
+	JobObjectBasicAndIoAccountingInformation,
+	JobObjectExtendedLimitInformation,
+	JobObjectJobSetInformation,
+	JobObjectGroupInformation,
+	JobObjectNotificationLimitInformation,
+	JobObjectLimitViolationInformation,
+	JobObjectGroupInformationEx,
+	JobObjectCpuRateControlInformation,
+	JobObjectCompletionFilter,
+	JobObjectCompletionCounter,
+	JobObjectReserved1Information = 18,
+	JobObjectReserved2Information,
+	JobObjectReserved3Information,
+	JobObjectReserved4Information,
+	JobObjectReserved5Information,
+	JobObjectReserved6Information,
+	JobObjectReserved7Information,
+	JobObjectReserved8Information,
+	JobObjectReserved9Information,
+	JobObjectReserved10Information,
+	JobObjectReserved11Information,
+	JobObjectReserved12Information,
+	JobObjectReserved13Information,
+	JobObjectReserved14Information = 31,
+	JobObjectNetRateControlInformation,
+	JobObjectNotificationLimitInformation2,
+	JobObjectLimitViolationInformation2,
+	JobObjectCreateSilo,
+	JobObjectSiloBasicInformation,
+	JobObjectReserved15Information = 37,
+	JobObjectReserved16Information = 38,
+	JobObjectReserved17Information = 39,
+	JobObjectReserved18Information = 40,
+	JobObjectReserved19Information = 41,
+	JobObjectReserved20Information = 42,
+	JobObjectReserved21Information = 43,
+	JobObjectReserved22Information = 44,
+	JobObjectReserved23Information = 45,
+	JobObjectReserved24Information = 46,
+	JobObjectReserved25Information = 47,
+	MaxJobObjectInfoClass,
+}
+SILOOBJECT_BASIC_INFORMATION :: struct {
+	SiloId: DWORD,
+	SiloParentId: DWORD,
+	NumberOfProcesses: DWORD,
+	IsInServerSilo: BOOLEAN,
+	Reserved: [3]BYTE,
+}
+PSILOOBJECT_BASIC_INFORMATION :: ^SILOOBJECT_BASIC_INFORMATION;
+using SERVERSILO_STATE :: enum c.int {
+	SERVERSILO_INITING = 0,
+	SERVERSILO_STARTED,
+	SERVERSILO_SHUTTING_DOWN,
+	SERVERSILO_TERMINATING,
+	SERVERSILO_TERMINATED,
+}
+PSERVERSILO_STATE :: ^SERVERSILO_STATE;
+SERVERSILO_BASIC_INFORMATION :: struct {
+	ServiceSessionId: DWORD,
+	State: SERVERSILO_STATE,
+	ExitStatus: DWORD,
+}
+PSERVERSILO_BASIC_INFORMATION :: ^SERVERSILO_BASIC_INFORMATION;
+using FIRMWARE_TYPE :: enum c.int {
+	FirmwareTypeUnknown,
+	FirmwareTypeBios,
+	FirmwareTypeUefi,
+	FirmwareTypeMax,
+}
+PFIRMWARE_TYPE :: ^FIRMWARE_TYPE;
+pub const EVENT_MODIFY_STATE: DWORD = 0x0002;
+pub const EVENT_ALL_ACCESS: DWORD = STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0x3;
+pub const MUTANT_QUERY_STATE: DWORD = 0x0001;
+pub const MUTANT_ALL_ACCESS: DWORD = STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | MUTANT_QUERY_STATE;
+pub const SEMAPHORE_MODIFY_STATE: DWORD = 0x0002;
+pub const SEMAPHORE_ALL_ACCESS: DWORD = STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0x3;
+pub const TIMER_QUERY_STATE: DWORD = 0x0001;
+pub const TIMER_MODIFY_STATE: DWORD = 0x0002;
+pub const TIMER_ALL_ACCESS: DWORD = STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | TIMER_QUERY_STATE
+	| TIMER_MODIFY_STATE;
+pub const TIME_ZONE_ID_UNKNOWN: DWORD = 0;
+pub const TIME_ZONE_ID_STANDARD: DWORD = 1;
+pub const TIME_ZONE_ID_DAYLIGHT: DWORD = 2;
+using LOGICAL_PROCESSOR_RELATIONSHIP :: enum c.int {
+	RelationProcessorCore,
+	RelationNumaNode,
+	RelationCache,
+	RelationProcessorPackage,
+	RelationGroup,
+	RelationAll = 0xffff,
+}
+pub const LTP_PC_SMT: BYTE = 0x1;
+using PROCESSOR_CACHE_TYPE :: enum c.int {
+	CacheUnified,
+	CacheInstruction,
+	CacheData,
+	CacheTrace,
+}
+pub const CACHE_FULLY_ASSOCIATIVE: BYTE = 0xFF;
+CACHE_DESCRIPTOR :: struct {
+	Level: BYTE,
+	Associativity: BYTE,
+	LineSize: WORD,
+	Size: DWORD,
+	Type: PROCESSOR_CACHE_TYPE,
+}
+PCACHE_DESCRIPTOR :: ^CACHE_DESCRIPTOR;
+SYSTEM_LOGICAL_PROCESSOR_INFORMATION_ProcessorCore :: struct {
+	Flags: BYTE,
+}
+SYSTEM_LOGICAL_PROCESSOR_INFORMATION_NumaNode :: struct {
+	NodeNumber: DWORD,
+}
+SYSTEM_LOGICAL_PROCESSOR_INFORMATION_u :: struct #raw_union {
+	[2]u64,
+	ProcessorCore ProcessorCore_mut: SYSTEM_LOGICAL_PROCESSOR_INFORMATION_ProcessorCore,
+	NumaNode NumaNode_mut: SYSTEM_LOGICAL_PROCESSOR_INFORMATION_NumaNode,
+	Cache Cache_mut: CACHE_DESCRIPTOR,
+	Reserved Reserved_mut: [2]ULONGLONG,
+}
+SYSTEM_LOGICAL_PROCESSOR_INFORMATION :: struct {
+	ProcessorMask: ULONG_PTR,
+	Relationship: LOGICAL_PROCESSOR_RELATIONSHIP,
+	u: SYSTEM_LOGICAL_PROCESSOR_INFORMATION_u,
+}
+PSYSTEM_LOGICAL_PROCESSOR_INFORMATION :: ^SYSTEM_LOGICAL_PROCESSOR_INFORMATION;
+PROCESSOR_RELATIONSHIP :: struct {
+	Flags: BYTE,
+	EfficiencyClass: BYTE,
+	Reserved: [20]BYTE,
+	GroupCount: WORD,
+	GroupMask: [ANYSIZE_ARRAY]GROUP_AFFINITY,
+}
+PPROCESSOR_RELATIONSHIP :: ^PROCESSOR_RELATIONSHIP;
+NUMA_NODE_RELATIONSHIP :: struct {
+	NodeNumber: DWORD,
+	Reserved: [20]BYTE,
+	GroupMask: GROUP_AFFINITY,
+}
+PNUMA_NODE_RELATIONSHIP :: ^NUMA_NODE_RELATIONSHIP;
+CACHE_RELATIONSHIP :: struct {
+	Level: BYTE,
+	Associativity: BYTE,
+	LineSize: WORD,
+	CacheSize: DWORD,
+	Type: PROCESSOR_CACHE_TYPE,
+	Reserved: [20]BYTE,
+	GroupMask: GROUP_AFFINITY,
+}
+PCACHE_RELATIONSHIP :: ^CACHE_RELATIONSHIP;
+PROCESSOR_GROUP_INFO :: struct {
+	MaximumProcessorCount: BYTE,
+	ActiveProcessorCount: BYTE,
+	Reserved: [38]BYTE,
+	ActiveProcessorMask: KAFFINITY,
+}
+PPROCESSOR_GROUP_INFO :: ^PROCESSOR_GROUP_INFO;
+GROUP_RELATIONSHIP :: struct {
+	MaximumGroupCount: WORD,
+	ActiveGroupCount: WORD,
+	Reserved: [20]BYTE,
+	GroupInfo: [ANYSIZE_ARRAY]PROCESSOR_GROUP_INFO,
+}
+PGROUP_RELATIONSHIP :: ^GROUP_RELATIONSHIP;
+SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX_u :: struct #raw_union {
+	[17] [u64; 9]u32,
+	Processor Processor_mut: PROCESSOR_RELATIONSHIP,
+	NumaNode NumaNode_mut: NUMA_NODE_RELATIONSHIP,
+	Cache Cache_mut: CACHE_RELATIONSHIP,
+	Group Group_mut: GROUP_RELATIONSHIP,
+}
+SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX :: struct {
+	Relationship: LOGICAL_PROCESSOR_RELATIONSHIP,
+	Size: DWORD,
+	u: SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX_u,
+}
+PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX :: ^SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX;
+using CPU_SET_INFORMATION_TYPE :: enum c.int {
+	CpuSetInformation,
+}
+PCPU_SET_INFORMATION_TYPE :: ^CPU_SET_INFORMATION_TYPE;
+pub const SYSTEM_CPU_SET_INFORMATION_PARKED: BYTE = 0x1;
+pub const SYSTEM_CPU_SET_INFORMATION_ALLOCATED: BYTE = 0x2;
+pub const SYSTEM_CPU_SET_INFORMATION_ALLOCATED_TO_TARGET_PROCESS: BYTE = 0x4;
+pub const SYSTEM_CPU_SET_INFORMATION_REALTIME: BYTE = 0x8;
+SYSTEM_CPU_SET_INFORMATION_CpuSet :: struct {
+	Id: DWORD,
+	Group: WORD,
+	LogicalProcessorIndex: BYTE,
+	CoreIndex: BYTE,
+	LastLevelCacheIndex: BYTE,
+	NumaNodeIndex: BYTE,
+	EfficiencyClass: BYTE,
+	AllFlags: BYTE,
+	Reserved: DWORD,
+	AllocationTag: DWORD64,
+}
+BITFIELD!{SYSTEM_CPU_SET_INFORMATION_CpuSet AllFlags: BYTE [
+	Parked set_Parked[0..1],
+	Allocated set_Allocated[1..2],
+	AllocatedToTargetProcess set_AllocatedToTargetProcess[2..3],
+	RealTime set_RealTime[3..4],
+	ReservedFlags set_ReservedFlags[4..8],
+}
+SYSTEM_CPU_SET_INFORMATION :: struct {
+	Size: DWORD,
+	Type: CPU_SET_INFORMATION_TYPE,
+	CpuSet: SYSTEM_CPU_SET_INFORMATION_CpuSet,
+}
+PSYSTEM_CPU_SET_INFORMATION :: ^SYSTEM_CPU_SET_INFORMATION;
+SYSTEM_PROCESSOR_CYCLE_TIME_INFORMATION :: struct {
+	CycleTime: DWORD64,
+}
+PSYSTEM_PROCESSOR_CYCLE_TIME_INFORMATION :: ^SYSTEM_PROCESSOR_CYCLE_TIME_INFORMATION;
+pub const PROCESSOR_INTEL_386: DWORD = 386;
+pub const PROCESSOR_INTEL_486: DWORD = 486;
+pub const PROCESSOR_INTEL_PENTIUM: DWORD = 586;
+pub const PROCESSOR_INTEL_IA64: DWORD = 2200;
+pub const PROCESSOR_AMD_X8664: DWORD = 8664;
+pub const PROCESSOR_MIPS_R4000: DWORD = 4000;
+pub const PROCESSOR_ALPHA_21064: DWORD = 21064;
+pub const PROCESSOR_PPC_601: DWORD = 601;
+pub const PROCESSOR_PPC_603: DWORD = 603;
+pub const PROCESSOR_PPC_604: DWORD = 604;
+pub const PROCESSOR_PPC_620: DWORD = 620;
+pub const PROCESSOR_HITACHI_SH3: DWORD = 10003;
+pub const PROCESSOR_HITACHI_SH3E: DWORD = 10004;
+pub const PROCESSOR_HITACHI_SH4: DWORD = 10005;
+pub const PROCESSOR_MOTOROLA_821: DWORD = 821;
+pub const PROCESSOR_SHx_SH3: DWORD = 103;
+pub const PROCESSOR_SHx_SH4: DWORD = 104;
+pub const PROCESSOR_STRONGARM: DWORD = 2577;
+pub const PROCESSOR_ARM720: DWORD = 1824;
+pub const PROCESSOR_ARM820: DWORD = 2080;
+pub const PROCESSOR_ARM920: DWORD = 2336;
+pub const PROCESSOR_ARM_7TDMI: DWORD = 70001;
+pub const PROCESSOR_OPTIL: DWORD = 0x494f;
+pub const PROCESSOR_ARCHITECTURE_INTEL: WORD = 0;
+pub const PROCESSOR_ARCHITECTURE_MIPS: WORD = 1;
+pub const PROCESSOR_ARCHITECTURE_ALPHA: WORD = 2;
+pub const PROCESSOR_ARCHITECTURE_PPC: WORD = 3;
+pub const PROCESSOR_ARCHITECTURE_SHX: WORD = 4;
+pub const PROCESSOR_ARCHITECTURE_ARM: WORD = 5;
+pub const PROCESSOR_ARCHITECTURE_IA64: WORD = 6;
+pub const PROCESSOR_ARCHITECTURE_ALPHA64: WORD = 7;
+pub const PROCESSOR_ARCHITECTURE_MSIL: WORD = 8;
+pub const PROCESSOR_ARCHITECTURE_AMD64: WORD = 9;
+pub const PROCESSOR_ARCHITECTURE_IA32_ON_WIN64: WORD = 10;
+pub const PROCESSOR_ARCHITECTURE_NEUTRAL: WORD = 11;
+pub const PROCESSOR_ARCHITECTURE_ARM64: WORD = 12;
+pub const PROCESSOR_ARCHITECTURE_ARM32_ON_WIN64: WORD = 13;
+pub const PROCESSOR_ARCHITECTURE_IA32_ON_ARM64: WORD = 14;
+pub const PROCESSOR_ARCHITECTURE_UNKNOWN: WORD = 0xFFFF;
+pub const PF_FLOATING_POINT_PRECISION_ERRATA: DWORD = 0;
+pub const PF_FLOATING_POINT_EMULATED: DWORD = 1;
+pub const PF_COMPARE_EXCHANGE_DOUBLE: DWORD = 2;
+pub const PF_MMX_INSTRUCTIONS_AVAILABLE: DWORD = 3;
+pub const PF_PPC_MOVEMEM_64BIT_OK: DWORD = 4;
+pub const PF_ALPHA_BYTE_INSTRUCTIONS: DWORD = 5;
+pub const PF_XMMI_INSTRUCTIONS_AVAILABLE: DWORD = 6;
+pub const PF_3DNOW_INSTRUCTIONS_AVAILABLE: DWORD = 7;
+pub const PF_RDTSC_INSTRUCTION_AVAILABLE: DWORD = 8;
+pub const PF_PAE_ENABLED: DWORD = 9;
+pub const PF_XMMI64_INSTRUCTIONS_AVAILABLE: DWORD = 10;
+pub const PF_SSE_DAZ_MODE_AVAILABLE: DWORD = 11;
+pub const PF_NX_ENABLED: DWORD = 12;
+pub const PF_SSE3_INSTRUCTIONS_AVAILABLE: DWORD = 13;
+pub const PF_COMPARE_EXCHANGE128: DWORD = 14;
+pub const PF_COMPARE64_EXCHANGE128: DWORD = 15;
+pub const PF_CHANNELS_ENABLED: DWORD = 16;
+pub const PF_XSAVE_ENABLED: DWORD = 17;
+pub const PF_ARM_VFP_32_REGISTERS_AVAILABLE: DWORD = 18;
+pub const PF_ARM_NEON_INSTRUCTIONS_AVAILABLE: DWORD = 19;
+pub const PF_SECOND_LEVEL_ADDRESS_TRANSLATION: DWORD = 20;
+pub const PF_VIRT_FIRMWARE_ENABLED: DWORD = 21;
+pub const PF_RDWRFSGSBASE_AVAILABLE: DWORD = 22;
+pub const PF_FASTFAIL_AVAILABLE: DWORD = 23;
+pub const PF_ARM_DIVIDE_INSTRUCTION_AVAILABLE: DWORD = 24;
+pub const PF_ARM_64BIT_LOADSTORE_ATOMIC: DWORD = 25;
+pub const PF_ARM_EXTERNAL_CACHE_AVAILABLE: DWORD = 26;
+pub const PF_ARM_FMAC_INSTRUCTIONS_AVAILABLE: DWORD = 27;
+pub const PF_RDRAND_INSTRUCTION_AVAILABLE: DWORD = 28;
+pub const PF_ARM_V8_INSTRUCTIONS_AVAILABLE: DWORD = 29;
+pub const PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE: DWORD = 30;
+pub const PF_ARM_V8_CRC32_INSTRUCTIONS_AVAILABLE: DWORD = 31;
+pub const PF_RDTSCP_INSTRUCTION_AVAILABLE: DWORD = 32;
+pub const XSTATE_LEGACY_FLOATING_POINT: ULONG64 = 0;
+pub const XSTATE_LEGACY_SSE: ULONG64 = 1;
+pub const XSTATE_GSSE: ULONG64 = 2;
+pub const XSTATE_AVX: ULONG64 = XSTATE_GSSE;
+pub const XSTATE_MPX_BNDREGS: ULONG64 = 3;
+pub const XSTATE_MPX_BNDCSR: ULONG64 = 4;
+pub const XSTATE_AVX512_KMASK: ULONG64 = 5;
+pub const XSTATE_AVX512_ZMM_H: ULONG64 = 6;
+pub const XSTATE_AVX512_ZMM: ULONG64 = 7;
+pub const XSTATE_IPT: ULONG64 = 8;
+pub const XSTATE_LWP: ULONG64 = 62;
+pub const MAXIMUM_XSTATE_FEATURES: usize = 64;
+pub const XSTATE_MASK_LEGACY_FLOATING_POINT: ULONG64 = 1 << XSTATE_LEGACY_FLOATING_POINT;
+pub const XSTATE_MASK_LEGACY_SSE: ULONG64 = 1 << XSTATE_LEGACY_SSE;
+pub const XSTATE_MASK_LEGACY: ULONG64 = XSTATE_MASK_LEGACY_FLOATING_POINT | XSTATE_MASK_LEGACY_SSE;
+pub const XSTATE_MASK_GSSE: ULONG64 = 1 << XSTATE_GSSE;
+pub const XSTATE_MASK_AVX: ULONG64 = XSTATE_MASK_GSSE;
+pub const XSTATE_MASK_MPX: ULONG64 = (1 << XSTATE_MPX_BNDREGS) | (1 << XSTATE_MPX_BNDCSR);
+pub const XSTATE_MASK_AVX512: ULONG64 = (1 << XSTATE_AVX512_KMASK) | (1 << XSTATE_AVX512_ZMM_H)
+	| (1 << XSTATE_AVX512_ZMM);
+pub const XSTATE_MASK_IPT: ULONG64 = 1 << XSTATE_IPT;
+pub const XSTATE_MASK_LWP: ULONG64 = 1 << XSTATE_LWP;
+pub const XSTATE_MASK_ALLOWED: ULONG64 = XSTATE_MASK_LEGACY | XSTATE_MASK_AVX | XSTATE_MASK_MPX
+	| XSTATE_MASK_AVX512 | XSTATE_MASK_IPT | XSTATE_MASK_LWP;
+pub const XSTATE_MASK_PERSISTENT: ULONG64 = (1 << XSTATE_MPX_BNDCSR) | XSTATE_MASK_LWP;
+pub const XSTATE_COMPACTION_ENABLE: ULONG64 = 63;
+pub const XSTATE_COMPACTION_ENABLE_MASK: ULONG64 = 1 << XSTATE_COMPACTION_ENABLE;
+pub const XSTATE_ALIGN_BIT: ULONG64 = 1;
+pub const XSTATE_ALIGN_MASK: ULONG64 = 1 << XSTATE_ALIGN_BIT;
+pub const XSTATE_CONTROLFLAG_XSAVEOPT_MASK: ULONG64 = 1;
+pub const XSTATE_CONTROLFLAG_XSAVEC_MASK: ULONG64 = 2;
+pub const XSTATE_CONTROLFLAG_VALID_MASK: ULONG64 = XSTATE_CONTROLFLAG_XSAVEOPT_MASK
+	| XSTATE_CONTROLFLAG_XSAVEC_MASK;
+XSTATE_FEATURE :: struct {
+	Offset: DWORD,
+	Size: DWORD,
+}
+PXSTATE_FEATURE :: ^XSTATE_FEATURE;
+XSTATE_CONFIGURATION :: struct {
+	EnabledFeatures: DWORD64,
+	EnabledVolatileFeatures: DWORD64,
+	Size: DWORD,
+	ControlFlags: DWORD,
+	Features: [MAXIMUM_XSTATE_FEATURES]XSTATE_FEATURE,
+	EnabledSupervisorFeatures: DWORD64,
+	AlignedFeatures: DWORD64,
+	AllFeatureSize: DWORD,
+	AllFeatures: [MAXIMUM_XSTATE_FEATURES]DWORD,
+}
+BITFIELD!{XSTATE_CONFIGURATION ControlFlags: DWORD [
+	OptimizedSave set_OptimizedSave[0..1],
+	CompactionEnabled set_CompactionEnabled[1..2],
+}
+PXSTATE_CONFIGURATION :: ^XSTATE_CONFIGURATION;
+MEMORY_BASIC_INFORMATION :: struct {
+	BaseAddress: PVOID,
+	AllocationBase: PVOID,
+	AllocationProtect: DWORD,
+	RegionSize: SIZE_T,
+	State: DWORD,
+	Protect: DWORD,
+	Type: DWORD,
+}
+PMEMORY_BASIC_INFORMATION :: ^MEMORY_BASIC_INFORMATION;
+MEMORY_BASIC_INFORMATION32 :: struct {
+	BaseAddress: DWORD,
+	AllocationBase: DWORD,
+	AllocationProtect: DWORD,
+	RegionSize: DWORD,
+	State: DWORD,
+	Protect: DWORD,
+	Type: DWORD,
+}
+PMEMORY_BASIC_INFORMATION32 :: ^MEMORY_BASIC_INFORMATION32;
+MEMORY_BASIC_INFORMATION64 :: struct { // FIXME: align 16
+	BaseAddress: ULONGLONG,
+	AllocationBase: ULONGLONG,
+	AllocationProtect: DWORD,
+	__alignment1: DWORD,
+	RegionSize: ULONGLONG,
+	State: DWORD,
+	Protect: DWORD,
+	Type: DWORD,
+	__alignment2: DWORD,
+}
+PMEMORY_BASIC_INFORMATION64 :: ^MEMORY_BASIC_INFORMATION64;
+pub const CFG_CALL_TARGET_VALID: ULONG_PTR = 0x00000001;
+pub const CFG_CALL_TARGET_PROCESSED: ULONG_PTR = 0x00000002;
+pub const CFG_CALL_TARGET_CONVERT_EXPORT_SUPPRESSED_TO_VALID: ULONG_PTR = 0x00000004;
+CFG_CALL_TARGET_INFO :: struct {
+	Offset: ULONG_PTR,
+	Flags: ULONG_PTR,
+}
+PCFG_CALL_TARGET_INFO :: ^CFG_CALL_TARGET_INFO;
+pub const SECTION_QUERY: DWORD = 0x0001;
+pub const SECTION_MAP_WRITE: DWORD = 0x0002;
+pub const SECTION_MAP_READ: DWORD = 0x0004;
+pub const SECTION_MAP_EXECUTE: DWORD = 0x0008;
+pub const SECTION_EXTEND_SIZE: DWORD = 0x0010;
+pub const SECTION_MAP_EXECUTE_EXPLICIT: DWORD = 0x0020;
+pub const SECTION_ALL_ACCESS: DWORD = STANDARD_RIGHTS_REQUIRED | SECTION_QUERY
+	| SECTION_MAP_WRITE | SECTION_MAP_READ | SECTION_MAP_EXECUTE | SECTION_EXTEND_SIZE;
+pub const SESSION_QUERY_ACCESS: DWORD = 0x0001;
+pub const SESSION_MODIFY_ACCESS: DWORD = 0x0002;
+pub const SESSION_ALL_ACCESS: DWORD = STANDARD_RIGHTS_REQUIRED | SESSION_QUERY_ACCESS
+	| SESSION_MODIFY_ACCESS;
+pub const MEMORY_PARTITION_QUERY_ACCESS: DWORD = 0x0001;
+pub const MEMORY_PARTITION_MODIFY_ACCESS: DWORD = 0x0002;
+pub const MEMORY_PARTITION_ALL_ACCESS: DWORD = STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE
+	| MEMORY_PARTITION_QUERY_ACCESS | MEMORY_PARTITION_MODIFY_ACCESS;
+pub const PAGE_NOACCESS: DWORD = 0x01;
+pub const PAGE_READONLY: DWORD = 0x02;
+pub const PAGE_READWRITE: DWORD = 0x04;
+pub const PAGE_WRITECOPY: DWORD = 0x08;
+pub const PAGE_EXECUTE: DWORD = 0x10;
+pub const PAGE_EXECUTE_READ: DWORD = 0x20;
+pub const PAGE_EXECUTE_READWRITE: DWORD = 0x40;
+pub const PAGE_EXECUTE_WRITECOPY: DWORD = 0x80;
+pub const PAGE_GUARD: DWORD = 0x100;
+pub const PAGE_NOCACHE: DWORD = 0x200;
+pub const PAGE_WRITECOMBINE: DWORD = 0x400;
+pub const PAGE_ENCLAVE_THREAD_CONTROL: DWORD = 0x80000000;
+pub const PAGE_REVERT_TO_FILE_MAP: DWORD = 0x80000000;
+pub const PAGE_TARGETS_NO_UPDATE: DWORD = 0x40000000;
+pub const PAGE_TARGETS_INVALID: DWORD = 0x40000000;
+pub const PAGE_ENCLAVE_UNVALIDATED: DWORD = 0x20000000;
+pub const PAGE_ENCLAVE_DECOMMIT: DWORD = 0x10000000;
+pub const MEM_COMMIT: DWORD = 0x1000;
+pub const MEM_RESERVE: DWORD = 0x2000;
+pub const MEM_DECOMMIT: DWORD = 0x4000;
+pub const MEM_RELEASE: DWORD = 0x8000;
+pub const MEM_FREE: DWORD = 0x10000;
+pub const MEM_PRIVATE: DWORD = 0x20000;
+pub const MEM_MAPPED: DWORD = 0x40000;
+pub const MEM_RESET: DWORD = 0x80000;
+pub const MEM_TOP_DOWN: DWORD = 0x100000;
+pub const MEM_WRITE_WATCH: DWORD = 0x200000;
+pub const MEM_PHYSICAL: DWORD = 0x400000;
+pub const MEM_ROTATE: DWORD = 0x800000;
+pub const MEM_DIFFERENT_IMAGE_BASE_OK: DWORD = 0x800000;
+pub const MEM_RESET_UNDO: DWORD = 0x1000000;
+pub const MEM_LARGE_PAGES: DWORD = 0x20000000;
+pub const MEM_4MB_PAGES: DWORD = 0x80000000;
+pub const MEM_64K_PAGES: DWORD = MEM_LARGE_PAGES | MEM_PHYSICAL;
+pub const SEC_64K_PAGES: DWORD = 0x00080000;
+pub const SEC_FILE: DWORD = 0x800000;
+pub const SEC_IMAGE: DWORD = 0x1000000;
+pub const SEC_PROTECTED_IMAGE: DWORD = 0x2000000;
+pub const SEC_RESERVE: DWORD = 0x4000000;
+pub const SEC_COMMIT: DWORD = 0x8000000;
+pub const SEC_NOCACHE: DWORD = 0x10000000;
+pub const SEC_WRITECOMBINE: DWORD = 0x40000000;
+pub const SEC_LARGE_PAGES: DWORD = 0x80000000;
+pub const SEC_IMAGE_NO_EXECUTE: DWORD = (SEC_IMAGE | SEC_NOCACHE);
+pub const MEM_IMAGE: DWORD = SEC_IMAGE;
+pub const WRITE_WATCH_FLAG_RESET: DWORD = 0x01;
+pub const MEM_UNMAP_WITH_TRANSIENT_BOOST: DWORD = 0x01;
+pub const ENCLAVE_TYPE_SGX: DWORD = 0x00000001;
+pub const ENCLAVE_TYPE_SGX2: DWORD = 0x00000002;
+ENCLAVE_CREATE_INFO_SGX :: struct {
+	Secs: [4096]BYTE,
+}
+PENCLAVE_CREATE_INFO_SGX :: ^ENCLAVE_CREATE_INFO_SGX;
+ENCLAVE_INIT_INFO_SGX :: struct {
+	SigStruct: [1808]BYTE,
+	Reserved1: [240]BYTE,
+	EInitToken: [304]BYTE,
+	Reserved2: [1744]BYTE,
+}
+PENCLAVE_INIT_INFO_SGX :: ^ENCLAVE_INIT_INFO_SGX;
+pub const FILE_READ_DATA: DWORD = 0x0001;
+pub const FILE_LIST_DIRECTORY: DWORD = 0x0001;
+pub const FILE_WRITE_DATA: DWORD = 0x0002;
+pub const FILE_ADD_FILE: DWORD = 0x0002;
+pub const FILE_APPEND_DATA: DWORD = 0x0004;
+pub const FILE_ADD_SUBDIRECTORY: DWORD = 0x0004;
+pub const FILE_CREATE_PIPE_INSTANCE: DWORD = 0x0004;
+pub const FILE_READ_EA: DWORD = 0x0008;
+pub const FILE_WRITE_EA: DWORD = 0x0010;
+pub const FILE_EXECUTE: DWORD = 0x0020;
+pub const FILE_TRAVERSE: DWORD = 0x0020;
+pub const FILE_DELETE_CHILD: DWORD = 0x0040;
+pub const FILE_READ_ATTRIBUTES: DWORD = 0x0080;
+pub const FILE_WRITE_ATTRIBUTES: DWORD = 0x0100;
+pub const FILE_ALL_ACCESS: DWORD = STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0x1FF;
+pub const FILE_GENERIC_READ: DWORD = STANDARD_RIGHTS_READ | FILE_READ_DATA
+	| FILE_READ_ATTRIBUTES | FILE_READ_EA | SYNCHRONIZE;
+pub const FILE_GENERIC_WRITE: DWORD = STANDARD_RIGHTS_WRITE | FILE_WRITE_DATA
+	| FILE_WRITE_ATTRIBUTES | FILE_WRITE_EA | FILE_APPEND_DATA | SYNCHRONIZE;
+pub const FILE_GENERIC_EXECUTE: DWORD = STANDARD_RIGHTS_EXECUTE | FILE_READ_ATTRIBUTES
+	| FILE_EXECUTE | SYNCHRONIZE;
+pub const FILE_SHARE_READ: DWORD = 0x00000001;
+pub const FILE_SHARE_WRITE: DWORD = 0x00000002;
+pub const FILE_SHARE_DELETE: DWORD = 0x00000004;
+pub const FILE_ATTRIBUTE_READONLY: DWORD = 0x00000001;
+pub const FILE_ATTRIBUTE_HIDDEN: DWORD = 0x00000002;
+pub const FILE_ATTRIBUTE_SYSTEM: DWORD = 0x00000004;
+pub const FILE_ATTRIBUTE_DIRECTORY: DWORD = 0x00000010;
+pub const FILE_ATTRIBUTE_ARCHIVE: DWORD = 0x00000020;
+pub const FILE_ATTRIBUTE_DEVICE: DWORD = 0x00000040;
+pub const FILE_ATTRIBUTE_NORMAL: DWORD = 0x00000080;
+pub const FILE_ATTRIBUTE_TEMPORARY: DWORD = 0x00000100;
+pub const FILE_ATTRIBUTE_SPARSE_FILE: DWORD = 0x00000200;
+pub const FILE_ATTRIBUTE_REPARSE_POINT: DWORD = 0x00000400;
+pub const FILE_ATTRIBUTE_COMPRESSED: DWORD = 0x00000800;
+pub const FILE_ATTRIBUTE_OFFLINE: DWORD = 0x00001000;
+pub const FILE_ATTRIBUTE_NOT_CONTENT_INDEXED: DWORD = 0x00002000;
+pub const FILE_ATTRIBUTE_ENCRYPTED: DWORD = 0x00004000;
+pub const FILE_ATTRIBUTE_INTEGRITY_STREAM: DWORD = 0x00008000;
+pub const FILE_ATTRIBUTE_VIRTUAL: DWORD = 0x00010000;
+pub const FILE_ATTRIBUTE_NO_SCRUB_DATA: DWORD = 0x00020000;
+pub const FILE_ATTRIBUTE_EA: DWORD = 0x00040000;
+pub const FILE_ATTRIBUTE_PINNED: DWORD = 0x00080000;
+pub const FILE_ATTRIBUTE_UNPINNED: DWORD = 0x00100000;
+pub const FILE_ATTRIBUTE_RECALL_ON_OPEN: DWORD = 0x00040000;
+pub const FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS: DWORD = 0x00400000;
+pub const FILE_NOTIFY_CHANGE_FILE_NAME: DWORD = 0x00000001;
+pub const FILE_NOTIFY_CHANGE_DIR_NAME: DWORD = 0x00000002;
+pub const FILE_NOTIFY_CHANGE_ATTRIBUTES: DWORD = 0x00000004;
+pub const FILE_NOTIFY_CHANGE_SIZE: DWORD = 0x00000008;
+pub const FILE_NOTIFY_CHANGE_LAST_WRITE: DWORD = 0x00000010;
+pub const FILE_NOTIFY_CHANGE_LAST_ACCESS: DWORD = 0x00000020;
+pub const FILE_NOTIFY_CHANGE_CREATION: DWORD = 0x00000040;
+pub const FILE_NOTIFY_CHANGE_SECURITY: DWORD = 0x00000100;
+pub const FILE_ACTION_ADDED: DWORD = 0x00000001;
+pub const FILE_ACTION_REMOVED: DWORD = 0x00000002;
+pub const FILE_ACTION_MODIFIED: DWORD = 0x00000003;
+pub const FILE_ACTION_RENAMED_OLD_NAME: DWORD = 0x00000004;
+pub const FILE_ACTION_RENAMED_NEW_NAME: DWORD = 0x00000005;
+pub const MAILSLOT_NO_MESSAGE: DWORD = 0xFFFFFFFF;
+pub const MAILSLOT_WAIT_FOREVER: DWORD = 0xFFFFFFFF;
+pub const FILE_CASE_SENSITIVE_SEARCH: DWORD = 0x00000001;
+pub const FILE_CASE_PRESERVED_NAMES: DWORD = 0x00000002;
+pub const FILE_UNICODE_ON_DISK: DWORD = 0x00000004;
+pub const FILE_PERSISTENT_ACLS: DWORD = 0x00000008;
+pub const FILE_FILE_COMPRESSION: DWORD = 0x00000010;
+pub const FILE_VOLUME_QUOTAS: DWORD = 0x00000020;
+pub const FILE_SUPPORTS_SPARSE_FILES: DWORD = 0x00000040;
+pub const FILE_SUPPORTS_REPARSE_POINTS: DWORD = 0x00000080;
+pub const FILE_SUPPORTS_REMOTE_STORAGE: DWORD = 0x00000100;
+pub const FILE_RETURNS_CLEANUP_RESULT_INFO: DWORD = 0x00000200;
+pub const FILE_VOLUME_IS_COMPRESSED: DWORD = 0x00008000;
+pub const FILE_SUPPORTS_OBJECT_IDS: DWORD = 0x00010000;
+pub const FILE_SUPPORTS_ENCRYPTION: DWORD = 0x00020000;
+pub const FILE_NAMED_STREAMS: DWORD = 0x00040000;
+pub const FILE_READ_ONLY_VOLUME: DWORD = 0x00080000;
+pub const FILE_SEQUENTIAL_WRITE_ONCE: DWORD = 0x00100000;
+pub const FILE_SUPPORTS_TRANSACTIONS: DWORD = 0x00200000;
+pub const FILE_SUPPORTS_HARD_LINKS: DWORD = 0x00400000;
+pub const FILE_SUPPORTS_EXTENDED_ATTRIBUTES: DWORD = 0x00800000;
+pub const FILE_SUPPORTS_OPEN_BY_FILE_ID: DWORD = 0x01000000;
+pub const FILE_SUPPORTS_USN_JOURNAL: DWORD = 0x02000000;
+pub const FILE_SUPPORTS_INTEGRITY_STREAMS: DWORD = 0x04000000;
+pub const FILE_SUPPORTS_BLOCK_REFCOUNTING: DWORD = 0x08000000;
+pub const FILE_SUPPORTS_SPARSE_VDL: DWORD = 0x10000000;
+pub const FILE_DAX_VOLUME: DWORD = 0x20000000;
+pub const FILE_SUPPORTS_GHOSTING: DWORD = 0x40000000;
+pub const FILE_INVALID_FILE_ID: LONGLONG = -1;
+FILE_ID_128 :: struct {
+	Identifier: [16]BYTE,
+}
+PFILE_ID_128 :: ^FILE_ID_128;
+FILE_NOTIFY_INFORMATION :: struct {
+	NextEntryOffset: DWORD,
+	Action: DWORD,
+	FileNameLength: DWORD,
+	FileName: [1]WCHAR,
+}
+FILE_SEGMENT_ELEMENT :: struct #raw_union {
+	[1]u64,
+	Buffer Buffer_mut: PVOID64,
+	Alignment Alignment_mut: ULONGLONG,
+}
+PFILE_SEGMENT_ELEMENT :: ^FILE_SEGMENT_ELEMENT;
+pub const FLUSH_FLAGS_FILE_DATA_ONLY: ULONG = 0x00000001;
+pub const FLUSH_FLAGS_NO_SYNC: ULONG = 0x00000002;
+pub const FLUSH_FLAGS_FILE_DATA_SYNC_ONLY: ULONG = 0x00000004;
+REPARSE_GUID_DATA_BUFFER_GenericReparseBuffer :: struct {
+	DataBuffer: [1]BYTE,
+}
+REPARSE_GUID_DATA_BUFFER :: struct {
+	ReparseTag: DWORD,
+	ReparseDataLength: WORD,
+	Reserved: WORD,
+	ReparseGuid: GUID,
+	GenericReparseBuffer: REPARSE_GUID_DATA_BUFFER_GenericReparseBuffer,
+}
+PREPARSE_GUID_DATA_BUFFER :: ^REPARSE_GUID_DATA_BUFFER;
+pub const MAXIMUM_REPARSE_DATA_BUFFER_SIZE: DWORD = 16 * 1024;
+pub const IO_REPARSE_TAG_RESERVED_ZERO: DWORD = 0;
+pub const IO_REPARSE_TAG_RESERVED_ONE: DWORD = 1;
+pub const IO_REPARSE_TAG_RESERVED_TWO: DWORD = 2;
+pub const IO_REPARSE_TAG_RESERVED_RANGE: DWORD = IO_REPARSE_TAG_RESERVED_TWO;
+#[inline]
+pub fn IsReparseTagMicrosoft(_tag: DWORD) -> bool {
+	(_tag & 0x80000000) != 0
+}
+#[inline]
+pub fn IsReparseTagNameSurrogate(_tag: DWORD) -> bool {
+	(_tag & 0x20000000) != 0
+}
+#[inline]
+pub fn IsReparseTagDirectory(_tag: DWORD) -> bool {
+	(_tag & 0x10000000) != 0
+}
+pub const IO_REPARSE_TAG_MOUNT_POINT: DWORD = 0xA0000003;
+pub const IO_REPARSE_TAG_HSM: DWORD = 0xC0000004;
+pub const IO_REPARSE_TAG_HSM2: DWORD = 0x80000006;
+pub const IO_REPARSE_TAG_SIS: DWORD = 0x80000007;
+pub const IO_REPARSE_TAG_WIM: DWORD = 0x80000008;
+pub const IO_REPARSE_TAG_CSV: DWORD = 0x80000009;
+pub const IO_REPARSE_TAG_DFS: DWORD = 0x8000000A;
+pub const IO_REPARSE_TAG_SYMLINK: DWORD = 0xA000000C;
+pub const IO_REPARSE_TAG_DFSR: DWORD = 0x80000012;
+pub const IO_REPARSE_TAG_DEDUP: DWORD = 0x80000013;
+pub const IO_REPARSE_TAG_NFS: DWORD = 0x80000014;
+pub const IO_REPARSE_TAG_FILE_PLACEHOLDER: DWORD = 0x80000015;
+pub const IO_REPARSE_TAG_WOF: DWORD = 0x80000017;
+pub const IO_REPARSE_TAG_WCI: DWORD = 0x80000018;
+pub const IO_REPARSE_TAG_GLOBAL_REPARSE: DWORD = 0xA0000019;
+pub const IO_REPARSE_TAG_CLOUD: DWORD = 0x9000001A;
+pub const IO_REPARSE_TAG_CLOUD_ROOT: DWORD = 0x9000101A;
+pub const IO_REPARSE_TAG_CLOUD_ON_DEMAND: DWORD = 0x9000201A;
+pub const IO_REPARSE_TAG_CLOUD_ROOT_ON_DEMAND: DWORD = 0x9000301A;
+pub const IO_REPARSE_TAG_APPEXECLINK: DWORD = 0x8000001B;
+pub const IO_REPARSE_TAG_GVFS: DWORD = 0x9000001C;
+pub const IO_REPARSE_TAG_WCI_TOMBSTONE: DWORD = 0xA000001F;
+pub const IO_REPARSE_TAG_UNHANDLED: DWORD = 0x80000020;
+pub const IO_REPARSE_TAG_ONEDRIVE: DWORD = 0x80000021;
+pub const IO_REPARSE_TAG_GVFS_TOMBSTONE: DWORD = 0xA0000022;
+pub const SCRUB_DATA_INPUT_FLAG_RESUME: DWORD = 0x00000001;
+pub const SCRUB_DATA_INPUT_FLAG_SKIP_IN_SYNC: DWORD = 0x00000002;
+pub const SCRUB_DATA_INPUT_FLAG_SKIP_NON_INTEGRITY_DATA: DWORD = 0x00000004;
+pub const SCRUB_DATA_OUTPUT_FLAG_INCOMPLETE: DWORD = 0x00000001;
+pub const SCRUB_DATA_OUTPUT_FLAG_NON_USER_DATA_RANGE: DWORD = 0x00010000;
+pub const SCRUB_DATA_OUTPUT_FLAG_PARITY_EXTENT_DATA_RETURNED: DWORD = 0x00020000;
+pub const SCRUB_DATA_OUTPUT_FLAG_RESUME_CONTEXT_LENGTH_SPECIFIED: DWORD = 0x00040000;
+SCRUB_DATA_INPUT :: struct {
+	Size: DWORD,
+	Flags: DWORD,
+	MaximumIos: DWORD,
+	Reserved: [17]DWORD,
+	ResumeContext: [816]BYTE,
+}
+PSCRUB_DATA_INPUT :: ^SCRUB_DATA_INPUT;
+SCRUB_PARITY_EXTENT :: struct {
+	Offset: LONGLONG,
+	Length: ULONGLONG,
+}
+PSCRUB_PARITY_EXTENT :: ^SCRUB_PARITY_EXTENT;
+SCRUB_PARITY_EXTENT_DATA :: struct {
+	Size: WORD,
+	Flags: WORD,
+	NumberOfParityExtents: WORD,
+	MaximumNumberOfParityExtents: WORD,
+	ParityExtents: [ANYSIZE_ARRAY]SCRUB_PARITY_EXTENT,
+}
+PSCRUB_PARITY_EXTENT_DATA :: ^SCRUB_PARITY_EXTENT_DATA;
+SCRUB_DATA_OUTPUT :: struct {
+	Size: DWORD,
+	Flags: DWORD,
+	Status: DWORD,
+	ErrorFileOffset: ULONGLONG,
+	ErrorLength: ULONGLONG,
+	NumberOfBytesRepaired: ULONGLONG,
+	NumberOfBytesFailed: ULONGLONG,
+	InternalFileReference: ULONGLONG,
+	ResumeContextLength: WORD,
+	ParityExtentDataOffset: WORD,
+	Reserved: [5]DWORD,
+	ResumeContext: [816]BYTE,
+}
+PSCRUB_DATA_OUTPUT :: ^SCRUB_DATA_OUTPUT;
+using SharedVirtualDiskSupportType :: enum c.int {
+	SharedVirtualDisksUnsupported = 0,
+	SharedVirtualDisksSupported = 1,
+	SharedVirtualDiskSnapshotsSupported = 3,
+	SharedVirtualDiskCDPSnapshotsSupported = 7,
+}
+using SharedVirtualDiskHandleState :: enum c.int {
+	SharedVirtualDiskHandleStateNone = 0,
+	SharedVirtualDiskHandleStateFileShared = 1,
+	SharedVirtualDiskHandleStateHandleShared = 3,
+}
+SHARED_VIRTUAL_DISK_SUPPORT :: struct {
+	SharedVirtualDiskSupport: SharedVirtualDiskSupportType,
+	HandleState: SharedVirtualDiskHandleState,
+}
+PSHARED_VIRTUAL_DISK_SUPPORT :: ^SHARED_VIRTUAL_DISK_SUPPORT;
+#[inline]
+pub fn IsVirtualDiskFileShared(HandleState: SharedVirtualDiskHandleState) -> bool {
+	(HandleState & SharedVirtualDiskHandleStateFileShared) != 0
+}
+pub const IO_COMPLETION_MODIFY_STATE: DWORD = 0x0002;
+pub const IO_COMPLETION_ALL_ACCESS: DWORD = STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0x3;
+pub const IO_QOS_MAX_RESERVATION: DWORD64 = 1000000000;
+pub const SMB_CCF_APP_INSTANCE_EA_NAME: string = "ClusteredApplicationInstance";
+pub const NETWORK_APP_INSTANCE_CSV_FLAGS_VALID_ONLY_IF_CSV_COORDINATOR: DWORD = 0x00000001;
+NETWORK_APP_INSTANCE_EA :: struct {
+	AppInstanceID: GUID,
+	CsvFlags: DWORD,
+}
+PNETWORK_APP_INSTANCE_EA :: ^NETWORK_APP_INSTANCE_EA;
+pub const DUPLICATE_CLOSE_SOURCE: DWORD = 0x00000001;
+pub const DUPLICATE_SAME_ACCESS: DWORD = 0x00000002;
+DEFINE_GUID!{GUID_MAX_POWER_SAVINGS,
+	0xa1841308, 0x3541, 0x4fab, 0xbc, 0x81, 0xf7, 0x15, 0x56, 0xf2, 0x0b, 0x4a}
+DEFINE_GUID!{GUID_MIN_POWER_SAVINGS,
+	0x8c5e7fda, 0xe8bf, 0x4a96, 0x9a, 0x85, 0xa6, 0xe2, 0x3a, 0x8c, 0x63, 0x5c}
+DEFINE_GUID!{GUID_TYPICAL_POWER_SAVINGS,
+	0x381b4222, 0xf694, 0x41f0, 0x96, 0x85, 0xff, 0x5b, 0xb2, 0x60, 0xdf, 0x2e}
+DEFINE_GUID!{NO_SUBGROUP_GUID,
+	0xfea3413e, 0x7e05, 0x4911, 0x9a, 0x71, 0x70, 0x03, 0x31, 0xf1, 0xc2, 0x94}
+DEFINE_GUID!{ALL_POWERSCHEMES_GUID,
+	0x68a1e95e, 0x13ea, 0x41e1, 0x80, 0x11, 0x0c, 0x49, 0x6c, 0xa4, 0x90, 0xb0}
+DEFINE_GUID!{GUID_POWERSCHEME_PERSONALITY,
+	0x245d8541, 0x3943, 0x4422, 0xb0, 0x25, 0x13, 0xa7, 0x84, 0xf6, 0x79, 0xb7}
+DEFINE_GUID!{GUID_ACTIVE_POWERSCHEME,
+	0x31f9f286, 0x5084, 0x42fe, 0xb7, 0x20, 0x2b, 0x02, 0x64, 0x99, 0x37, 0x63}
+DEFINE_GUID!{GUID_IDLE_RESILIENCY_SUBGROUP,
+	0x2e601130, 0x5351, 0x4d9d, 0x8e, 0x4, 0x25, 0x29, 0x66, 0xba, 0xd0, 0x54}
+DEFINE_GUID!{GUID_IDLE_RESILIENCY_PERIOD,
+	0xc42b79aa, 0xaa3a, 0x484b, 0xa9, 0x8f, 0x2c, 0xf3, 0x2a, 0xa9, 0xa, 0x28}
+DEFINE_GUID!{GUID_DEEP_SLEEP_ENABLED,
+	0xd502f7ee, 0x1dc7, 0x4efd, 0xa5, 0x5d, 0xf0, 0x4b, 0x6f, 0x5c, 0x5, 0x45}
+DEFINE_GUID!{GUID_DEEP_SLEEP_PLATFORM_STATE,
+	0xd23f2fb8, 0x9536, 0x4038, 0x9c, 0x94, 0x1c, 0xe0, 0x2e, 0x5c, 0x21, 0x52}
+DEFINE_GUID!{GUID_DISK_COALESCING_POWERDOWN_TIMEOUT,
+	0xc36f0eb4, 0x2988, 0x4a70, 0x8e, 0xee, 0x8, 0x84, 0xfc, 0x2c, 0x24, 0x33}
+DEFINE_GUID!{GUID_EXECUTION_REQUIRED_REQUEST_TIMEOUT,
+	0x3166bc41, 0x7e98, 0x4e03, 0xb3, 0x4e, 0xec, 0xf, 0x5f, 0x2b, 0x21, 0x8e}
+DEFINE_GUID!{GUID_VIDEO_SUBGROUP,
+	0x7516b95f, 0xf776, 0x4464, 0x8c, 0x53, 0x06, 0x16, 0x7f, 0x40, 0xcc, 0x99}
+DEFINE_GUID!{GUID_VIDEO_POWERDOWN_TIMEOUT,
+	0x3c0bc021, 0xc8a8, 0x4e07, 0xa9, 0x73, 0x6b, 0x14, 0xcb, 0xcb, 0x2b, 0x7e}
+DEFINE_GUID!{GUID_VIDEO_ANNOYANCE_TIMEOUT,
+	0x82dbcf2d, 0xcd67, 0x40c5, 0xbf, 0xdc, 0x9f, 0x1a, 0x5c, 0xcd, 0x46, 0x63}
+DEFINE_GUID!{GUID_VIDEO_ADAPTIVE_PERCENT_INCREASE,
+	0xeed904df, 0xb142, 0x4183, 0xb1, 0x0b, 0x5a, 0x11, 0x97, 0xa3, 0x78, 0x64}
+DEFINE_GUID!{GUID_VIDEO_DIM_TIMEOUT,
+	0x17aaa29b, 0x8b43, 0x4b94, 0xaa, 0xfe, 0x35, 0xf6, 0x4d, 0xaa, 0xf1, 0xee}
+DEFINE_GUID!{GUID_VIDEO_ADAPTIVE_POWERDOWN,
+	0x90959d22, 0xd6a1, 0x49b9, 0xaf, 0x93, 0xbc, 0xe8, 0x85, 0xad, 0x33, 0x5b}
+DEFINE_GUID!{GUID_MONITOR_POWER_ON,
+	0x02731015, 0x4510, 0x4526, 0x99, 0xe6, 0xe5, 0xa1, 0x7e, 0xbd, 0x1a, 0xea}
+DEFINE_GUID!{GUID_DEVICE_POWER_POLICY_VIDEO_BRIGHTNESS,
+	0xaded5e82, 0xb909, 0x4619, 0x99, 0x49, 0xf5, 0xd7, 0x1d, 0xac, 0x0b, 0xcb}
+DEFINE_GUID!{GUID_DEVICE_POWER_POLICY_VIDEO_DIM_BRIGHTNESS,
+	0xf1fbfde2, 0xa960, 0x4165, 0x9f, 0x88, 0x50, 0x66, 0x79, 0x11, 0xce, 0x96}
+DEFINE_GUID!{GUID_VIDEO_CURRENT_MONITOR_BRIGHTNESS,
+	0x8ffee2c6, 0x2d01, 0x46be, 0xad, 0xb9, 0x39, 0x8a, 0xdd, 0xc5, 0xb4, 0xff}
+DEFINE_GUID!{GUID_VIDEO_ADAPTIVE_DISPLAY_BRIGHTNESS,
+	0xfbd9aa66, 0x9553, 0x4097, 0xba, 0x44, 0xed, 0x6e, 0x9d, 0x65, 0xea, 0xb8}
+DEFINE_GUID!{GUID_CONSOLE_DISPLAY_STATE,
+	0x6fe69556, 0x704a, 0x47a0, 0x8f, 0x24, 0xc2, 0x8d, 0x93, 0x6f, 0xda, 0x47}
+DEFINE_GUID!{GUID_ALLOW_DISPLAY_REQUIRED,
+	0xa9ceb8da, 0xcd46, 0x44fb, 0xa9, 0x8b, 0x02, 0xaf, 0x69, 0xde, 0x46, 0x23}
+DEFINE_GUID!{GUID_VIDEO_CONSOLE_LOCK_TIMEOUT,
+	0x8ec4b3a5, 0x6868, 0x48c2, 0xbe, 0x75, 0x4f, 0x30, 0x44, 0xbe, 0x88, 0xa7}
+DEFINE_GUID!{GUID_ADAPTIVE_POWER_BEHAVIOR_SUBGROUP,
+	0x8619b916, 0xe004, 0x4dd8, 0x9b, 0x66, 0xda, 0xe8, 0x6f, 0x80, 0x66, 0x98}
+DEFINE_GUID!{GUID_NON_ADAPTIVE_INPUT_TIMEOUT,
+	0x5adbbfbc, 0x74e, 0x4da1, 0xba, 0x38, 0xdb, 0x8b, 0x36, 0xb2, 0xc8, 0xf3}
+DEFINE_GUID!{GUID_ADAPTIVE_INPUT_CONTROLLER_STATE,
+	0xe98fae9, 0xf45a, 0x4de1, 0xa7, 0x57, 0x60, 0x31, 0xf1, 0x97, 0xf6, 0xea}
+DEFINE_GUID!{GUID_DISK_SUBGROUP,
+	0x0012ee47, 0x9041, 0x4b5d, 0x9b, 0x77, 0x53, 0x5f, 0xba, 0x8b, 0x14, 0x42}
+DEFINE_GUID!{GUID_DISK_MAX_POWER,
+	0x51dea550, 0xbb38, 0x4bc4, 0x99, 0x1b, 0xea, 0xcf, 0x37, 0xbe, 0x5e, 0xc8}
+DEFINE_GUID!{GUID_DISK_POWERDOWN_TIMEOUT,
+	0x6738e2c4, 0xe8a5, 0x4a42, 0xb1, 0x6a, 0xe0, 0x40, 0xe7, 0x69, 0x75, 0x6e}
+DEFINE_GUID!{GUID_DISK_IDLE_TIMEOUT,
+	0x58e39ba8, 0xb8e6, 0x4ef6, 0x90, 0xd0, 0x89, 0xae, 0x32, 0xb2, 0x58, 0xd6}
+DEFINE_GUID!{GUID_DISK_BURST_IGNORE_THRESHOLD,
+	0x80e3c60e, 0xbb94, 0x4ad8, 0xbb, 0xe0, 0x0d, 0x31, 0x95, 0xef, 0xc6, 0x63}
+DEFINE_GUID!{GUID_DISK_ADAPTIVE_POWERDOWN,
+	0x396a32e1, 0x499a, 0x40b2, 0x91, 0x24, 0xa9, 0x6a, 0xfe, 0x70, 0x76, 0x67}
+DEFINE_GUID!{GUID_SLEEP_SUBGROUP,
+	0x238c9fa8, 0x0aad, 0x41ed, 0x83, 0xf4, 0x97, 0xbe, 0x24, 0x2c, 0x8f, 0x20}
+DEFINE_GUID!{GUID_SLEEP_IDLE_THRESHOLD,
+	0x81cd32e0, 0x7833, 0x44f3, 0x87, 0x37, 0x70, 0x81, 0xf3, 0x8d, 0x1f, 0x70}
+DEFINE_GUID!{GUID_STANDBY_TIMEOUT,
+	0x29f6c1db, 0x86da, 0x48c5, 0x9f, 0xdb, 0xf2, 0xb6, 0x7b, 0x1f, 0x44, 0xda}
+DEFINE_GUID!{GUID_UNATTEND_SLEEP_TIMEOUT,
+	0x7bc4a2f9, 0xd8fc, 0x4469, 0xb0, 0x7b, 0x33, 0xeb, 0x78, 0x5a, 0xac, 0xa0}
+DEFINE_GUID!{GUID_HIBERNATE_TIMEOUT,
+	0x9d7815a6, 0x7ee4, 0x497e, 0x88, 0x88, 0x51, 0x5a, 0x05, 0xf0, 0x23, 0x64}
+DEFINE_GUID!{GUID_HIBERNATE_FASTS4_POLICY,
+	0x94ac6d29, 0x73ce, 0x41a6, 0x80, 0x9f, 0x63, 0x63, 0xba, 0x21, 0xb4, 0x7e}
+DEFINE_GUID!{GUID_CRITICAL_POWER_TRANSITION,
+	0xb7a27025, 0xe569, 0x46c2, 0xa5, 0x04, 0x2b, 0x96, 0xca, 0xd2, 0x25, 0xa1}
+DEFINE_GUID!{GUID_SYSTEM_AWAYMODE,
+	0x98a7f580, 0x01f7, 0x48aa, 0x9c, 0x0f, 0x44, 0x35, 0x2c, 0x29, 0xe5, 0xc0}
+DEFINE_GUID!{GUID_ALLOW_AWAYMODE,
+	0x25dfa149, 0x5dd1, 0x4736, 0xb5, 0xab, 0xe8, 0xa3, 0x7b, 0x5b, 0x81, 0x87}
+DEFINE_GUID!{GUID_USER_PRESENCE_PREDICTION,
+	0x82011705, 0xfb95, 0x4d46, 0x8d, 0x35, 0x40, 0x42, 0xb1, 0xd2, 0xd, 0xef}
+DEFINE_GUID!{GUID_STANDBY_BUDGET_GRACE_PERIOD,
+	0x60c07fe1, 0x0556, 0x45cf, 0x99, 0x03, 0xd5, 0x6e, 0x32, 0x21, 0x2, 0x42}
+DEFINE_GUID!{GUID_STANDBY_BUDGET_PERCENT,
+	0x9fe527be, 0x1b70, 0x48da, 0x93, 0x0d, 0x7b, 0xcf, 0x17, 0xb4, 0x49, 0x90}
+DEFINE_GUID!{GUID_STANDBY_RESERVE_GRACE_PERIOD,
+	0xc763ee92, 0x71e8, 0x4127, 0x84, 0xeb, 0xf6, 0xed, 0x04, 0x3a, 0x3e, 0x3d}
+DEFINE_GUID!{GUID_STANDBY_RESERVE_TIME,
+	0x468fe7e5, 0x1158, 0x46ec, 0x88, 0xbc, 0x5b, 0x96, 0xc9, 0xe4, 0x4f, 0xd0}
+DEFINE_GUID!{GUID_STANDBY_RESET_PERCENT,
+	0x49cb11a5, 0x56e2, 0x4afb, 0x9d, 0x38, 0x3d, 0xf4, 0x78, 0x72, 0xe2, 0x1b}
+DEFINE_GUID!{GUID_ALLOW_STANDBY_STATES,
+	0xabfc2519, 0x3608, 0x4c2a, 0x94, 0xea, 0x17, 0x1b, 0x0e, 0xd5, 0x46, 0xab}
+DEFINE_GUID!{GUID_ALLOW_RTC_WAKE,
+	0xbd3b718a, 0x0680, 0x4d9d, 0x8a, 0xb2, 0xe1, 0xd2, 0xb4, 0xac, 0x80, 0x6d}
+DEFINE_GUID!{GUID_ALLOW_SYSTEM_REQUIRED,
+	0xa4b195f5, 0x8225, 0x47d8, 0x80, 0x12, 0x9d, 0x41, 0x36, 0x97, 0x86, 0xe2}
+DEFINE_GUID!{GUID_POWER_SAVING_STATUS,
+	0xe00958c0, 0xc213, 0x4ace, 0xac, 0x77, 0xfe, 0xcc, 0xed, 0x2e, 0xee, 0xa5}
+DEFINE_GUID!{GUID_ENERGY_SAVER_SUBGROUP,
+	0xde830923, 0xa562, 0x41af, 0xa0, 0x86, 0xe3, 0xa2, 0xc6, 0xba, 0xd2, 0xda}
+DEFINE_GUID!{GUID_ENERGY_SAVER_BATTERY_THRESHOLD,
+	0xe69653ca, 0xcf7f, 0x4f05, 0xaa, 0x73, 0xcb, 0x83, 0x3f, 0xa9, 0x0a, 0xd4}
+DEFINE_GUID!{GUID_ENERGY_SAVER_BRIGHTNESS,
+	0x13d09884, 0xf74e, 0x474a, 0xa8, 0x52, 0xb6, 0xbd, 0xe8, 0xad, 0x03, 0xa8}
+DEFINE_GUID!{GUID_ENERGY_SAVER_POLICY,
+	0x5c5bb349, 0xad29, 0x4ee2, 0x9d, 0xb, 0x2b, 0x25, 0x27, 0xf, 0x7a, 0x81}
+DEFINE_GUID!{GUID_SYSTEM_BUTTON_SUBGROUP,
+	0x4f971e89, 0xeebd, 0x4455, 0xa8, 0xde, 0x9e, 0x59, 0x04, 0x0e, 0x73, 0x47}
+pub const POWERBUTTON_ACTION_INDEX_NOTHING: DWORD = 0;
+pub const POWERBUTTON_ACTION_INDEX_SLEEP: DWORD = 1;
+pub const POWERBUTTON_ACTION_INDEX_HIBERNATE: DWORD = 2;
+pub const POWERBUTTON_ACTION_INDEX_SHUTDOWN: DWORD = 3;
+pub const POWERBUTTON_ACTION_INDEX_TURN_OFF_THE_DISPLAY: DWORD = 4;
+pub const POWERBUTTON_ACTION_VALUE_NOTHING: DWORD = 0;
+pub const POWERBUTTON_ACTION_VALUE_SLEEP: DWORD = 2;
+pub const POWERBUTTON_ACTION_VALUE_HIBERNATE: DWORD = 3;
+pub const POWERBUTTON_ACTION_VALUE_SHUTDOWN: DWORD = 6;
+pub const POWERBUTTON_ACTION_VALUE_TURN_OFF_THE_DISPLAY: DWORD = 8;
+DEFINE_GUID!{GUID_POWERBUTTON_ACTION,
+	0x7648efa3, 0xdd9c, 0x4e3e, 0xb5, 0x66, 0x50, 0xf9, 0x29, 0x38, 0x62, 0x80}
+DEFINE_GUID!{GUID_SLEEPBUTTON_ACTION,
+	0x96996bc0, 0xad50, 0x47ec, 0x92, 0x3b, 0x6f, 0x41, 0x87, 0x4d, 0xd9, 0xeb}
+DEFINE_GUID!{GUID_USERINTERFACEBUTTON_ACTION,
+	0xa7066653, 0x8d6c, 0x40a8, 0x91, 0x0e, 0xa1, 0xf5, 0x4b, 0x84, 0xc7, 0xe5}
+DEFINE_GUID!{GUID_LIDCLOSE_ACTION,
+	0x5ca83367, 0x6e45, 0x459f, 0xa2, 0x7b, 0x47, 0x6b, 0x1d, 0x01, 0xc9, 0x36}
+DEFINE_GUID!{GUID_LIDOPEN_POWERSTATE,
+	0x99ff10e7, 0x23b1, 0x4c07, 0xa9, 0xd1, 0x5c, 0x32, 0x06, 0xd7, 0x41, 0xb4}
+DEFINE_GUID!{GUID_BATTERY_SUBGROUP,
+	0xe73a048d, 0xbf27, 0x4f12, 0x97, 0x31, 0x8b, 0x20, 0x76, 0xe8, 0x89, 0x1f}
+DEFINE_GUID!{GUID_BATTERY_DISCHARGE_ACTION_0,
+	0x637ea02f, 0xbbcb, 0x4015, 0x8e, 0x2c, 0xa1, 0xc7, 0xb9, 0xc0, 0xb5, 0x46}
+DEFINE_GUID!{GUID_BATTERY_DISCHARGE_LEVEL_0,
+	0x9a66d8d7, 0x4ff7, 0x4ef9, 0xb5, 0xa2, 0x5a, 0x32, 0x6c, 0xa2, 0xa4, 0x69}
+DEFINE_GUID!{GUID_BATTERY_DISCHARGE_FLAGS_0,
+	0x5dbb7c9f, 0x38e9, 0x40d2, 0x97, 0x49, 0x4f, 0x8a, 0x0e, 0x9f, 0x64, 0x0f}
+DEFINE_GUID!{GUID_BATTERY_DISCHARGE_ACTION_1,
+	0xd8742dcb, 0x3e6a, 0x4b3c, 0xb3, 0xfe, 0x37, 0x46, 0x23, 0xcd, 0xcf, 0x06}
+DEFINE_GUID!{GUID_BATTERY_DISCHARGE_LEVEL_1,
+	0x8183ba9a, 0xe910, 0x48da, 0x87, 0x69, 0x14, 0xae, 0x6d, 0xc1, 0x17, 0x0a}
+DEFINE_GUID!{GUID_BATTERY_DISCHARGE_FLAGS_1,
+	0xbcded951, 0x187b, 0x4d05, 0xbc, 0xcc, 0xf7, 0xe5, 0x19, 0x60, 0xc2, 0x58}
+DEFINE_GUID!{GUID_BATTERY_DISCHARGE_ACTION_2,
+	0x421cba38, 0x1a8e, 0x4881, 0xac, 0x89, 0xe3, 0x3a, 0x8b, 0x04, 0xec, 0xe4}
+DEFINE_GUID!{GUID_BATTERY_DISCHARGE_LEVEL_2,
+	0x07a07ca2, 0xadaf, 0x40d7, 0xb0, 0x77, 0x53, 0x3a, 0xad, 0xed, 0x1b, 0xfa}
+DEFINE_GUID!{GUID_BATTERY_DISCHARGE_FLAGS_2,
+	0x7fd2f0c4, 0xfeb7, 0x4da3, 0x81, 0x17, 0xe3, 0xfb, 0xed, 0xc4, 0x65, 0x82}
+DEFINE_GUID!{GUID_BATTERY_DISCHARGE_ACTION_3,
+	0x80472613, 0x9780, 0x455e, 0xb3, 0x08, 0x72, 0xd3, 0x00, 0x3c, 0xf2, 0xf8}
+DEFINE_GUID!{GUID_BATTERY_DISCHARGE_LEVEL_3,
+	0x58afd5a6, 0xc2dd, 0x47d2, 0x9f, 0xbf, 0xef, 0x70, 0xcc, 0x5c, 0x59, 0x65}
+DEFINE_GUID!{GUID_BATTERY_DISCHARGE_FLAGS_3,
+	0x73613ccf, 0xdbfa, 0x4279, 0x83, 0x56, 0x49, 0x35, 0xf6, 0xbf, 0x62, 0xf3}
+DEFINE_GUID!{GUID_PROCESSOR_SETTINGS_SUBGROUP,
+	0x54533251, 0x82be, 0x4824, 0x96, 0xc1, 0x47, 0xb6, 0x0b, 0x74, 0x0d, 0x00}
+DEFINE_GUID!{GUID_PROCESSOR_THROTTLE_POLICY,
+	0x57027304, 0x4af6, 0x4104, 0x92, 0x60, 0xe3, 0xd9, 0x52, 0x48, 0xfc, 0x36}
+pub const PERFSTATE_POLICY_CHANGE_IDEAL: DWORD = 0;
+pub const PERFSTATE_POLICY_CHANGE_SINGLE: DWORD = 1;
+pub const PERFSTATE_POLICY_CHANGE_ROCKET: DWORD = 2;
+pub const PERFSTATE_POLICY_CHANGE_IDEAL_AGGRESSIVE: DWORD = 3;
+pub const PERFSTATE_POLICY_CHANGE_DECREASE_MAX: DWORD = PERFSTATE_POLICY_CHANGE_ROCKET;
+pub const PERFSTATE_POLICY_CHANGE_INCREASE_MAX: DWORD = PERFSTATE_POLICY_CHANGE_IDEAL_AGGRESSIVE;
+DEFINE_GUID!{GUID_PROCESSOR_THROTTLE_MAXIMUM,
+	0xbc5038f7, 0x23e0, 0x4960, 0x96, 0xda, 0x33, 0xab, 0xaf, 0x59, 0x35, 0xec}
+DEFINE_GUID!{GUID_PROCESSOR_THROTTLE_MAXIMUM_1,
+	0xbc5038f7, 0x23e0, 0x4960, 0x96, 0xda, 0x33, 0xab, 0xaf, 0x59, 0x35, 0xed}
+DEFINE_GUID!{GUID_PROCESSOR_THROTTLE_MINIMUM,
+	0x893dee8e, 0x2bef, 0x41e0, 0x89, 0xc6, 0xb5, 0x5d, 0x09, 0x29, 0x96, 0x4c}
+DEFINE_GUID!{GUID_PROCESSOR_THROTTLE_MINIMUM_1,
+	0x893dee8e, 0x2bef, 0x41e0, 0x89, 0xc6, 0xb5, 0x5d, 0x09, 0x29, 0x96, 0x4d}
+DEFINE_GUID!{GUID_PROCESSOR_FREQUENCY_LIMIT,
+	0x75b0ae3f, 0xbce0, 0x45a7, 0x8c, 0x89, 0xc9, 0x61, 0x1c, 0x25, 0xe1, 0x00}
+DEFINE_GUID!{GUID_PROCESSOR_FREQUENCY_LIMIT_1,
+	0x75b0ae3f, 0xbce0, 0x45a7, 0x8c, 0x89, 0xc9, 0x61, 0x1c, 0x25, 0xe1, 0x01}
+DEFINE_GUID!{GUID_PROCESSOR_ALLOW_THROTTLING,
+	0x3b04d4fd, 0x1cc7, 0x4f23, 0xab, 0x1c, 0xd1, 0x33, 0x78, 0x19, 0xc4, 0xbb}
+pub const PROCESSOR_THROTTLE_DISABLED: DWORD = 0;
+pub const PROCESSOR_THROTTLE_ENABLED: DWORD = 1;
+pub const PROCESSOR_THROTTLE_AUTOMATIC: DWORD = 2;
+DEFINE_GUID!{GUID_PROCESSOR_IDLESTATE_POLICY,
+	0x68f262a7, 0xf621, 0x4069, 0xb9, 0xa5, 0x48, 0x74, 0x16, 0x9b, 0xe2, 0x3c}
+DEFINE_GUID!{GUID_PROCESSOR_PERFSTATE_POLICY,
+	0xbbdc3814, 0x18e9, 0x4463, 0x8a, 0x55, 0xd1, 0x97, 0x32, 0x7c, 0x45, 0xc0}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_INCREASE_THRESHOLD,
+	0x06cadf0e, 0x64ed, 0x448a, 0x89, 0x27, 0xce, 0x7b, 0xf9, 0x0e, 0xb3, 0x5d}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_INCREASE_THRESHOLD_1,
+	0x06cadf0e, 0x64ed, 0x448a, 0x89, 0x27, 0xce, 0x7b, 0xf9, 0x0e, 0xb3, 0x5e}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_DECREASE_THRESHOLD,
+	0x12a0ab44, 0xfe28, 0x4fa9, 0xb3, 0xbd, 0x4b, 0x64, 0xf4, 0x49, 0x60, 0xa6}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_DECREASE_THRESHOLD_1,
+	0x12a0ab44, 0xfe28, 0x4fa9, 0xb3, 0xbd, 0x4b, 0x64, 0xf4, 0x49, 0x60, 0xa7}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_INCREASE_POLICY,
+	0x465e1f50, 0xb610, 0x473a, 0xab, 0x58, 0x0, 0xd1, 0x7, 0x7d, 0xc4, 0x18}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_INCREASE_POLICY_1,
+	0x465e1f50, 0xb610, 0x473a, 0xab, 0x58, 0x0, 0xd1, 0x7, 0x7d, 0xc4, 0x19}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_DECREASE_POLICY,
+	0x40fbefc7, 0x2e9d, 0x4d25, 0xa1, 0x85, 0xc, 0xfd, 0x85, 0x74, 0xba, 0xc6}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_DECREASE_POLICY_1,
+	0x40fbefc7, 0x2e9d, 0x4d25, 0xa1, 0x85, 0xc, 0xfd, 0x85, 0x74, 0xba, 0xc7}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_INCREASE_TIME,
+	0x984cf492, 0x3bed, 0x4488, 0xa8, 0xf9, 0x42, 0x86, 0xc9, 0x7b, 0xf5, 0xaa}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_INCREASE_TIME_1,
+	0x984cf492, 0x3bed, 0x4488, 0xa8, 0xf9, 0x42, 0x86, 0xc9, 0x7b, 0xf5, 0xab}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_DECREASE_TIME,
+	0xd8edeb9b, 0x95cf, 0x4f95, 0xa7, 0x3c, 0xb0, 0x61, 0x97, 0x36, 0x93, 0xc8}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_DECREASE_TIME_1,
+	0xd8edeb9b, 0x95cf, 0x4f95, 0xa7, 0x3c, 0xb0, 0x61, 0x97, 0x36, 0x93, 0xc9}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_TIME_CHECK,
+	0x4d2b0152, 0x7d5c, 0x498b, 0x88, 0xe2, 0x34, 0x34, 0x53, 0x92, 0xa2, 0xc5}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_BOOST_POLICY,
+	0x45bcc044, 0xd885, 0x43e2, 0x86, 0x5, 0xee, 0xe, 0xc6, 0xe9, 0x6b, 0x59}
+pub const PROCESSOR_PERF_BOOST_POLICY_DISABLED: DWORD = 0;
+pub const PROCESSOR_PERF_BOOST_POLICY_MAX: DWORD = 100;
+DEFINE_GUID!{GUID_PROCESSOR_PERF_BOOST_MODE,
+	0xbe337238, 0xd82, 0x4146, 0xa9, 0x60, 0x4f, 0x37, 0x49, 0xd4, 0x70, 0xc7}
+pub const PROCESSOR_PERF_BOOST_MODE_DISABLED: DWORD = 0;
+pub const PROCESSOR_PERF_BOOST_MODE_ENABLED: DWORD = 1;
+pub const PROCESSOR_PERF_BOOST_MODE_AGGRESSIVE: DWORD = 2;
+pub const PROCESSOR_PERF_BOOST_MODE_EFFICIENT_ENABLED: DWORD = 3;
+pub const PROCESSOR_PERF_BOOST_MODE_EFFICIENT_AGGRESSIVE: DWORD = 4;
+pub const PROCESSOR_PERF_BOOST_MODE_AGGRESSIVE_AT_GUARANTEED: DWORD = 5;
+pub const PROCESSOR_PERF_BOOST_MODE_EFFICIENT_AGGRESSIVE_AT_GUARANTEED: DWORD = 6;
+pub const PROCESSOR_PERF_BOOST_MODE_MAX: DWORD
+	= PROCESSOR_PERF_BOOST_MODE_EFFICIENT_AGGRESSIVE_AT_GUARANTEED;
+DEFINE_GUID!{GUID_PROCESSOR_PERF_AUTONOMOUS_MODE,
+	0x8baa4a8a, 0x14c6, 0x4451, 0x8e, 0x8b, 0x14, 0xbd, 0xbd, 0x19, 0x75, 0x37}
+pub const PROCESSOR_PERF_AUTONOMOUS_MODE_DISABLED: DWORD = 0;
+pub const PROCESSOR_PERF_AUTONOMOUS_MODE_ENABLED: DWORD = 1;
+DEFINE_GUID!{GUID_PROCESSOR_PERF_ENERGY_PERFORMANCE_PREFERENCE,
+	0x36687f9e, 0xe3a5, 0x4dbf, 0xb1, 0xdc, 0x15, 0xeb, 0x38, 0x1c, 0x68, 0x63}
+pub const PROCESSOR_PERF_PERFORMANCE_PREFERENCE: DWORD = 0xff;
+pub const PROCESSOR_PERF_ENERGY_PREFERENCE: DWORD = 0;
+DEFINE_GUID!{GUID_PROCESSOR_PERF_AUTONOMOUS_ACTIVITY_WINDOW,
+	0xcfeda3d0, 0x7697, 0x4566, 0xa9, 0x22, 0xa9, 0x8, 0x6c, 0xd4, 0x9d, 0xfa}
+pub const PROCESSOR_PERF_MINIMUM_ACTIVITY_WINDOW: DWORD = 0;
+pub const PROCESSOR_PERF_MAXIMUM_ACTIVITY_WINDOW: DWORD = 1270000000;
+DEFINE_GUID!{GUID_PROCESSOR_DUTY_CYCLING,
+	0x4e4450b3, 0x6179, 0x4e91, 0xb8, 0xf1, 0x5b, 0xb9, 0x93, 0x8f, 0x81, 0xa1}
+pub const PROCESSOR_DUTY_CYCLING_DISABLED: DWORD = 0;
+pub const PROCESSOR_DUTY_CYCLING_ENABLED: DWORD = 1;
+DEFINE_GUID!{GUID_PROCESSOR_IDLE_ALLOW_SCALING,
+	0x6c2993b0, 0x8f48, 0x481f, 0xbc, 0xc6, 0x0, 0xdd, 0x27, 0x42, 0xaa, 0x6}
+DEFINE_GUID!{GUID_PROCESSOR_IDLE_DISABLE,
+	0x5d76a2ca, 0xe8c0, 0x402f, 0xa1, 0x33, 0x21, 0x58, 0x49, 0x2d, 0x58, 0xad}
+DEFINE_GUID!{GUID_PROCESSOR_IDLE_STATE_MAXIMUM,
+	0x9943e905, 0x9a30, 0x4ec1, 0x9b, 0x99, 0x44, 0xdd, 0x3b, 0x76, 0xf7, 0xa2}
+DEFINE_GUID!{GUID_PROCESSOR_IDLE_TIME_CHECK,
+	0xc4581c31, 0x89ab, 0x4597, 0x8e, 0x2b, 0x9c, 0x9c, 0xab, 0x44, 0xe, 0x6b}
+DEFINE_GUID!{GUID_PROCESSOR_IDLE_DEMOTE_THRESHOLD,
+	0x4b92d758, 0x5a24, 0x4851, 0xa4, 0x70, 0x81, 0x5d, 0x78, 0xae, 0xe1, 0x19}
+DEFINE_GUID!{GUID_PROCESSOR_IDLE_PROMOTE_THRESHOLD,
+	0x7b224883, 0xb3cc, 0x4d79, 0x81, 0x9f, 0x83, 0x74, 0x15, 0x2c, 0xbe, 0x7c}
+DEFINE_GUID!{GUID_PROCESSOR_CORE_PARKING_INCREASE_THRESHOLD,
+	0xdf142941, 0x20f3, 0x4edf, 0x9a, 0x4a, 0x9c, 0x83, 0xd3, 0xd7, 0x17, 0xd1}
+DEFINE_GUID!{GUID_PROCESSOR_CORE_PARKING_DECREASE_THRESHOLD,
+	0x68dd2f27, 0xa4ce, 0x4e11, 0x84, 0x87, 0x37, 0x94, 0xe4, 0x13, 0x5d, 0xfa}
+DEFINE_GUID!{GUID_PROCESSOR_CORE_PARKING_INCREASE_POLICY,
+	0xc7be0679, 0x2817, 0x4d69, 0x9d, 0x02, 0x51, 0x9a, 0x53, 0x7e, 0xd0, 0xc6}
+pub const CORE_PARKING_POLICY_CHANGE_IDEAL: DWORD = 0;
+pub const CORE_PARKING_POLICY_CHANGE_SINGLE: DWORD = 1;
+pub const CORE_PARKING_POLICY_CHANGE_ROCKET: DWORD = 2;
+pub const CORE_PARKING_POLICY_CHANGE_MULTISTEP: DWORD = 3;
+pub const CORE_PARKING_POLICY_CHANGE_MAX: DWORD = CORE_PARKING_POLICY_CHANGE_MULTISTEP;
+DEFINE_GUID!{GUID_PROCESSOR_CORE_PARKING_DECREASE_POLICY,
+	0x71021b41, 0xc749, 0x4d21, 0xbe, 0x74, 0xa0, 0x0f, 0x33, 0x5d, 0x58, 0x2b}
+DEFINE_GUID!{GUID_PROCESSOR_CORE_PARKING_MAX_CORES,
+	0xea062031, 0x0e34, 0x4ff1, 0x9b, 0x6d, 0xeb, 0x10, 0x59, 0x33, 0x40, 0x28}
+DEFINE_GUID!{GUID_PROCESSOR_CORE_PARKING_MAX_CORES_1,
+	0xea062031, 0x0e34, 0x4ff1, 0x9b, 0x6d, 0xeb, 0x10, 0x59, 0x33, 0x40, 0x29}
+DEFINE_GUID!{GUID_PROCESSOR_CORE_PARKING_MIN_CORES,
+	0x0cc5b647, 0xc1df, 0x4637, 0x89, 0x1a, 0xde, 0xc3, 0x5c, 0x31, 0x85, 0x83}
+DEFINE_GUID!{GUID_PROCESSOR_CORE_PARKING_MIN_CORES_1,
+	0x0cc5b647, 0xc1df, 0x4637, 0x89, 0x1a, 0xde, 0xc3, 0x5c, 0x31, 0x85, 0x84}
+DEFINE_GUID!{GUID_PROCESSOR_CORE_PARKING_INCREASE_TIME,
+	0x2ddd5a84, 0x5a71, 0x437e, 0x91, 0x2a, 0xdb, 0x0b, 0x8c, 0x78, 0x87, 0x32}
+DEFINE_GUID!{GUID_PROCESSOR_CORE_PARKING_DECREASE_TIME,
+	0xdfd10d17, 0xd5eb, 0x45dd, 0x87, 0x7a, 0x9a, 0x34, 0xdd, 0xd1, 0x5c, 0x82}
+DEFINE_GUID!{GUID_PROCESSOR_CORE_PARKING_AFFINITY_HISTORY_DECREASE_FACTOR,
+	0x8f7b45e3, 0xc393, 0x480a, 0x87, 0x8c, 0xf6, 0x7a, 0xc3, 0xd0, 0x70, 0x82}
+DEFINE_GUID!{GUID_PROCESSOR_CORE_PARKING_AFFINITY_HISTORY_THRESHOLD,
+	0x5b33697b, 0xe89d, 0x4d38, 0xaa, 0x46, 0x9e, 0x7d, 0xfb, 0x7c, 0xd2, 0xf9}
+DEFINE_GUID!{GUID_PROCESSOR_CORE_PARKING_AFFINITY_WEIGHTING,
+	0xe70867f1, 0xfa2f, 0x4f4e, 0xae, 0xa1, 0x4d, 0x8a, 0x0b, 0xa2, 0x3b, 0x20}
+DEFINE_GUID!{GUID_PROCESSOR_CORE_PARKING_OVER_UTILIZATION_HISTORY_DECREASE_FACTOR,
+	0x1299023c, 0xbc28, 0x4f0a, 0x81, 0xec, 0xd3, 0x29, 0x5a, 0x8d, 0x81, 0x5d}
+DEFINE_GUID!{GUID_PROCESSOR_CORE_PARKING_OVER_UTILIZATION_HISTORY_THRESHOLD,
+	0x9ac18e92, 0xaa3c, 0x4e27, 0xb3, 0x07, 0x01, 0xae, 0x37, 0x30, 0x71, 0x29}
+DEFINE_GUID!{GUID_PROCESSOR_CORE_PARKING_OVER_UTILIZATION_WEIGHTING,
+	0x8809c2d8, 0xb155, 0x42d4, 0xbc, 0xda, 0x0d, 0x34, 0x56, 0x51, 0xb1, 0xdb}
+DEFINE_GUID!{GUID_PROCESSOR_CORE_PARKING_OVER_UTILIZATION_THRESHOLD,
+	0x943c8cb6, 0x6f93, 0x4227, 0xad, 0x87, 0xe9, 0xa3, 0xfe, 0xec, 0x08, 0xd1}
+DEFINE_GUID!{GUID_PROCESSOR_PARKING_CORE_OVERRIDE,
+	0xa55612aa, 0xf624, 0x42c6, 0xa4, 0x43, 0x73, 0x97, 0xd0, 0x64, 0xc0, 0x4f}
+DEFINE_GUID!{GUID_PROCESSOR_PARKING_PERF_STATE,
+	0x447235c7, 0x6a8d, 0x4cc0, 0x8e, 0x24, 0x9e, 0xaf, 0x70, 0xb9, 0x6e, 0x2b}
+DEFINE_GUID!{GUID_PROCESSOR_PARKING_PERF_STATE_1,
+	0x447235c7, 0x6a8d, 0x4cc0, 0x8e, 0x24, 0x9e, 0xaf, 0x70, 0xb9, 0x6e, 0x2c}
+DEFINE_GUID!{GUID_PROCESSOR_PARKING_CONCURRENCY_THRESHOLD,
+	0x2430ab6f, 0xa520, 0x44a2, 0x96, 0x01, 0xf7, 0xf2, 0x3b, 0x51, 0x34, 0xb1}
+DEFINE_GUID!{GUID_PROCESSOR_PARKING_HEADROOM_THRESHOLD,
+	0xf735a673, 0x2066, 0x4f80, 0xa0, 0xc5, 0xdd, 0xee, 0x0c, 0xf1, 0xbf, 0x5d}
+DEFINE_GUID!{GUID_PROCESSOR_PARKING_DISTRIBUTION_THRESHOLD,
+	0x4bdaf4e9, 0xd103, 0x46d7, 0xa5, 0xf0, 0x62, 0x80, 0x12, 0x16, 0x16, 0xef}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_HISTORY,
+	0x7d24baa7, 0x0b84, 0x480f, 0x84, 0x0c, 0x1b, 0x07, 0x43, 0xc0, 0x0f, 0x5f}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_HISTORY_1,
+	0x7d24baa7, 0x0b84, 0x480f, 0x84, 0x0c, 0x1b, 0x07, 0x43, 0xc0, 0x0f, 0x60}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_INCREASE_HISTORY,
+	0x99b3ef01, 0x752f, 0x46a1, 0x80, 0xfb, 0x77, 0x30, 0x1, 0x1f, 0x23, 0x54}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_DECREASE_HISTORY,
+	0x300f6f8, 0xabd6, 0x45a9, 0xb7, 0x4f, 0x49, 0x8, 0x69, 0x1a, 0x40, 0xb5}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_CORE_PARKING_HISTORY,
+	0x77d7f282, 0x8f1a, 0x42cd, 0x85, 0x37, 0x45, 0x45, 0xa, 0x83, 0x9b, 0xe8}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_LATENCY_HINT,
+	0x0822df31, 0x9c83, 0x441c, 0xa0, 0x79, 0x0d, 0xe4, 0xcf, 0x00, 0x9c, 0x7b}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_LATENCY_HINT_PERF,
+	0x619b7505, 0x3b, 0x4e82, 0xb7, 0xa6, 0x4d, 0xd2, 0x9c, 0x30, 0x9, 0x71}
+DEFINE_GUID!{GUID_PROCESSOR_PERF_LATENCY_HINT_PERF_1,
+	0x619b7505, 0x3b, 0x4e82, 0xb7, 0xa6, 0x4d, 0xd2, 0x9c, 0x30, 0x9, 0x72}
+DEFINE_GUID!{GUID_PROCESSOR_LATENCY_HINT_MIN_UNPARK,
+	0x616cdaa5, 0x695e, 0x4545, 0x97, 0xad, 0x97, 0xdc, 0x2d, 0x1b, 0xdd, 0x88}
+DEFINE_GUID!{GUID_PROCESSOR_LATENCY_HINT_MIN_UNPARK_1,
+	0x616cdaa5, 0x695e, 0x4545, 0x97, 0xad, 0x97, 0xdc, 0x2d, 0x1b, 0xdd, 0x89}
+DEFINE_GUID!{GUID_PROCESSOR_DISTRIBUTE_UTILITY,
+	0xe0007330, 0xf589, 0x42ed, 0xa4, 0x01, 0x5d, 0xdb, 0x10, 0xe7, 0x85, 0xd3}
+DEFINE_GUID!{GUID_PROCESSOR_HETEROGENEOUS_POLICY,
+	0x7f2f5cfa, 0xf10c, 0x4823, 0xb5, 0xe1, 0xe9, 0x3a, 0xe8, 0x5f, 0x46, 0xb5}
+DEFINE_GUID!{GUID_PROCESSOR_HETERO_DECREASE_TIME,
+	0x7f2492b6, 0x60b1, 0x45e5, 0xae, 0x55, 0x77, 0x3f, 0x8c, 0xd5, 0xca, 0xec}
+DEFINE_GUID!{GUID_PROCESSOR_HETERO_INCREASE_TIME,
+	0x4009efa7, 0xe72d, 0x4cba, 0x9e, 0xdf, 0x91, 0x08, 0x4e, 0xa8, 0xcb, 0xc3}
+DEFINE_GUID!{GUID_PROCESSOR_HETERO_DECREASE_THRESHOLD,
+	0xf8861c27, 0x95e7, 0x475c, 0x86, 0x5b, 0x13, 0xc0, 0xcb, 0x3f, 0x9d, 0x6b}
+DEFINE_GUID!{GUID_PROCESSOR_HETERO_INCREASE_THRESHOLD,
+	0xb000397d, 0x9b0b, 0x483d, 0x98, 0xc9, 0x69, 0x2a, 0x60, 0x60, 0xcf, 0xbf}
+DEFINE_GUID!{GUID_PROCESSOR_CLASS0_FLOOR_PERF,
+	0xfddc842b, 0x8364, 0x4edc, 0x94, 0xcf, 0xc1, 0x7f, 0x60, 0xde, 0x1c, 0x80}
+DEFINE_GUID!{GUID_PROCESSOR_CLASS1_INITIAL_PERF,
+	0x1facfc65, 0xa930, 0x4bc5, 0x9f, 0x38, 0x50, 0x4e, 0xc0, 0x97, 0xbb, 0xc0}
+DEFINE_GUID!{GUID_SYSTEM_COOLING_POLICY,
+	0x94d3a615, 0xa899, 0x4ac5, 0xae, 0x2b, 0xe4, 0xd8, 0xf6, 0x34, 0x36, 0x7f}
+DEFINE_GUID!{GUID_LOCK_CONSOLE_ON_WAKE,
+	0x0e796bdb, 0x100d, 0x47d6, 0xa2, 0xd5, 0xf7, 0xd2, 0xda, 0xa5, 0x1f, 0x51}
+DEFINE_GUID!{GUID_DEVICE_IDLE_POLICY,
+	0x4faab71a, 0x92e5, 0x4726, 0xb5, 0x31, 0x22, 0x45, 0x59, 0x67, 0x2d, 0x19}
+pub const POWER_DEVICE_IDLE_POLICY_PERFORMANCE: DWORD = 0;
+pub const POWER_DEVICE_IDLE_POLICY_CONSERVATIVE: DWORD = 1;
+DEFINE_GUID!{GUID_CONNECTIVITY_IN_STANDBY,
+	0xf15576e8, 0x98b7, 0x4186, 0xb9, 0x44, 0xea, 0xfa, 0x66, 0x44, 0x02, 0xd9}
+pub const POWER_CONNECTIVITY_IN_STANDBY_DISABLED: DWORD = 0;
+pub const POWER_CONNECTIVITY_IN_STANDBY_ENABLED: DWORD = 1;
+pub const POWER_CONNECTIVITY_IN_STANDBY_DISABLED_LID_CLOSE: DWORD = 2;
+DEFINE_GUID!{GUID_DISCONNECTED_STANDBY_MODE,
+	0x68afb2d9, 0xee95, 0x47a8, 0x8f, 0x50, 0x41, 0x15, 0x08, 0x80, 0x73, 0xb1}
+pub const POWER_DISCONNECTED_STANDBY_MODE_NORMAL: DWORD = 0;
+pub const POWER_DISCONNECTED_STANDBY_MODE_AGGRESSIVE: DWORD = 1;
+DEFINE_GUID!{GUID_ACDC_POWER_SOURCE,
+	0x5d3e9a59, 0xe9d5, 0x4b00, 0xa6, 0xbd, 0xff, 0x34, 0xff, 0x51, 0x65, 0x48}
+DEFINE_GUID!{GUID_LIDSWITCH_STATE_CHANGE,
+	0xba3e0f4d, 0xb817, 0x4094, 0xa2, 0xd1, 0xd5, 0x63, 0x79, 0xe6, 0xa0, 0xf3}
+DEFINE_GUID!{GUID_BATTERY_PERCENTAGE_REMAINING,
+	0xa7ad8041, 0xb45a, 0x4cae, 0x87, 0xa3, 0xee, 0xcb, 0xb4, 0x68, 0xa9, 0xe1}
+DEFINE_GUID!{GUID_BATTERY_COUNT,
+	0x7d263f15, 0xfca4, 0x49e5, 0x85, 0x4b, 0xa9, 0xf2, 0xbf, 0xbd, 0x5c, 0x24}
+DEFINE_GUID!{GUID_GLOBAL_USER_PRESENCE,
+	0x786e8a1d, 0xb427, 0x4344, 0x92, 0x7, 0x9, 0xe7, 0xb, 0xdc, 0xbe, 0xa9}
+DEFINE_GUID!{GUID_SESSION_DISPLAY_STATUS,
+	0x2b84c20e, 0xad23, 0x4ddf, 0x93, 0xdb, 0x5, 0xff, 0xbd, 0x7e, 0xfc, 0xa5}
+DEFINE_GUID!{GUID_SESSION_USER_PRESENCE,
+	0x3c0f4548, 0xc03f, 0x4c4d, 0xb9, 0xf2, 0x23, 0x7e, 0xde, 0x68, 0x63, 0x76}
+DEFINE_GUID!{GUID_IDLE_BACKGROUND_TASK,
+	0x515c31d8, 0xf734, 0x163d, 0xa0, 0xfd, 0x11, 0xa0, 0x8c, 0x91, 0xe8, 0xf1}
+DEFINE_GUID!{GUID_BACKGROUND_TASK_NOTIFICATION,
+	0xcf23f240, 0x2a54, 0x48d8, 0xb1, 0x14, 0xde, 0x15, 0x18, 0xff, 0x05, 0x2e}
+DEFINE_GUID!{GUID_APPLAUNCH_BUTTON,
+	0x1a689231, 0x7399, 0x4e9a, 0x8f, 0x99, 0xb7, 0x1f, 0x99, 0x9d, 0xb3, 0xfa}
+DEFINE_GUID!{GUID_PCIEXPRESS_SETTINGS_SUBGROUP,
+	0x501a4d13, 0x42af,0x4429, 0x9f, 0xd1, 0xa8, 0x21, 0x8c, 0x26, 0x8e, 0x20}
+DEFINE_GUID!{GUID_PCIEXPRESS_ASPM_POLICY,
+	0xee12f906, 0xd277, 0x404b, 0xb6, 0xda, 0xe5, 0xfa, 0x1a, 0x57, 0x6d, 0xf5}
+DEFINE_GUID!{GUID_ENABLE_SWITCH_FORCED_SHUTDOWN,
+	0x833a6b62, 0xdfa4, 0x46d1, 0x82, 0xf8, 0xe0, 0x9e, 0x34, 0xd0, 0x29, 0xd6}
+DEFINE_GUID!{GUID_INTSTEER_SUBGROUP,
+	0x48672f38, 0x7a9a, 0x4bb2, 0x8b, 0xf8, 0x3d, 0x85, 0xbe, 0x19, 0xde, 0x4e}
+DEFINE_GUID!{GUID_INTSTEER_MODE,
+	0x2bfc24f9, 0x5ea2, 0x4801, 0x82, 0x13, 0x3d, 0xba, 0xe0, 0x1a, 0xa3, 0x9d}
+DEFINE_GUID!{GUID_INTSTEER_LOAD_PER_PROC_TRIGGER,
+	0x73cde64d, 0xd720, 0x4bb2, 0xa8, 0x60, 0xc7, 0x55, 0xaf, 0xe7, 0x7e, 0xf2}
+DEFINE_GUID!{GUID_INTSTEER_TIME_UNPARK_TRIGGER,
+	0xd6ba4903, 0x386f, 0x4c2c, 0x8a, 0xdb, 0x5c, 0x21, 0xb3, 0x32, 0x8d, 0x25}
+using SYSTEM_POWER_STATE :: enum c.int {
+	PowerSystemUnspecified = 0,
+	PowerSystemWorking = 1,
+	PowerSystemSleeping1 = 2,
+	PowerSystemSleeping2 = 3,
+	PowerSystemSleeping3 = 4,
+	PowerSystemHibernate = 5,
+	PowerSystemShutdown = 6,
+	PowerSystemMaximum = 7,
+}
+PSYSTEM_POWER_STATE :: ^SYSTEM_POWER_STATE;
+pub const POWER_SYSTEM_MAXIMUM: usize = 7;
+using POWER_ACTION :: enum c.int {
+	PowerActionNone = 0,
+	PowerActionReserved,
+	PowerActionSleep,
+	PowerActionHibernate,
+	PowerActionShutdown,
+	PowerActionShutdownReset,
+	PowerActionShutdownOff,
+	PowerActionWarmEject,
+	PowerActionDisplayOff,
+}
+PPOWER_ACTION :: ^POWER_ACTION;
+using DEVICE_POWER_STATE :: enum c.int {
+	PowerDeviceUnspecified = 0,
+	PowerDeviceD0,
+	PowerDeviceD1,
+	PowerDeviceD2,
+	PowerDeviceD3,
+	PowerDeviceMaximum,
+}
+PDEVICE_POWER_STATE :: ^DEVICE_POWER_STATE;
+using MONITOR_DISPLAY_STATE :: enum c.int {
+	PowerMonitorOff = 0,
+	PowerMonitorOn,
+	PowerMonitorDim,
+}
+PMONITOR_DISPLAY_STATE :: ^MONITOR_DISPLAY_STATE;
+using USER_ACTIVITY_PRESENCE :: enum c.int {
+	PowerUserPresent = 0,
+	PowerUserNotPresent,
+	PowerUserInactive,
+	PowerUserMaximum,
+	PowerUserInvalid = PowerUserMaximum,
+}
+PUSER_ACTIVITY_PRESENCE :: ^USER_ACTIVITY_PRESENCE;
+pub const ES_SYSTEM_REQUIRED: DWORD = 0x00000001;
+pub const ES_DISPLAY_REQUIRED: DWORD = 0x00000002;
+pub const ES_USER_PRESENT: DWORD = 0x00000004;
+pub const ES_AWAYMODE_REQUIRED: DWORD = 0x00000040;
+pub const ES_CONTINUOUS: DWORD = 0x80000000;
+EXECUTION_STATE :: DWORD;
+PEXECUTION_STATE :: ^DWORD;
+using LATENCY_TIME :: enum c.int {
+	LT_DONT_CARE,
+	LT_LOWEST_LATENCY,
+}
+pub const DIAGNOSTIC_REASON_VERSION: ULONG = 0;
+pub const DIAGNOSTIC_REASON_SIMPLE_STRING: ULONG = 0x00000001;
+pub const DIAGNOSTIC_REASON_DETAILED_STRING: ULONG = 0x00000002;
+pub const DIAGNOSTIC_REASON_NOT_SPECIFIED: ULONG = 0x80000000;
+pub const DIAGNOSTIC_REASON_INVALID_FLAGS: ULONG = !0x80000007;
+pub const POWER_REQUEST_CONTEXT_VERSION: ULONG = DIAGNOSTIC_REASON_VERSION;
+pub const POWER_REQUEST_CONTEXT_SIMPLE_STRING: ULONG = DIAGNOSTIC_REASON_SIMPLE_STRING;
+pub const POWER_REQUEST_CONTEXT_DETAILED_STRING: ULONG = DIAGNOSTIC_REASON_DETAILED_STRING;
+using POWER_REQUEST_TYPE :: enum c.int {
+	PowerRequestDisplayRequired,
+	PowerRequestSystemRequired,
+	PowerRequestAwayModeRequired,
+	PowerRequestExecutionRequired,
+}
+PPOWER_REQUEST_TYPE :: ^POWER_REQUEST_TYPE;
+pub const PDCAP_D0_SUPPORTED: DWORD = 0x00000001;
+pub const PDCAP_D1_SUPPORTED: DWORD = 0x00000002;
+pub const PDCAP_D2_SUPPORTED: DWORD = 0x00000004;
+pub const PDCAP_D3_SUPPORTED: DWORD = 0x00000008;
+pub const PDCAP_WAKE_FROM_D0_SUPPORTED: DWORD = 0x00000010;
+pub const PDCAP_WAKE_FROM_D1_SUPPORTED: DWORD = 0x00000020;
+pub const PDCAP_WAKE_FROM_D2_SUPPORTED: DWORD = 0x00000040;
+pub const PDCAP_WAKE_FROM_D3_SUPPORTED: DWORD = 0x00000080;
+pub const PDCAP_WARM_EJECT_SUPPORTED: DWORD = 0x00000100;
+CM_POWER_DATA :: struct {
+	PD_Size: DWORD,
+	PD_MostRecentPowerState: DEVICE_POWER_STATE,
+	PD_Capabilities: DWORD,
+	PD_D1Latency: DWORD,
+	PD_D2Latency: DWORD,
+	PD_D3Latency: DWORD,
+	PD_PowerStateMapping: [POWER_SYSTEM_MAXIMUM]DEVICE_POWER_STATE,
+	PD_DeepestSystemWake: SYSTEM_POWER_STATE,
+}
+PCM_POWER_DATA :: ^CM_POWER_DATA;
+ENUM!{enum POWER_INFORMATION_LEVEL{
+	SystemPowerPolicyAc,
+	SystemPowerPolicyDc,
+	VerifySystemPolicyAc,
+	VerifySystemPolicyDc,
+	SystemPowerCapabilities,
+	SystemBatteryState,
+	SystemPowerStateHandler,
+	ProcessorStateHandler,
+	SystemPowerPolicyCurrent,
+	AdministratorPowerPolicy,
+	SystemReserveHiberFile,
+	ProcessorInformation,
+	SystemPowerInformation,
+	ProcessorStateHandler2,
+	LastWakeTime,
+	LastSleepTime,
+	SystemExecutionState,
+	SystemPowerStateNotifyHandler,
+	ProcessorPowerPolicyAc,
+	ProcessorPowerPolicyDc,
+	VerifyProcessorPowerPolicyAc,
+	VerifyProcessorPowerPolicyDc,
+	ProcessorPowerPolicyCurrent,
+	SystemPowerStateLogging,
+	SystemPowerLoggingEntry,
+	SetPowerSettingValue,
+	NotifyUserPowerSetting,
+	PowerInformationLevelUnused0,
+	SystemMonitorHiberBootPowerOff,
+	SystemVideoState,
+	TraceApplicationPowerMessage,
+	TraceApplicationPowerMessageEnd,
+	ProcessorPerfStates,
+	ProcessorIdleStates,
+	ProcessorCap,
+	SystemWakeSource,
+	SystemHiberFileInformation,
+	TraceServicePowerMessage,
+	ProcessorLoad,
+	PowerShutdownNotification,
+	MonitorCapabilities,
+	SessionPowerInit,
+	SessionDisplayState,
+	PowerRequestCreate,
+	PowerRequestAction,
+	GetPowerRequestList,
+	ProcessorInformationEx,
+	NotifyUserModeLegacyPowerEvent,
+	GroupPark,
+	ProcessorIdleDomains,
+	WakeTimerList,
+	SystemHiberFileSize,
+	ProcessorIdleStatesHv,
+	ProcessorPerfStatesHv,
+	ProcessorPerfCapHv,
+	ProcessorSetIdle,
+	LogicalProcessorIdling,
+	UserPresence,
+	PowerSettingNotificationName,
+	GetPowerSettingValue,
+	IdleResiliency,
+	SessionRITState,
+	SessionConnectNotification,
+	SessionPowerCleanup,
+	SessionLockState,
+	SystemHiberbootState,
+	PlatformInformation,
+	PdcInvocation,
+	MonitorInvocation,
+	FirmwareTableInformationRegistered,
+	SetShutdownSelectedTime,
+	SuspendResumeInvocation,
+	PlmPowerRequestCreate,
+	ScreenOff,
+	CsDeviceNotification,
+	PlatformRole,
+	LastResumePerformance,
+	DisplayBurst,
+	ExitLatencySamplingPercentage,
+	RegisterSpmPowerSettings,
+	PlatformIdleStates,
+	ProcessorIdleVeto,
+	PlatformIdleVeto,
+	SystemBatteryStatePrecise,
+	ThermalEvent,
+	PowerRequestActionInternal,
+	BatteryDeviceState,
+	PowerInformationInternal,
+	ThermalStandby,
+	SystemHiberFileType,
+	PhysicalPowerButtonPress,
+	QueryPotentialDripsConstraint,
+	EnergyTrackerCreate,
+	EnergyTrackerQuery,
+	UpdateBlackBoxRecorder,
+	PowerInformationLevelMaximum,
+}
+using POWER_USER_PRESENCE_TYPE :: enum c.int {
+	UserNotPresent = 0,
+	UserPresent = 1,
+	UserUnknown = 0xff,
+}
+PPOWER_USER_PRESENCE_TYPE :: ^POWER_USER_PRESENCE_TYPE;
+POWER_USER_PRESENCE :: struct {
+	UserPresence: POWER_USER_PRESENCE_TYPE,
+}
+PPOWER_USER_PRESENCE :: ^POWER_USER_PRESENCE;
+POWER_SESSION_CONNECT :: struct {
+	Connected: BOOLEAN,
+	Console: BOOLEAN,
+}
+PPOWER_SESSION_CONNECT :: ^POWER_SESSION_CONNECT;
+POWER_SESSION_TIMEOUTS :: struct {
+	InputTimeout: DWORD,
+	DisplayTimeout: DWORD,
+}
+PPOWER_SESSION_TIMEOUTS :: ^POWER_SESSION_TIMEOUTS;
+POWER_SESSION_RIT_STATE :: struct {
+	Active: BOOLEAN,
+	LastInputTime: DWORD,
+}
+PPOWER_SESSION_RIT_STATE :: ^POWER_SESSION_RIT_STATE;
+POWER_SESSION_WINLOGON :: struct {
+	SessionId: DWORD,
+	Console: BOOLEAN,
+	Locked: BOOLEAN,
+}
+PPOWER_SESSION_WINLOGON :: ^POWER_SESSION_WINLOGON;
+POWER_IDLE_RESILIENCY :: struct {
+	CoalescingTimeout: DWORD,
+	IdleResiliencyPeriod: DWORD,
+}
+PPOWER_IDLE_RESILIENCY :: ^POWER_IDLE_RESILIENCY;
+using POWER_MONITOR_REQUEST_REASON :: enum c.int {
+	MonitorRequestReasonUnknown,
+	MonitorRequestReasonPowerButton,
+	MonitorRequestReasonRemoteConnection,
+	MonitorRequestReasonScMonitorpower,
+	MonitorRequestReasonUserInput,
+	MonitorRequestReasonAcDcDisplayBurst,
+	MonitorRequestReasonUserDisplayBurst,
+	MonitorRequestReasonPoSetSystemState,
+	MonitorRequestReasonSetThreadExecutionState,
+	MonitorRequestReasonFullWake,
+	MonitorRequestReasonSessionUnlock,
+	MonitorRequestReasonScreenOffRequest,
+	MonitorRequestReasonIdleTimeout,
+	MonitorRequestReasonPolicyChange,
+	MonitorRequestReasonSleepButton,
+	MonitorRequestReasonLid,
+	MonitorRequestReasonBatteryCountChange,
+	MonitorRequestReasonGracePeriod,
+	MonitorRequestReasonPnP,
+	MonitorRequestReasonDP,
+	MonitorRequestReasonSxTransition,
+	MonitorRequestReasonSystemIdle,
+	MonitorRequestReasonNearProximity,
+	MonitorRequestReasonThermalStandby,
+	MonitorRequestReasonResumePdc,
+	MonitorRequestReasonResumeS4,
+	MonitorRequestReasonTerminal,
+	MonitorRequestReasonPdcSignal,
+	MonitorRequestReasonAcDcDisplayBurstSuppressed,
+	MonitorRequestReasonSystemStateEntered,
+	MonitorRequestReasonWinrt,
+	MonitorRequestReasonMax,
+}
+using POWER_MONITOR_REQUEST_TYPE :: enum c.int {
+	MonitorRequestTypeOff,
+	MonitorRequestTypeOnAndPresent,
+	MonitorRequestTypeToggleOn,
+}
+POWER_MONITOR_INVOCATION :: struct {
+	Console: BOOLEAN,
+	RequestReason: POWER_MONITOR_REQUEST_REASON,
+}
+PPOWER_MONITOR_INVOCATION :: ^POWER_MONITOR_INVOCATION;
+RESUME_PERFORMANCE :: struct {
+	PostTimeMs: DWORD,
+	TotalResumeTimeMs: ULONGLONG,
+	ResumeCompleteTimestamp: ULONGLONG,
+}
+PRESUME_PERFORMANCE :: ^RESUME_PERFORMANCE;
+using SYSTEM_POWER_CONDITION :: enum c.int {
+	PoAc,
+	PoDc,
+	PoHot,
+	PoConditionMaximum,
+}
+SET_POWER_SETTING_VALUE :: struct {
+	Version: DWORD,
+	Guid: GUID,
+	PowerCondition: SYSTEM_POWER_CONDITION,
+	DataLength: DWORD,
+	Data: [ANYSIZE_ARRAY]BYTE,
+}
+PSET_POWER_SETTING_VALUE :: ^SET_POWER_SETTING_VALUE;
+NOTIFY_USER_POWER_SETTING :: struct {
+	Guid: GUID,
+}
+PNOTIFY_USER_POWER_SETTING :: ^NOTIFY_USER_POWER_SETTING;
+APPLICATIONLAUNCH_SETTING_VALUE :: struct {
+	ActivationTime: LARGE_INTEGER,
+	Flags: DWORD,
+	ButtonInstanceID: DWORD,
+}
+PAPPLICATIONLAUNCH_SETTING_VALUE :: ^APPLICATIONLAUNCH_SETTING_VALUE;
+using POWER_PLATFORM_ROLE :: enum c.int {
+	PlatformRoleUnspecified = 0,
+	PlatformRoleDesktop,
+	PlatformRoleMobile,
+	PlatformRoleWorkstation,
+	PlatformRoleEnterpriseServer,
+	PlatformRoleSOHOServer,
+	PlatformRoleAppliancePC,
+	PlatformRolePerformanceServer,
+	PlatformRoleSlate,
+	PlatformRoleMaximum,
+}
+PPOWER_PLATFORM_ROLE :: ^POWER_PLATFORM_ROLE;
+pub const POWER_PLATFORM_ROLE_V1: ULONG = 0x00000001;
+pub const POWER_PLATFORM_ROLE_V1_MAX: POWER_PLATFORM_ROLE = PlatformRolePerformanceServer + 1;
+pub const POWER_PLATFORM_ROLE_V2: ULONG = 0x00000002;
+pub const POWER_PLATFORM_ROLE_V2_MAX: POWER_PLATFORM_ROLE = PlatformRoleSlate + 1;
+pub const POWER_PLATFORM_ROLE_VERSION: ULONG = POWER_PLATFORM_ROLE_V2;
+pub const POWER_PLATFORM_ROLE_VERSION_MAX: POWER_PLATFORM_ROLE = POWER_PLATFORM_ROLE_V2_MAX;
+POWER_PLATFORM_INFORMATION :: struct {
+	AoAc: BOOLEAN,
+}
+PPOWER_PLATFORM_INFORMATION :: ^POWER_PLATFORM_INFORMATION;
+BATTERY_REPORTING_SCALE :: struct {
+	Granularity: DWORD,
+	Capacity: DWORD,
+}
+PBATTERY_REPORTING_SCALE :: ^BATTERY_REPORTING_SCALE;
+PPM_WMI_LEGACY_PERFSTATE :: struct {
+	Frequency: DWORD,
+	Flags: DWORD,
+	PercentFrequency: DWORD,
+}
+PPPM_WMI_LEGACY_PERFSTATE :: ^PPM_WMI_LEGACY_PERFSTATE;
+PPM_WMI_IDLE_STATE :: struct {
+	Latency: DWORD,
+	Power: DWORD,
+	TimeCheck: DWORD,
+	PromotePercent: BYTE,
+	DemotePercent: BYTE,
+	StateType: BYTE,
+	Reserved: BYTE,
+	StateFlags: DWORD,
+	Context: DWORD,
+	IdleHandler: DWORD,
+	Reserved1: DWORD,
+}
+PPPM_WMI_IDLE_STATE :: ^PPM_WMI_IDLE_STATE;
+PPM_WMI_IDLE_STATES :: struct {
+	Type: DWORD,
+	Count: DWORD,
+	TargetState: DWORD,
+	OldState: DWORD,
+	TargetProcessors: DWORD64,
+	State: [ANYSIZE_ARRAY]PPM_WMI_IDLE_STATE,
+}
+PPPM_WMI_IDLE_STATES :: ^PPM_WMI_IDLE_STATES;
+PPM_WMI_IDLE_STATES_EX :: struct {
+	Type: DWORD,
+	Count: DWORD,
+	TargetState: DWORD,
+	OldState: DWORD,
+	TargetProcessors: PVOID,
+	State: [ANYSIZE_ARRAY]PPM_WMI_IDLE_STATE,
+}
+PPPM_WMI_IDLE_STATES_EX :: ^PPM_WMI_IDLE_STATES_EX;
+PPM_WMI_PERF_STATE :: struct {
+	Frequency: DWORD,
+	Power: DWORD,
+	PercentFrequency: BYTE,
+	IncreaseLevel: BYTE,
+	DecreaseLevel: BYTE,
+	Type: BYTE,
+	IncreaseTime: DWORD,
+	DecreaseTime: DWORD,
+	Control: DWORD64,
+	Status: DWORD64,
+	HitCount: DWORD,
+	Reserved1: DWORD,
+	Reserved2: DWORD64,
+	Reserved3: DWORD64,
+}
+PPPM_WMI_PERF_STATE :: ^PPM_WMI_PERF_STATE;
+PPM_WMI_PERF_STATES :: struct {
+	Count: DWORD,
+	MaxFrequency: DWORD,
+	CurrentState: DWORD,
+	MaxPerfState: DWORD,
+	MinPerfState: DWORD,
+	LowestPerfState: DWORD,
+	ThermalConstraint: DWORD,
+	BusyAdjThreshold: BYTE,
+	PolicyType: BYTE,
+	Type: BYTE,
+	Reserved: BYTE,
+	TimerInterval: DWORD,
+	TargetProcessors: DWORD64,
+	PStateHandler: DWORD,
+	PStateContext: DWORD,
+	TStateHandler: DWORD,
+	TStateContext: DWORD,
+	FeedbackHandler: DWORD,
+	Reserved1: DWORD,
+	Reserved2: DWORD64,
+	State: [ANYSIZE_ARRAY]PPM_WMI_PERF_STATE,
+}
+PPPM_WMI_PERF_STATES :: ^PPM_WMI_PERF_STATES;
+PPM_WMI_PERF_STATES_EX :: struct {
+	Count: DWORD,
+	MaxFrequency: DWORD,
+	CurrentState: DWORD,
+	MaxPerfState: DWORD,
+	MinPerfState: DWORD,
+	LowestPerfState: DWORD,
+	ThermalConstraint: DWORD,
+	BusyAdjThreshold: BYTE,
+	PolicyType: BYTE,
+	Type: BYTE,
+	Reserved: BYTE,
+	TimerInterval: DWORD,
+	TargetProcessors: PVOID,
+	PStateHandler: DWORD,
+	PStateContext: DWORD,
+	TStateHandler: DWORD,
+	TStateContext: DWORD,
+	FeedbackHandler: DWORD,
+	Reserved1: DWORD,
+	Reserved2: DWORD64,
+	State: [ANYSIZE_ARRAY]PPM_WMI_PERF_STATE,
+}
+PPPM_WMI_PERF_STATES_EX :: ^PPM_WMI_PERF_STATES_EX;
+pub const PROC_IDLE_BUCKET_COUNT: usize = 6;
+PPM_IDLE_STATE_ACCOUNTING :: struct {
+	IdleTransitions: DWORD,
+	FailedTransitions: DWORD,
+	InvalidBucketIndex: DWORD,
+	TotalTime: DWORD64,
+	IdleTimeBuckets: [PROC_IDLE_BUCKET_COUNT]DWORD,
+}
+PPPM_IDLE_STATE_ACCOUNTING :: ^PPM_IDLE_STATE_ACCOUNTING;
+PPM_IDLE_ACCOUNTING :: struct {
+	StateCount: DWORD,
+	TotalTransitions: DWORD,
+	ResetCount: DWORD,
+	StartTime: DWORD64,
+	State: [ANYSIZE_ARRAY]PPM_IDLE_STATE_ACCOUNTING,
+}
+PPPM_IDLE_ACCOUNTING :: ^PPM_IDLE_ACCOUNTING;
+pub const PROC_IDLE_BUCKET_COUNT_EX: usize = 16;
+PPM_IDLE_STATE_BUCKET_EX :: struct {
+	TotalTimeUs: DWORD64,
+	MinTimeUs: DWORD,
+	MaxTimeUs: DWORD,
+	Count: DWORD,
+}
+PPPM_IDLE_STATE_BUCKET_EX :: ^PPM_IDLE_STATE_BUCKET_EX;
+PPM_IDLE_STATE_ACCOUNTING_EX :: struct {
+	TotalTime: DWORD64,
+	IdleTransitions: DWORD,
+	FailedTransitions: DWORD,
+	InvalidBucketIndex: DWORD,
+	MinTimeUs: DWORD,
+	MaxTimeUs: DWORD,
+	CancelledTransitions: DWORD,
+	IdleTimeBuckets: [PROC_IDLE_BUCKET_COUNT_EX]PPM_IDLE_STATE_BUCKET_EX,
+}
+PPPM_IDLE_STATE_ACCOUNTING_EX :: ^PPM_IDLE_STATE_ACCOUNTING_EX;
+PPM_IDLE_ACCOUNTING_EX :: struct {
+	StateCount: DWORD,
+	TotalTransitions: DWORD,
+	ResetCount: DWORD,
+	AbortCount: DWORD,
+	StartTime: DWORD64,
+	State: [ANYSIZE_ARRAY]PPM_IDLE_STATE_ACCOUNTING_EX,
+}
+PPPM_IDLE_ACCOUNTING_EX :: ^PPM_IDLE_ACCOUNTING_EX;
+pub const ACPI_PPM_SOFTWARE_ALL: DWORD = 0xFC;
+pub const ACPI_PPM_SOFTWARE_ANY: DWORD = 0xFD;
+pub const ACPI_PPM_HARDWARE_ALL: DWORD = 0xFE;
+pub const MS_PPM_SOFTWARE_ALL: DWORD = 0x1;
+pub const PPM_FIRMWARE_ACPI1C2: DWORD = 0x00000001;
+pub const PPM_FIRMWARE_ACPI1C3: DWORD = 0x00000002;
+pub const PPM_FIRMWARE_ACPI1TSTATES: DWORD = 0x00000004;
+pub const PPM_FIRMWARE_CST: DWORD = 0x00000008;
+pub const PPM_FIRMWARE_CSD: DWORD = 0x00000010;
+pub const PPM_FIRMWARE_PCT: DWORD = 0x00000020;
+pub const PPM_FIRMWARE_PSS: DWORD = 0x00000040;
+pub const PPM_FIRMWARE_XPSS: DWORD = 0x00000080;
+pub const PPM_FIRMWARE_PPC: DWORD = 0x00000100;
+pub const PPM_FIRMWARE_PSD: DWORD = 0x00000200;
+pub const PPM_FIRMWARE_PTC: DWORD = 0x00000400;
+pub const PPM_FIRMWARE_TSS: DWORD = 0x00000800;
+pub const PPM_FIRMWARE_TPC: DWORD = 0x00001000;
+pub const PPM_FIRMWARE_TSD: DWORD = 0x00002000;
+pub const PPM_FIRMWARE_PCCH: DWORD = 0x00004000;
+pub const PPM_FIRMWARE_PCCP: DWORD = 0x00008000;
+pub const PPM_FIRMWARE_OSC: DWORD = 0x00010000;
+pub const PPM_FIRMWARE_PDC: DWORD = 0x00020000;
+pub const PPM_FIRMWARE_CPC: DWORD = 0x00040000;
+pub const PPM_FIRMWARE_LPI: DWORD = 0x00080000;
+pub const PPM_PERFORMANCE_IMPLEMENTATION_NONE: DWORD = 0x00000000;
+pub const PPM_PERFORMANCE_IMPLEMENTATION_PSTATES: DWORD = 0x00000001;
+pub const PPM_PERFORMANCE_IMPLEMENTATION_PCCV1: DWORD = 0x00000002;
+pub const PPM_PERFORMANCE_IMPLEMENTATION_CPPC: DWORD = 0x00000003;
+pub const PPM_PERFORMANCE_IMPLEMENTATION_PEP: DWORD = 0x00000004;
+pub const PPM_IDLE_IMPLEMENTATION_NONE: DWORD = 0x00000000;
+pub const PPM_IDLE_IMPLEMENTATION_CSTATES: DWORD = 0x00000001;
+pub const PPM_IDLE_IMPLEMENTATION_PEP: DWORD = 0x00000002;
+pub const PPM_IDLE_IMPLEMENTATION_MICROPEP: DWORD = 0x00000003;
+pub const PPM_IDLE_IMPLEMENTATION_LPISTATES: DWORD = 0x00000004;
+DEFINE_GUID!{PPM_PERFSTATE_CHANGE_GUID,
+	0xa5b32ddd, 0x7f39, 0x4abc, 0xb8, 0x92, 0x90, 0xe, 0x43, 0xb5, 0x9e, 0xbb}
+DEFINE_GUID!{PPM_PERFSTATE_DOMAIN_CHANGE_GUID,
+	0x995e6b7f, 0xd653, 0x497a, 0xb9, 0x78, 0x36, 0xa3, 0xc, 0x29, 0xbf, 0x1}
+DEFINE_GUID!{PPM_IDLESTATE_CHANGE_GUID,
+	0x4838fe4f, 0xf71c, 0x4e51, 0x9e, 0xcc, 0x84, 0x30, 0xa7, 0xac, 0x4c, 0x6c}
+DEFINE_GUID!{PPM_PERFSTATES_DATA_GUID,
+	0x5708cc20, 0x7d40, 0x4bf4, 0xb4, 0xaa, 0x2b, 0x01, 0x33, 0x8d, 0x01, 0x26}
+DEFINE_GUID!{PPM_IDLESTATES_DATA_GUID,
+	0xba138e10, 0xe250, 0x4ad7, 0x86, 0x16, 0xcf, 0x1a, 0x7a, 0xd4, 0x10, 0xe7}
+DEFINE_GUID!{PPM_IDLE_ACCOUNTING_GUID,
+	0xe2a26f78, 0xae07, 0x4ee0, 0xa3, 0x0f, 0xce, 0x54, 0xf5, 0x5a, 0x94, 0xcd}
+DEFINE_GUID!{PPM_IDLE_ACCOUNTING_EX_GUID,
+	0xd67abd39, 0x81f8, 0x4a5e, 0x81, 0x52, 0x72, 0xe3, 0x1e, 0xc9, 0x12, 0xee}
+DEFINE_GUID!{PPM_THERMALCONSTRAINT_GUID,
+	0xa852c2c8, 0x1a4c, 0x423b, 0x8c, 0x2c, 0xf3, 0x0d, 0x82, 0x93, 0x1a, 0x88}
+DEFINE_GUID!{PPM_PERFMON_PERFSTATE_GUID,
+	0x7fd18652, 0xcfe, 0x40d2, 0xb0, 0xa1, 0xb, 0x6, 0x6a, 0x87, 0x75, 0x9e}
+DEFINE_GUID!{PPM_THERMAL_POLICY_CHANGE_GUID,
+	0x48f377b8, 0x6880, 0x4c7b, 0x8b, 0xdc, 0x38, 0x1, 0x76, 0xc6, 0x65, 0x4d}
+PPM_PERFSTATE_EVENT :: struct {
+	State: DWORD,
+	Status: DWORD,
+	Latency: DWORD,
+	Speed: DWORD,
+	Processor: DWORD,
+}
+PPPM_PERFSTATE_EVENT :: ^PPM_PERFSTATE_EVENT;
+PPM_PERFSTATE_DOMAIN_EVENT :: struct {
+	State: DWORD,
+	Latency: DWORD,
+	Speed: DWORD,
+	Processors: DWORD64,
+}
+PPPM_PERFSTATE_DOMAIN_EVENT :: ^PPM_PERFSTATE_DOMAIN_EVENT;
+PPM_IDLESTATE_EVENT :: struct {
+	NewState: DWORD,
+	OldState: DWORD,
+	Processors: DWORD64,
+}
+PPPM_IDLESTATE_EVENT :: ^PPM_IDLESTATE_EVENT;
+PPM_THERMALCHANGE_EVENT :: struct {
+	ThermalConstraint: DWORD,
+	Processors: DWORD64,
+}
+PPPM_THERMALCHANGE_EVENT :: ^PPM_THERMALCHANGE_EVENT;
+PPM_THERMAL_POLICY_EVENT :: struct {
+	Mode: BYTE,
+	Processors: DWORD64,
+}
+PPPM_THERMAL_POLICY_EVENT :: ^PPM_THERMAL_POLICY_EVENT;
+POWER_ACTION_POLICY :: struct {
+	Action: POWER_ACTION,
+	Flags: DWORD,
+	EventCode: DWORD,
+}
+PPOWER_ACTION_POLICY :: ^POWER_ACTION_POLICY;
+pub const POWER_ACTION_QUERY_ALLOWED: DWORD = 0x00000001;
+pub const POWER_ACTION_UI_ALLOWED: DWORD = 0x00000002;
+pub const POWER_ACTION_OVERRIDE_APPS: DWORD = 0x00000004;
+pub const POWER_ACTION_HIBERBOOT: DWORD = 0x00000008;
+pub const POWER_ACTION_USER_NOTIFY: DWORD = 0x00000010;
+pub const POWER_ACTION_DOZE_TO_HIBERNATE: DWORD = 0x00000020;
+pub const POWER_ACTION_PSEUDO_TRANSITION: DWORD = 0x08000000;
+pub const POWER_ACTION_LIGHTEST_FIRST: DWORD = 0x10000000;
+pub const POWER_ACTION_LOCK_CONSOLE: DWORD = 0x20000000;
+pub const POWER_ACTION_DISABLE_WAKES: DWORD = 0x40000000;
+pub const POWER_ACTION_CRITICAL: DWORD = 0x80000000;
+pub const POWER_LEVEL_USER_NOTIFY_TEXT: DWORD = 0x00000001;
+pub const POWER_LEVEL_USER_NOTIFY_SOUND: DWORD = 0x00000002;
+pub const POWER_LEVEL_USER_NOTIFY_EXEC: DWORD = 0x00000004;
+pub const POWER_USER_NOTIFY_BUTTON: DWORD = 0x00000008;
+pub const POWER_USER_NOTIFY_SHUTDOWN: DWORD = 0x00000010;
+pub const POWER_USER_NOTIFY_FORCED_SHUTDOWN: DWORD = 0x00000020;
+pub const POWER_FORCE_TRIGGER_RESET: DWORD = 0x80000000;
+pub const BATTERY_DISCHARGE_FLAGS_EVENTCODE_MASK: DWORD = 0x00000007;
+pub const BATTERY_DISCHARGE_FLAGS_ENABLE: DWORD = 0x80000000;
+SYSTEM_POWER_LEVEL :: struct {
+	Enable: BOOLEAN,
+	Spare: [3]BYTE,
+	BatteryLevel: DWORD,
+	PowerPolicy: POWER_ACTION_POLICY,
+	MinSystemState: SYSTEM_POWER_STATE,
+}
+PSYSTEM_POWER_LEVEL :: ^SYSTEM_POWER_LEVEL;
+pub const NUM_DISCHARGE_POLICIES: usize = 4;
+pub const DISCHARGE_POLICY_CRITICAL: DWORD = 0;
+pub const DISCHARGE_POLICY_LOW: DWORD = 1;
+SYSTEM_POWER_POLICY :: struct {
+	Revision: DWORD,
+	PowerButton: POWER_ACTION_POLICY,
+	SleepButton: POWER_ACTION_POLICY,
+	LidClose: POWER_ACTION_POLICY,
+	LidOpenWake: SYSTEM_POWER_STATE,
+	Reserved: DWORD,
+	Idle: POWER_ACTION_POLICY,
+	IdleTimeout: DWORD,
+	IdleSensitivity: BYTE,
+	DynamicThrottle: BYTE,
+	Spare2: [2]BYTE,
+	MinSleep: SYSTEM_POWER_STATE,
+	MaxSleep: SYSTEM_POWER_STATE,
+	ReducedLatencySleep: SYSTEM_POWER_STATE,
+	WinLogonFlags: DWORD,
+	Spare3: DWORD,
+	DozeS4Timeout: DWORD,
+	BroadcastCapacityResolution: DWORD,
+	DischargePolicy: [NUM_DISCHARGE_POLICIES]SYSTEM_POWER_LEVEL,
+	VideoTimeout: DWORD,
+	VideoDimDisplay: BOOLEAN,
+	VideoReserved: [3]DWORD,
+	SpindownTimeout: DWORD,
+	OptimizeForPower: BOOLEAN,
+	FanThrottleTolerance: BYTE,
+	ForcedThrottle: BYTE,
+	MinThrottle: BYTE,
+	OverThrottled: POWER_ACTION_POLICY,
+}
+PSYSTEM_POWER_POLICY :: ^SYSTEM_POWER_POLICY;
+pub const PROCESSOR_IDLESTATE_POLICY_COUNT: usize = 0x3;
+PROCESSOR_IDLESTATE_INFO :: struct {
+	TimeCheck: DWORD,
+	DemotePercent: BYTE,
+	PromotePercent: BYTE,
+	Spare: [2]BYTE,
+}
+PPROCESSOR_IDLESTATE_INFO :: ^PROCESSOR_IDLESTATE_INFO;
+PROCESSOR_IDLESTATE_POLICY_Flags :: struct {
+	AsWORD: WORD,
+}
+BITFIELD!{PROCESSOR_IDLESTATE_POLICY_Flags AsWORD: WORD [
+	AllowScaling set_AllowScaling[0..1],
+	Disabled set_Disabled[1..2],
+	Reserved set_Reserved[2..16],
+}
+PROCESSOR_IDLESTATE_POLICY :: struct {
+	Revision: WORD,
+	Flags: PROCESSOR_IDLESTATE_POLICY_Flags,
+	PolicyCount: DWORD,
+	Policy: [PROCESSOR_IDLESTATE_POLICY_COUNT]PROCESSOR_IDLESTATE_INFO,
+}
+PPROCESSOR_IDLESTATE_POLICY :: ^PROCESSOR_IDLESTATE_POLICY;
+pub const PO_THROTTLE_NONE: DWORD = 0;
+pub const PO_THROTTLE_CONSTANT: DWORD = 1;
+pub const PO_THROTTLE_DEGRADE: DWORD = 2;
+pub const PO_THROTTLE_ADAPTIVE: DWORD = 3;
+pub const PO_THROTTLE_MAXIMUM: DWORD = 4;
+PROCESSOR_POWER_POLICY_INFO :: struct {
+	TimeCheck: DWORD,
+	DemoteLimit: DWORD,
+	PromoteLimit: DWORD,
+	DemotePercent: BYTE,
+	PromotePercent: BYTE,
+	Spare: [2]BYTE,
+	Reserved: DWORD,
+}
+BITFIELD!{PROCESSOR_POWER_POLICY_INFO Reserved: DWORD [
+	AllowDemotion set_AllowDemotion[0..1],
+	AllowPromotion set_AllowPromotion[1..2],
+	Reserved set_Reserved[2..32],
+}
+PPROCESSOR_POWER_POLICY_INFO :: ^PROCESSOR_POWER_POLICY_INFO;
+PROCESSOR_POWER_POLICY :: struct {
+	Revision: DWORD,
+	DynamicThrottle: BYTE,
+	Spare: [3]BYTE,
+	BitFields: DWORD,
+	PolicyCount: DWORD,
+	Policy: [3]PROCESSOR_POWER_POLICY_INFO,
+}
+BITFIELD!{PROCESSOR_POWER_POLICY BitFields: DWORD [
+	DisableCStates set_DisableCStates[0..1],
+	Reserved set_Reserved[1..32],
+}
+PPROCESSOR_POWER_POLICY :: ^PROCESSOR_POWER_POLICY;
+PROCESSOR_PERFSTATE_POLICY_u_Flags :: struct {
+	AsBYTE: BYTE,
+}
+BITFIELD!{PROCESSOR_PERFSTATE_POLICY_u_Flags AsBYTE: BYTE [
+	NoDomainAccounting set_NoDomainAccounting[0..1],
+	IncreasePolicy set_IncreasePolicy[1..3],
+	DecreasePolicy set_DecreasePolicy[3..5],
+	Reserved set_Reserved[5..8],
+}
+PROCESSOR_PERFSTATE_POLICY_u :: struct #raw_union {
+	[1]u8,
+	Spare Spare_mut: BYTE,
+	Flags Flags_mut: PROCESSOR_PERFSTATE_POLICY_u_Flags,
+}
+PROCESSOR_PERFSTATE_POLICY :: struct {
+	Revision: DWORD,
+	MaxThrottle: BYTE,
+	MinThrottle: BYTE,
+	BusyAdjThreshold: BYTE,
+	u: PROCESSOR_PERFSTATE_POLICY_u,
+	TimeCheck: DWORD,
+	IncreaseTime: DWORD,
+	DecreaseTime: DWORD,
+	IncreasePercent: DWORD,
+	DecreasePercent: DWORD,
+}
+PPROCESSOR_PERFSTATE_POLICY :: ^PROCESSOR_PERFSTATE_POLICY;
+ADMINISTRATOR_POWER_POLICY :: struct {
+	MinSleep: SYSTEM_POWER_STATE,
+	MaxSleep: SYSTEM_POWER_STATE,
+	MinVideoTimeout: DWORD,
+	MaxVideoTimeout: DWORD,
+	MinSpindownTimeout: DWORD,
+	MaxSpindownTimeout: DWORD,
+}
+PADMINISTRATOR_POWER_POLICY :: ^ADMINISTRATOR_POWER_POLICY;
+using HIBERFILE_BUCKET_SIZE :: enum c.int {
+	HiberFileBucket1GB = 0,
+	HiberFileBucket2GB,
+	HiberFileBucket4GB,
+	HiberFileBucket8GB,
+	HiberFileBucket16GB,
+	HiberFileBucket32GB,
+	HiberFileBucketUnlimited,
+	HiberFileBucketMax,
+}
+pub const HIBERFILE_TYPE_NONE: BYTE = 0x00;
+pub const HIBERFILE_TYPE_REDUCED: BYTE = 0x01;
+pub const HIBERFILE_TYPE_FULL: BYTE = 0x02;
+pub const HIBERFILE_TYPE_MAX: usize = 0x03;
+HIBERFILE_BUCKET :: struct {
+	MaxPhysicalMemory: DWORD64,
+	PhysicalMemoryPercent: [HIBERFILE_TYPE_MAX]DWORD,
+}
+PHIBERFILE_BUCKET :: ^HIBERFILE_BUCKET;
+SYSTEM_POWER_CAPABILITIES :: struct {
+	PowerButtonPresent: BOOLEAN,
+	SleepButtonPresent: BOOLEAN,
+	LidPresent: BOOLEAN,
+	SystemS1: BOOLEAN,
+	SystemS2: BOOLEAN,
+	SystemS3: BOOLEAN,
+	SystemS4: BOOLEAN,
+	SystemS5: BOOLEAN,
+	HiberFilePresent: BOOLEAN,
+	FullWake: BOOLEAN,
+	VideoDimPresent: BOOLEAN,
+	ApmPresent: BOOLEAN,
+	UpsPresent: BOOLEAN,
+	ThermalControl: BOOLEAN,
+	ProcessorThrottle: BOOLEAN,
+	ProcessorMinThrottle: BYTE,
+	ProcessorMaxThrottle: BYTE,
+	FastSystemS4: BOOLEAN,
+	Hiberboot: BOOLEAN,
+	WakeAlarmPresent: BOOLEAN,
+	AoAc: BOOLEAN,
+	DiskSpinDown: BOOLEAN,
+	HiberFileType: BYTE,
+	AoAcConnectivitySupported: BOOLEAN,
+	spare3: [6]BYTE,
+	SystemBatteriesPresent: BOOLEAN,
+	BatteriesAreShortTerm: BOOLEAN,
+	BatteryScale: [3]BATTERY_REPORTING_SCALE,
+	AcOnLineWake: SYSTEM_POWER_STATE,
+	SoftLidWake: SYSTEM_POWER_STATE,
+	RtcWake: SYSTEM_POWER_STATE,
+	MinDeviceWakeState: SYSTEM_POWER_STATE,
+	DefaultLowLatencyWake: SYSTEM_POWER_STATE,
+}
+PSYSTEM_POWER_CAPABILITIES :: ^SYSTEM_POWER_CAPABILITIES;
+SYSTEM_BATTERY_STATE :: struct {
+	AcOnLine: BOOLEAN,
+	BatteryPresent: BOOLEAN,
+	Charging: BOOLEAN,
+	Discharging: BOOLEAN,
+	Spare1: [3]BOOLEAN,
+	Tag: BYTE,
+	MaxCapacity: DWORD,
+	RemainingCapacity: DWORD,
+	Rate: DWORD,
+	EstimatedTime: DWORD,
+	DefaultAlert1: DWORD,
+	DefaultAlert2: DWORD,
+}
+PSYSTEM_BATTERY_STATE :: ^SYSTEM_BATTERY_STATE;
+pub const IMAGE_DOS_SIGNATURE: WORD = 0x5A4D;
+pub const IMAGE_OS2_SIGNATURE: WORD = 0x454E;
+pub const IMAGE_OS2_SIGNATURE_LE: WORD = 0x454C;
+pub const IMAGE_VXD_SIGNATURE: WORD = 0x454C;
+pub const IMAGE_NT_SIGNATURE: DWORD = 0x00004550;
+IMAGE_DOS_HEADER :: struct {
+	e_magic: WORD,
+	e_cblp: WORD,
+	e_cp: WORD,
+	e_crlc: WORD,
+	e_cparhdr: WORD,
+	e_minalloc: WORD,
+	e_maxalloc: WORD,
+	e_ss: WORD,
+	e_sp: WORD,
+	e_csum: WORD,
+	e_ip: WORD,
+	e_cs: WORD,
+	e_lfarlc: WORD,
+	e_ovno: WORD,
+	e_res: [4]WORD,
+	e_oemid: WORD,
+	e_oeminfo: WORD,
+	e_res2: [10]WORD,
+	e_lfanew: LONG,
+}
+PIMAGE_DOS_HEADER :: ^IMAGE_DOS_HEADER;
+IMAGE_OS2_HEADER :: struct {
+	ne_magic: WORD,
+	ne_ver: CHAR,
+	ne_rev: CHAR,
+	ne_enttab: WORD,
+	ne_cbenttab: WORD,
+	ne_crc: LONG,
+	ne_flags: WORD,
+	ne_autodata: WORD,
+	ne_heap: WORD,
+	ne_stack: WORD,
+	ne_csip: LONG,
+	ne_sssp: LONG,
+	ne_cseg: WORD,
+	ne_cmod: WORD,
+	ne_cbnrestab: WORD,
+	ne_segtab: WORD,
+	ne_rsrctab: WORD,
+	ne_restab: WORD,
+	ne_modtab: WORD,
+	ne_imptab: WORD,
+	ne_nrestab: LONG,
+	ne_cmovent: WORD,
+	ne_align: WORD,
+	ne_cres: WORD,
+	ne_exetyp: BYTE,
+	ne_flagsothers: BYTE,
+	ne_pretthunks: WORD,
+	ne_psegrefbytes: WORD,
+	ne_swaparea: WORD,
+	ne_expver: WORD,
+}
+PIMAGE_OS2_HEADER :: ^IMAGE_OS2_HEADER;
+IMAGE_VXD_HEADER :: struct {
+	e32_magic: WORD,
+	e32_border: BYTE,
+	e32_worder: BYTE,
+	e32_level: DWORD,
+	e32_cpu: WORD,
+	e32_os: WORD,
+	e32_ver: DWORD,
+	e32_mflags: DWORD,
+	e32_mpages: DWORD,
+	e32_startobj: DWORD,
+	e32_eip: DWORD,
+	e32_stackobj: DWORD,
+	e32_esp: DWORD,
+	e32_pagesize: DWORD,
+	e32_lastpagesize: DWORD,
+	e32_fixupsize: DWORD,
+	e32_fixupsum: DWORD,
+	e32_ldrsize: DWORD,
+	e32_ldrsum: DWORD,
+	e32_objtab: DWORD,
+	e32_objcnt: DWORD,
+	e32_objmap: DWORD,
+	e32_itermap: DWORD,
+	e32_rsrctab: DWORD,
+	e32_rsrccnt: DWORD,
+	e32_restab: DWORD,
+	e32_enttab: DWORD,
+	e32_dirtab: DWORD,
+	e32_dircnt: DWORD,
+	e32_fpagetab: DWORD,
+	e32_frectab: DWORD,
+	e32_impmod: DWORD,
+	e32_impmodcnt: DWORD,
+	e32_impproc: DWORD,
+	e32_pagesum: DWORD,
+	e32_datapage: DWORD,
+	e32_preload: DWORD,
+	e32_nrestab: DWORD,
+	e32_cbnrestab: DWORD,
+	e32_nressum: DWORD,
+	e32_autodata: DWORD,
+	e32_debuginfo: DWORD,
+	e32_debuglen: DWORD,
+	e32_instpreload: DWORD,
+	e32_instdemand: DWORD,
+	e32_heapsize: DWORD,
+	e32_res3: [12]BYTE,
+	e32_winresoff: DWORD,
+	e32_winreslen: DWORD,
+	e32_devid: WORD,
+	e32_ddkver: WORD,
+}
+PIMAGE_VXD_HEADER :: ^IMAGE_VXD_HEADER;
+IMAGE_FILE_HEADER :: struct {
+	Machine: WORD,
+	NumberOfSections: WORD,
+	TimeDateStamp: DWORD,
+	PointerToSymbolTable: DWORD,
+	NumberOfSymbols: DWORD,
+	SizeOfOptionalHeader: WORD,
+	Characteristics: WORD,
+}
+PIMAGE_FILE_HEADER :: ^IMAGE_FILE_HEADER;
+pub const IMAGE_SIZEOF_FILE_HEADER: usize = 20;
+pub const IMAGE_FILE_RELOCS_STRIPPED: WORD = 0x0001;
+pub const IMAGE_FILE_EXECUTABLE_IMAGE: WORD = 0x0002;
+pub const IMAGE_FILE_LINE_NUMS_STRIPPED: WORD = 0x0004;
+pub const IMAGE_FILE_LOCAL_SYMS_STRIPPED: WORD = 0x0008;
+pub const IMAGE_FILE_AGGRESIVE_WS_TRIM: WORD = 0x0010;
+pub const IMAGE_FILE_LARGE_ADDRESS_AWARE: WORD = 0x0020;
+pub const IMAGE_FILE_BYTES_REVERSED_LO: WORD = 0x0080;
+pub const IMAGE_FILE_32BIT_MACHINE: WORD = 0x0100;
+pub const IMAGE_FILE_DEBUG_STRIPPED: WORD = 0x0200;
+pub const IMAGE_FILE_REMOVABLE_RUN_FROM_SWAP: WORD = 0x0400;
+pub const IMAGE_FILE_NET_RUN_FROM_SWAP: WORD = 0x0800;
+pub const IMAGE_FILE_SYSTEM: WORD = 0x1000;
+pub const IMAGE_FILE_DLL: WORD = 0x2000;
+pub const IMAGE_FILE_UP_SYSTEM_ONLY: WORD = 0x4000;
+pub const IMAGE_FILE_BYTES_REVERSED_HI: WORD = 0x8000;
+pub const IMAGE_FILE_MACHINE_UNKNOWN: WORD = 0;
+pub const IMAGE_FILE_MACHINE_TARGET_HOST: WORD = 0x0001;
+pub const IMAGE_FILE_MACHINE_I386: WORD = 0x014c;
+pub const IMAGE_FILE_MACHINE_R3000: WORD = 0x0162;
+pub const IMAGE_FILE_MACHINE_R4000: WORD = 0x0166;
+pub const IMAGE_FILE_MACHINE_R10000: WORD = 0x0168;
+pub const IMAGE_FILE_MACHINE_WCEMIPSV2: WORD = 0x0169;
+pub const IMAGE_FILE_MACHINE_ALPHA: WORD = 0x0184;
+pub const IMAGE_FILE_MACHINE_SH3: WORD = 0x01a2;
+pub const IMAGE_FILE_MACHINE_SH3DSP: WORD = 0x01a3;
+pub const IMAGE_FILE_MACHINE_SH3E: WORD = 0x01a4;
+pub const IMAGE_FILE_MACHINE_SH4: WORD = 0x01a6;
+pub const IMAGE_FILE_MACHINE_SH5: WORD = 0x01a8;
+pub const IMAGE_FILE_MACHINE_ARM: WORD = 0x01c0;
+pub const IMAGE_FILE_MACHINE_THUMB: WORD = 0x01c2;
+pub const IMAGE_FILE_MACHINE_ARMNT: WORD = 0x01c4;
+pub const IMAGE_FILE_MACHINE_AM33: WORD = 0x01d3;
+pub const IMAGE_FILE_MACHINE_POWERPC: WORD = 0x01F0;
+pub const IMAGE_FILE_MACHINE_POWERPCFP: WORD = 0x01f1;
+pub const IMAGE_FILE_MACHINE_IA64: WORD = 0x0200;
+pub const IMAGE_FILE_MACHINE_MIPS16: WORD = 0x0266;
+pub const IMAGE_FILE_MACHINE_ALPHA64: WORD = 0x0284;
+pub const IMAGE_FILE_MACHINE_MIPSFPU: WORD = 0x0366;
+pub const IMAGE_FILE_MACHINE_MIPSFPU16: WORD = 0x0466;
+pub const IMAGE_FILE_MACHINE_AXP64: WORD = IMAGE_FILE_MACHINE_ALPHA64;
+pub const IMAGE_FILE_MACHINE_TRICORE: WORD = 0x0520;
+pub const IMAGE_FILE_MACHINE_CEF: WORD = 0x0CEF;
+pub const IMAGE_FILE_MACHINE_EBC: WORD = 0x0EBC;
+pub const IMAGE_FILE_MACHINE_AMD64: WORD = 0x8664;
+pub const IMAGE_FILE_MACHINE_M32R: WORD = 0x9041;
+pub const IMAGE_FILE_MACHINE_ARM64: WORD = 0xAA64;
+pub const IMAGE_FILE_MACHINE_CEE: WORD = 0xC0EE;
+IMAGE_DATA_DIRECTORY :: struct {
+	VirtualAddress: DWORD,
+	Size: DWORD,
+}
+PIMAGE_DATA_DIRECTORY :: ^IMAGE_DATA_DIRECTORY;
+pub const IMAGE_NUMBEROF_DIRECTORY_ENTRIES: usize = 16;
+IMAGE_OPTIONAL_HEADER32 :: struct {
+	Magic: WORD,
+	MajorLinkerVersion: BYTE,
+	MinorLinkerVersion: BYTE,
+	SizeOfCode: DWORD,
+	SizeOfInitializedData: DWORD,
+	SizeOfUninitializedData: DWORD,
+	AddressOfEntryPoint: DWORD,
+	BaseOfCode: DWORD,
+	BaseOfData: DWORD,
+	ImageBase: DWORD,
+	SectionAlignment: DWORD,
+	FileAlignment: DWORD,
+	MajorOperatingSystemVersion: WORD,
+	MinorOperatingSystemVersion: WORD,
+	MajorImageVersion: WORD,
+	MinorImageVersion: WORD,
+	MajorSubsystemVersion: WORD,
+	MinorSubsystemVersion: WORD,
+	Win32VersionValue: DWORD,
+	SizeOfImage: DWORD,
+	SizeOfHeaders: DWORD,
+	CheckSum: DWORD,
+	Subsystem: WORD,
+	DllCharacteristics: WORD,
+	SizeOfStackReserve: DWORD,
+	SizeOfStackCommit: DWORD,
+	SizeOfHeapReserve: DWORD,
+	SizeOfHeapCommit: DWORD,
+	LoaderFlags: DWORD,
+	NumberOfRvaAndSizes: DWORD,
+	DataDirectory: [IMAGE_NUMBEROF_DIRECTORY_ENTRIES]IMAGE_DATA_DIRECTORY,
+}
+PIMAGE_OPTIONAL_HEADER32 :: ^IMAGE_OPTIONAL_HEADER32;
+IMAGE_ROM_OPTIONAL_HEADER :: struct {
+	Magic: WORD,
+	MajorLinkerVersion: BYTE,
+	MinorLinkerVersion: BYTE,
+	SizeOfCode: DWORD,
+	SizeOfInitializedData: DWORD,
+	SizeOfUninitializedData: DWORD,
+	AddressOfEntryPoint: DWORD,
+	BaseOfCode: DWORD,
+	BaseOfData: DWORD,
+	BaseOfBss: DWORD,
+	GprMask: DWORD,
+	CprMask: [4]DWORD,
+	GpValue: DWORD,
+}
+PIMAGE_ROM_OPTIONAL_HEADER :: ^IMAGE_ROM_OPTIONAL_HEADER;
+IMAGE_OPTIONAL_HEADER64 :: struct {
+	Magic: WORD,
+	MajorLinkerVersion: BYTE,
+	MinorLinkerVersion: BYTE,
+	SizeOfCode: DWORD,
+	SizeOfInitializedData: DWORD,
+	SizeOfUninitializedData: DWORD,
+	AddressOfEntryPoint: DWORD,
+	BaseOfCode: DWORD,
+	ImageBase: ULONGLONG,
+	SectionAlignment: DWORD,
+	FileAlignment: DWORD,
+	MajorOperatingSystemVersion: WORD,
+	MinorOperatingSystemVersion: WORD,
+	MajorImageVersion: WORD,
+	MinorImageVersion: WORD,
+	MajorSubsystemVersion: WORD,
+	MinorSubsystemVersion: WORD,
+	Win32VersionValue: DWORD,
+	SizeOfImage: DWORD,
+	SizeOfHeaders: DWORD,
+	CheckSum: DWORD,
+	Subsystem: WORD,
+	DllCharacteristics: WORD,
+	SizeOfStackReserve: ULONGLONG,
+	SizeOfStackCommit: ULONGLONG,
+	SizeOfHeapReserve: ULONGLONG,
+	SizeOfHeapCommit: ULONGLONG,
+	LoaderFlags: DWORD,
+	NumberOfRvaAndSizes: DWORD,
+	DataDirectory: [IMAGE_NUMBEROF_DIRECTORY_ENTRIES]IMAGE_DATA_DIRECTORY,
+}
+PIMAGE_OPTIONAL_HEADER64 :: ^IMAGE_OPTIONAL_HEADER64;
+pub const IMAGE_NT_OPTIONAL_HDR32_MAGIC: WORD = 0x10b;
+pub const IMAGE_NT_OPTIONAL_HDR64_MAGIC: WORD = 0x20b;
+pub const IMAGE_ROM_OPTIONAL_HDR_MAGIC: WORD = 0x107;
+#[cfg(target_pointer_width = "64")]
+IFDEF!{
+IMAGE_OPTIONAL_HEADER :: IMAGE_OPTIONAL_HEADER64;
+PIMAGE_OPTIONAL_HEADER :: PIMAGE_OPTIONAL_HEADER64;
+pub const IMAGE_NT_OPTIONAL_HDR_MAGIC: WORD = IMAGE_NT_OPTIONAL_HDR64_MAGIC;
+}
+#[cfg(target_arch = "x86")]
+IFDEF!{
+IMAGE_OPTIONAL_HEADER :: IMAGE_OPTIONAL_HEADER32;
+PIMAGE_OPTIONAL_HEADER :: PIMAGE_OPTIONAL_HEADER32;
+pub const IMAGE_NT_OPTIONAL_HDR_MAGIC: WORD = IMAGE_NT_OPTIONAL_HDR32_MAGIC;
+}
+IMAGE_NT_HEADERS64 :: struct {
+	Signature: DWORD,
+	FileHeader: IMAGE_FILE_HEADER,
+	OptionalHeader: IMAGE_OPTIONAL_HEADER64,
+}
+PIMAGE_NT_HEADERS64 :: ^IMAGE_NT_HEADERS64;
+IMAGE_NT_HEADERS32 :: struct {
+	Signature: DWORD,
+	FileHeader: IMAGE_FILE_HEADER,
+	OptionalHeader: IMAGE_OPTIONAL_HEADER32,
+}
+PIMAGE_NT_HEADERS32 :: ^IMAGE_NT_HEADERS32;
+IMAGE_ROM_HEADERS :: struct {
+	FileHeader: IMAGE_FILE_HEADER,
+	OptionalHeader: IMAGE_ROM_OPTIONAL_HEADER,
+}
+PIMAGE_ROM_HEADERS :: ^IMAGE_ROM_HEADERS;
+#[cfg(target_pointer_width = "64")]
+IFDEF!{
+IMAGE_NT_HEADERS :: IMAGE_NT_HEADERS64;
+PIMAGE_NT_HEADERS :: PIMAGE_NT_HEADERS64;
+}
+#[cfg(target_arch = "x86")]
+IFDEF!{
+IMAGE_NT_HEADERS :: IMAGE_NT_HEADERS32;
+PIMAGE_NT_HEADERS :: PIMAGE_NT_HEADERS32;
+}
+pub const IMAGE_SUBSYSTEM_UNKNOWN: WORD = 0;
+pub const IMAGE_SUBSYSTEM_NATIVE: WORD = 1;
+pub const IMAGE_SUBSYSTEM_WINDOWS_GUI: WORD = 2;
+pub const IMAGE_SUBSYSTEM_WINDOWS_CUI: WORD = 3;
+pub const IMAGE_SUBSYSTEM_OS2_CUI: WORD = 5;
+pub const IMAGE_SUBSYSTEM_POSIX_CUI: WORD = 7;
+pub const IMAGE_SUBSYSTEM_NATIVE_WINDOWS: WORD = 8;
+pub const IMAGE_SUBSYSTEM_WINDOWS_CE_GUI: WORD = 9;
+pub const IMAGE_SUBSYSTEM_EFI_APPLICATION: WORD = 10;
+pub const IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER: WORD = 11;
+pub const IMAGE_SUBSYSTEM_EFI_RUNTIME_DRIVER: WORD = 12;
+pub const IMAGE_SUBSYSTEM_EFI_ROM: WORD = 13;
+pub const IMAGE_SUBSYSTEM_XBOX: WORD = 14;
+pub const IMAGE_SUBSYSTEM_WINDOWS_BOOT_APPLICATION: WORD = 16;
+pub const IMAGE_SUBSYSTEM_XBOX_CODE_CATALOG: WORD = 17;
+pub const IMAGE_DLLCHARACTERISTICS_HIGH_ENTROPY_VA: WORD = 0x0020;
+pub const IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE: WORD = 0x0040;
+pub const IMAGE_DLLCHARACTERISTICS_FORCE_INTEGRITY: WORD = 0x0080;
+pub const IMAGE_DLLCHARACTERISTICS_NX_COMPAT: WORD = 0x0100;
+pub const IMAGE_DLLCHARACTERISTICS_NO_ISOLATION: WORD = 0x0200;
+pub const IMAGE_DLLCHARACTERISTICS_NO_SEH: WORD = 0x0400;
+pub const IMAGE_DLLCHARACTERISTICS_NO_BIND: WORD = 0x0800;
+pub const IMAGE_DLLCHARACTERISTICS_APPCONTAINER: WORD = 0x1000;
+pub const IMAGE_DLLCHARACTERISTICS_WDM_DRIVER: WORD = 0x2000;
+pub const IMAGE_DLLCHARACTERISTICS_GUARD_CF: WORD = 0x4000;
+pub const IMAGE_DLLCHARACTERISTICS_TERMINAL_SERVER_AWARE: WORD = 0x8000;
+pub const IMAGE_DIRECTORY_ENTRY_EXPORT: WORD = 0;
+pub const IMAGE_DIRECTORY_ENTRY_IMPORT: WORD = 1;
+pub const IMAGE_DIRECTORY_ENTRY_RESOURCE: WORD = 2;
+pub const IMAGE_DIRECTORY_ENTRY_EXCEPTION: WORD = 3;
+pub const IMAGE_DIRECTORY_ENTRY_SECURITY: WORD = 4;
+pub const IMAGE_DIRECTORY_ENTRY_BASERELOC: WORD = 5;
+pub const IMAGE_DIRECTORY_ENTRY_DEBUG: WORD = 6;
+pub const IMAGE_DIRECTORY_ENTRY_ARCHITECTURE: WORD = 7;
+pub const IMAGE_DIRECTORY_ENTRY_GLOBALPTR: WORD = 8;
+pub const IMAGE_DIRECTORY_ENTRY_TLS: WORD = 9;
+pub const IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG: WORD = 10;
+pub const IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT: WORD = 11;
+pub const IMAGE_DIRECTORY_ENTRY_IAT: WORD = 12;
+pub const IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT: WORD = 13;
+pub const IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR: WORD = 14;
+ANON_OBJECT_HEADER :: struct {
+	Sig1: WORD,
+	Sig2: WORD,
+	Version: WORD,
+	Machine: WORD,
+	TimeDateStamp: DWORD,
+	ClassID: CLSID,
+	SizeOfData: DWORD,
+}
+ANON_OBJECT_HEADER_V2 :: struct {
+	Sig1: WORD,
+	Sig2: WORD,
+	Version: WORD,
+	Machine: WORD,
+	TimeDateStamp: DWORD,
+	ClassID: CLSID,
+	SizeOfData: DWORD,
+	Flags: DWORD,
+	MetaDataSize: DWORD,
+	MetaDataOffset: DWORD,
+}
+ANON_OBJECT_HEADER_BIGOBJ :: struct {
+	Sig1: WORD,
+	Sig2: WORD,
+	Version: WORD,
+	Machine: WORD,
+	TimeDateStamp: DWORD,
+	ClassID: CLSID,
+	SizeOfData: DWORD,
+	Flags: DWORD,
+	MetaDataSize: DWORD,
+	MetaDataOffset: DWORD,
+	NumberOfSections: DWORD,
+	PointerToSymbolTable: DWORD,
+	NumberOfSymbols: DWORD,
+}
+pub const IMAGE_SIZEOF_SHORT_NAME: usize = 8;
+IMAGE_SECTION_HEADER_Misc :: struct #raw_union {
+	[1]u32,
+	PhysicalAddress PhysicalAddress_mut: DWORD,
+	VirtualSize VirtualSize_mut: DWORD,
+}
+IMAGE_SECTION_HEADER :: struct {
+	Name: [IMAGE_SIZEOF_SHORT_NAME]BYTE,
+	Misc: IMAGE_SECTION_HEADER_Misc,
+	VirtualAddress: DWORD,
+	SizeOfRawData: DWORD,
+	PointerToRawData: DWORD,
+	PointerToRelocations: DWORD,
+	PointerToLinenumbers: DWORD,
+	NumberOfRelocations: WORD,
+	NumberOfLinenumbers: WORD,
+	Characteristics: DWORD,
+}
+PIMAGE_SECTION_HEADER :: ^IMAGE_SECTION_HEADER;
+pub const IMAGE_SIZEOF_SECTION_HEADER: usize = 40;
+pub const IMAGE_SCN_TYPE_NO_PAD: DWORD = 0x00000008;
+pub const IMAGE_SCN_CNT_CODE: DWORD = 0x00000020;
+pub const IMAGE_SCN_CNT_INITIALIZED_DATA: DWORD = 0x00000040;
+pub const IMAGE_SCN_CNT_UNINITIALIZED_DATA: DWORD = 0x00000080;
+pub const IMAGE_SCN_LNK_OTHER: DWORD = 0x00000100;
+pub const IMAGE_SCN_LNK_INFO: DWORD = 0x00000200;
+pub const IMAGE_SCN_LNK_REMOVE: DWORD = 0x00000800;
+pub const IMAGE_SCN_LNK_COMDAT: DWORD = 0x00001000;
+pub const IMAGE_SCN_NO_DEFER_SPEC_EXC: DWORD = 0x00004000;
+pub const IMAGE_SCN_GPREL: DWORD = 0x00008000;
+pub const IMAGE_SCN_MEM_FARDATA: DWORD = 0x00008000;
+pub const IMAGE_SCN_MEM_PURGEABLE: DWORD = 0x00020000;
+pub const IMAGE_SCN_MEM_16BIT: DWORD = 0x00020000;
+pub const IMAGE_SCN_MEM_LOCKED: DWORD = 0x00040000;
+pub const IMAGE_SCN_MEM_PRELOAD: DWORD = 0x00080000;
+pub const IMAGE_SCN_ALIGN_1BYTES: DWORD = 0x00100000;
+pub const IMAGE_SCN_ALIGN_2BYTES: DWORD = 0x00200000;
+pub const IMAGE_SCN_ALIGN_4BYTES: DWORD = 0x00300000;
+pub const IMAGE_SCN_ALIGN_8BYTES: DWORD = 0x00400000;
+pub const IMAGE_SCN_ALIGN_16BYTES: DWORD = 0x00500000;
+pub const IMAGE_SCN_ALIGN_32BYTES: DWORD = 0x00600000;
+pub const IMAGE_SCN_ALIGN_64BYTES: DWORD = 0x00700000;
+pub const IMAGE_SCN_ALIGN_128BYTES: DWORD = 0x00800000;
+pub const IMAGE_SCN_ALIGN_256BYTES: DWORD = 0x00900000;
+pub const IMAGE_SCN_ALIGN_512BYTES: DWORD = 0x00A00000;
+pub const IMAGE_SCN_ALIGN_1024BYTES: DWORD = 0x00B00000;
+pub const IMAGE_SCN_ALIGN_2048BYTES: DWORD = 0x00C00000;
+pub const IMAGE_SCN_ALIGN_4096BYTES: DWORD = 0x00D00000;
+pub const IMAGE_SCN_ALIGN_8192BYTES: DWORD = 0x00E00000;
+pub const IMAGE_SCN_ALIGN_MASK: DWORD = 0x00F00000;
+pub const IMAGE_SCN_LNK_NRELOC_OVFL: DWORD = 0x01000000;
+pub const IMAGE_SCN_MEM_DISCARDABLE: DWORD = 0x02000000;
+pub const IMAGE_SCN_MEM_NOT_CACHED: DWORD = 0x04000000;
+pub const IMAGE_SCN_MEM_NOT_PAGED: DWORD = 0x08000000;
+pub const IMAGE_SCN_MEM_SHARED: DWORD = 0x10000000;
+pub const IMAGE_SCN_MEM_EXECUTE: DWORD = 0x20000000;
+pub const IMAGE_SCN_MEM_READ: DWORD = 0x40000000;
+pub const IMAGE_SCN_MEM_WRITE: DWORD = 0x80000000;
+pub const IMAGE_SCN_SCALE_INDEX: DWORD = 0x00000001;
+IMAGE_SYMBOL_N_Name :: struct {
+	Short: DWORD,
+	Long: DWORD,
+}
+IMAGE_SYMBOL_N :: struct #raw_union {
+	[2]u32,
+	ShortName ShortName_mut: [8]BYTE,
+	Name Name_mut: IMAGE_SYMBOL_N_Name,
+	LongName LongName_mut: [2]DWORD,
+}
+IMAGE_SYMBOL :: struct {
+	N: IMAGE_SYMBOL_N,
+	Value: DWORD,
+	SectionNumber: SHORT,
+	Type: WORD,
+	StorageClass: BYTE,
+	NumberOfAuxSymbols: BYTE,
+}
+PIMAGE_SYMBOL :: ^IMAGE_SYMBOL;
+pub const IMAGE_SIZEOF_SYMBOL: usize = 18;
+IMAGE_SYMBOL_EX_N_Name :: struct {
+	Short: DWORD,
+	Long: DWORD,
+}
+IMAGE_SYMBOL_EX_N :: struct #raw_union {
+	[2]u32,
+	ShortName ShortName_mut: [8]BYTE,
+	Name Name_mut: IMAGE_SYMBOL_EX_N_Name,
+	LongName LongName_mut: [2]DWORD,
+}
+IMAGE_SYMBOL_EX :: struct {
+	N: IMAGE_SYMBOL_EX_N,
+	Value: DWORD,
+	SectionNumber: LONG,
+	Type: WORD,
+	StorageClass: BYTE,
+	NumberOfAuxSymbols: BYTE,
+}
+PIMAGE_SYMBOL_EX :: ^IMAGE_SYMBOL_EX;
+pub const IMAGE_SYM_UNDEFINED: SHORT = 0;
+pub const IMAGE_SYM_ABSOLUTE: SHORT = -1;
+pub const IMAGE_SYM_DEBUG: SHORT = -2;
+pub const IMAGE_SYM_SECTION_MAX: USHORT = 0xFEFF;
+pub const IMAGE_SYM_SECTION_MAX_EX: LONG = MAXLONG;
+pub const IMAGE_SYM_TYPE_NULL: WORD = 0x0000;
+pub const IMAGE_SYM_TYPE_VOID: WORD = 0x0001;
+pub const IMAGE_SYM_TYPE_CHAR: WORD = 0x0002;
+pub const IMAGE_SYM_TYPE_SHORT: WORD = 0x0003;
+pub const IMAGE_SYM_TYPE_INT: WORD = 0x0004;
+pub const IMAGE_SYM_TYPE_LONG: WORD = 0x0005;
+pub const IMAGE_SYM_TYPE_FLOAT: WORD = 0x0006;
+pub const IMAGE_SYM_TYPE_DOUBLE: WORD = 0x0007;
+pub const IMAGE_SYM_TYPE_STRUCT: WORD = 0x0008;
+pub const IMAGE_SYM_TYPE_UNION: WORD = 0x0009;
+pub const IMAGE_SYM_TYPE_ENUM: WORD = 0x000A;
+pub const IMAGE_SYM_TYPE_MOE: WORD = 0x000B;
+pub const IMAGE_SYM_TYPE_BYTE: WORD = 0x000C;
+pub const IMAGE_SYM_TYPE_WORD: WORD = 0x000D;
+pub const IMAGE_SYM_TYPE_UINT: WORD = 0x000E;
+pub const IMAGE_SYM_TYPE_DWORD: WORD = 0x000F;
+pub const IMAGE_SYM_TYPE_PCODE: WORD = 0x8000;
+pub const IMAGE_SYM_DTYPE_NULL: WORD = 0;
+pub const IMAGE_SYM_DTYPE_POINTER: WORD = 1;
+pub const IMAGE_SYM_DTYPE_FUNCTION: WORD = 2;
+pub const IMAGE_SYM_DTYPE_ARRAY: WORD = 3;
+pub const IMAGE_SYM_CLASS_END_OF_FUNCTION: BYTE = -1i8 as u8;
+pub const IMAGE_SYM_CLASS_NULL: BYTE = 0x0000;
+pub const IMAGE_SYM_CLASS_AUTOMATIC: BYTE = 0x0001;
+pub const IMAGE_SYM_CLASS_EXTERNAL: BYTE = 0x0002;
+pub const IMAGE_SYM_CLASS_STATIC: BYTE = 0x0003;
+pub const IMAGE_SYM_CLASS_REGISTER: BYTE = 0x0004;
+pub const IMAGE_SYM_CLASS_EXTERNAL_DEF: BYTE = 0x0005;
+pub const IMAGE_SYM_CLASS_LABEL: BYTE = 0x0006;
+pub const IMAGE_SYM_CLASS_UNDEFINED_LABEL: BYTE = 0x0007;
+pub const IMAGE_SYM_CLASS_MEMBER_OF_STRUCT: BYTE = 0x0008;
+pub const IMAGE_SYM_CLASS_ARGUMENT: BYTE = 0x0009;
+pub const IMAGE_SYM_CLASS_STRUCT_TAG: BYTE = 0x000A;
+pub const IMAGE_SYM_CLASS_MEMBER_OF_UNION: BYTE = 0x000B;
+pub const IMAGE_SYM_CLASS_UNION_TAG: BYTE = 0x000C;
+pub const IMAGE_SYM_CLASS_TYPE_DEFINITION: BYTE = 0x000D;
+pub const IMAGE_SYM_CLASS_UNDEFINED_STATIC: BYTE = 0x000E;
+pub const IMAGE_SYM_CLASS_ENUM_TAG: BYTE = 0x000F;
+pub const IMAGE_SYM_CLASS_MEMBER_OF_ENUM: BYTE = 0x0010;
+pub const IMAGE_SYM_CLASS_REGISTER_PARAM: BYTE = 0x0011;
+pub const IMAGE_SYM_CLASS_BIT_FIELD: BYTE = 0x0012;
+pub const IMAGE_SYM_CLASS_FAR_EXTERNAL: BYTE = 0x0044;
+pub const IMAGE_SYM_CLASS_BLOCK: BYTE = 0x0064;
+pub const IMAGE_SYM_CLASS_FUNCTION: BYTE = 0x0065;
+pub const IMAGE_SYM_CLASS_END_OF_STRUCT: BYTE = 0x0066;
+pub const IMAGE_SYM_CLASS_FILE: BYTE = 0x0067;
+pub const IMAGE_SYM_CLASS_SECTION: BYTE = 0x0068;
+pub const IMAGE_SYM_CLASS_WEAK_EXTERNAL: BYTE = 0x0069;
+pub const IMAGE_SYM_CLASS_CLR_TOKEN: BYTE = 0x006B;
+pub const N_BTMASK: WORD = 0x000F;
+pub const N_TMASK: WORD = 0x0030;
+pub const N_TMASK1: WORD = 0x00C0;
+pub const N_TMASK2: WORD = 0x00F0;
+pub const N_BTSHFT: usize = 4;
+pub const N_TSHIFT: usize = 2;
+#[inline]
+pub fn BTYPE(x: WORD) -> bool {
+	(x & N_BTMASK) != 0
+}
+#[inline]
+pub fn ISPTR(x: WORD) -> bool {
+	(x & N_TMASK) == (IMAGE_SYM_DTYPE_POINTER << N_BTSHFT)
+}
+#[inline]
+pub fn ISFCN(x: WORD) -> bool {
+	(x & N_TMASK) == (IMAGE_SYM_DTYPE_FUNCTION << N_BTSHFT)
+}
+#[inline]
+pub fn ISARY(x: WORD) -> bool {
+	(x & N_TMASK) == (IMAGE_SYM_DTYPE_ARRAY << N_BTSHFT)
+}
+#[inline]
+pub fn ISTAG(x: BYTE) -> bool {
+	(x == IMAGE_SYM_CLASS_STRUCT_TAG) || (x == IMAGE_SYM_CLASS_UNION_TAG)
+	|| (x == IMAGE_SYM_CLASS_ENUM_TAG)
+}
+#[inline]
+pub fn INCREF(x: WORD) -> WORD {
+	((x & !N_BTMASK) << N_TSHIFT) | (IMAGE_SYM_DTYPE_POINTER << N_BTSHFT) | (x & N_BTMASK)
+}
+#[inline]
+pub fn DECREF(x: WORD) -> WORD {
+	((x >> N_TSHIFT) & !N_BTMASK) | (x & N_BTMASK)
+}
+IMAGE_AUX_SYMBOL_TOKEN_DEF :: struct {
+	bAuxType: BYTE,
+	bReserved: BYTE,
+	SymbolTableIndex: DWORD,
+	rgbReserved: [12]BYTE,
+}
+PIMAGE_AUX_SYMBOL_TOKEN_DEF :: ^IMAGE_AUX_SYMBOL_TOKEN_DEF;
+IMAGE_AUX_SYMBOL_Sym_Misc_LnSz :: struct {
+	Linenumber: WORD,
+	Size: WORD,
+}
+IMAGE_AUX_SYMBOL_Sym_Misc :: struct #raw_union {
+	[1]u32,
+	LnSz LnSz_mut: IMAGE_AUX_SYMBOL_Sym_Misc_LnSz,
+	TotalSize TotalSize_mut: DWORD,
+}
+IMAGE_AUX_SYMBOL_Sym_FcnAry_Function :: struct {
+	PointerToLinenumber: DWORD,
+	PointerToNextFunction: DWORD,
+}
+IMAGE_AUX_SYMBOL_Sym_FcnAry_Array :: struct {
+	Dimension: [4]WORD,
+}
+IMAGE_AUX_SYMBOL_Sym_FcnAry :: struct #raw_union {
+	[2]u32,
+	Function Function_mut: IMAGE_AUX_SYMBOL_Sym_FcnAry_Function,
+	Array Array_mut: IMAGE_AUX_SYMBOL_Sym_FcnAry_Array,
+}
+IMAGE_AUX_SYMBOL_Sym :: struct {
+	TagIndex: DWORD,
+	Misc: IMAGE_AUX_SYMBOL_Sym_Misc,
+	FcnAry: IMAGE_AUX_SYMBOL_Sym_FcnAry,
+	TvIndex: WORD,
+}
+IMAGE_AUX_SYMBOL_File :: struct {
+	Name: [IMAGE_SIZEOF_SYMBOL]BYTE,
+}
+IMAGE_AUX_SYMBOL_Section :: struct {
+	Length: DWORD,
+	NumberOfRelocations: WORD,
+	NumberOfLinenumbers: WORD,
+	CheckSum: DWORD,
+	Number: SHORT,
+	Selection: BYTE,
+	bReserved: BYTE,
+	HighNumber: SHORT,
+}
+IMAGE_AUX_SYMBOL_CRC :: struct {
+	crc: DWORD,
+	rgbReserved: [14]BYTE,
+}
+IMAGE_AUX_SYMBOL :: struct {
+	Sym: IMAGE_AUX_SYMBOL_Sym,
+	File: IMAGE_AUX_SYMBOL_File,
+	Section: IMAGE_AUX_SYMBOL_Section,
+	TokenDef: IMAGE_AUX_SYMBOL_TOKEN_DEF,
+	CRC: IMAGE_AUX_SYMBOL_CRC,
+}
+PIMAGE_AUX_SYMBOL :: ^IMAGE_AUX_SYMBOL;
+IMAGE_AUX_SYMBOL_EX_Sym :: struct {
+	WeakDefaultSymIndex: DWORD,
+	WeakSearchType: DWORD,
+	rgbReserved: [12]BYTE,
+}
+IMAGE_AUX_SYMBOL_EX_File :: struct {
+	Name: [20]BYTE,
+}
+IMAGE_AUX_SYMBOL_EX_Section :: struct {
+	Length: DWORD,
+	NumberOfRelocations: WORD,
+	NumberOfLinenumbers: WORD,
+	CheckSum: DWORD,
+	Number: SHORT,
+	Selection: BYTE,
+	bReserved: BYTE,
+	HighNumber: SHORT,
+	rgbReserved: [2]BYTE,
+}
+IMAGE_AUX_SYMBOL_EX_s :: struct {
+	TokenDef: IMAGE_AUX_SYMBOL_TOKEN_DEF,
+	rgbReserved: [2]BYTE,
+}
+IMAGE_AUX_SYMBOL_EX_CRC :: struct {
+	crc: DWORD,
+	rgbReserved: [16]BYTE,
+}
+IMAGE_AUX_SYMBOL_EX :: struct {
+	Sym: IMAGE_AUX_SYMBOL_EX_Sym,
+	File: IMAGE_AUX_SYMBOL_EX_File,
+	Section: IMAGE_AUX_SYMBOL_EX_Section,
+	s: IMAGE_AUX_SYMBOL_EX_s,
+	CRC: IMAGE_AUX_SYMBOL_EX_CRC,
+}
+PIMAGE_AUX_SYMBOL_EX :: ^IMAGE_AUX_SYMBOL_EX;
+using IMAGE_AUX_SYMBOL_TYPE :: enum c.int {
+	IMAGE_AUX_SYMBOL_TYPE_TOKEN_DEF = 1,
+}
+pub const IMAGE_COMDAT_SELECT_NODUPLICATES: BYTE = 1;
+pub const IMAGE_COMDAT_SELECT_ANY: BYTE = 2;
+pub const IMAGE_COMDAT_SELECT_SAME_SIZE: BYTE = 3;
+pub const IMAGE_COMDAT_SELECT_EXACT_MATCH: BYTE = 4;
+pub const IMAGE_COMDAT_SELECT_ASSOCIATIVE: BYTE = 5;
+pub const IMAGE_COMDAT_SELECT_LARGEST: BYTE = 6;
+pub const IMAGE_COMDAT_SELECT_NEWEST: BYTE = 7;
+pub const IMAGE_WEAK_EXTERN_SEARCH_NOLIBRARY: BYTE = 1;
+pub const IMAGE_WEAK_EXTERN_SEARCH_LIBRARY: BYTE = 2;
+pub const IMAGE_WEAK_EXTERN_SEARCH_ALIAS: BYTE = 3;
+IMAGE_RELOCATION_u :: struct #raw_union {
+	[1]u32,
+	VirtualAddress VirtualAddress_mut: DWORD,
+	RelocCount RelocCount_mut: DWORD,
+}
+IMAGE_RELOCATION :: struct {
+	u: IMAGE_RELOCATION_u,
+	SymbolTableIndex: DWORD,
+	Type: WORD,
+}
+PIMAGE_RELOCATION :: ^IMAGE_RELOCATION;
+pub const IMAGE_REL_I386_ABSOLUTE: WORD = 0x0000;
+pub const IMAGE_REL_I386_DIR16: WORD = 0x0001;
+pub const IMAGE_REL_I386_REL16: WORD = 0x0002;
+pub const IMAGE_REL_I386_DIR32: WORD = 0x0006;
+pub const IMAGE_REL_I386_DIR32NB: WORD = 0x0007;
+pub const IMAGE_REL_I386_SEG12: WORD = 0x0009;
+pub const IMAGE_REL_I386_SECTION: WORD = 0x000A;
+pub const IMAGE_REL_I386_SECREL: WORD = 0x000B;
+pub const IMAGE_REL_I386_TOKEN: WORD = 0x000C;
+pub const IMAGE_REL_I386_SECREL7: WORD = 0x000D;
+pub const IMAGE_REL_I386_REL32: WORD = 0x0014;
+pub const IMAGE_REL_MIPS_ABSOLUTE: WORD = 0x0000;
+pub const IMAGE_REL_MIPS_REFHALF: WORD = 0x0001;
+pub const IMAGE_REL_MIPS_REFWORD: WORD = 0x0002;
+pub const IMAGE_REL_MIPS_JMPADDR: WORD = 0x0003;
+pub const IMAGE_REL_MIPS_REFHI: WORD = 0x0004;
+pub const IMAGE_REL_MIPS_REFLO: WORD = 0x0005;
+pub const IMAGE_REL_MIPS_GPREL: WORD = 0x0006;
+pub const IMAGE_REL_MIPS_LITERAL: WORD = 0x0007;
+pub const IMAGE_REL_MIPS_SECTION: WORD = 0x000A;
+pub const IMAGE_REL_MIPS_SECREL: WORD = 0x000B;
+pub const IMAGE_REL_MIPS_SECRELLO: WORD = 0x000C;
+pub const IMAGE_REL_MIPS_SECRELHI: WORD = 0x000D;
+pub const IMAGE_REL_MIPS_TOKEN: WORD = 0x000E;
+pub const IMAGE_REL_MIPS_JMPADDR16: WORD = 0x0010;
+pub const IMAGE_REL_MIPS_REFWORDNB: WORD = 0x0022;
+pub const IMAGE_REL_MIPS_PAIR: WORD = 0x0025;
+pub const IMAGE_REL_ALPHA_ABSOLUTE: WORD = 0x0000;
+pub const IMAGE_REL_ALPHA_REFLONG: WORD = 0x0001;
+pub const IMAGE_REL_ALPHA_REFQUAD: WORD = 0x0002;
+pub const IMAGE_REL_ALPHA_GPREL32: WORD = 0x0003;
+pub const IMAGE_REL_ALPHA_LITERAL: WORD = 0x0004;
+pub const IMAGE_REL_ALPHA_LITUSE: WORD = 0x0005;
+pub const IMAGE_REL_ALPHA_GPDISP: WORD = 0x0006;
+pub const IMAGE_REL_ALPHA_BRADDR: WORD = 0x0007;
+pub const IMAGE_REL_ALPHA_HINT: WORD = 0x0008;
+pub const IMAGE_REL_ALPHA_INLINE_REFLONG: WORD = 0x0009;
+pub const IMAGE_REL_ALPHA_REFHI: WORD = 0x000A;
+pub const IMAGE_REL_ALPHA_REFLO: WORD = 0x000B;
+pub const IMAGE_REL_ALPHA_PAIR: WORD = 0x000C;
+pub const IMAGE_REL_ALPHA_MATCH: WORD = 0x000D;
+pub const IMAGE_REL_ALPHA_SECTION: WORD = 0x000E;
+pub const IMAGE_REL_ALPHA_SECREL: WORD = 0x000F;
+pub const IMAGE_REL_ALPHA_REFLONGNB: WORD = 0x0010;
+pub const IMAGE_REL_ALPHA_SECRELLO: WORD = 0x0011;
+pub const IMAGE_REL_ALPHA_SECRELHI: WORD = 0x0012;
+pub const IMAGE_REL_ALPHA_REFQ3: WORD = 0x0013;
+pub const IMAGE_REL_ALPHA_REFQ2: WORD = 0x0014;
+pub const IMAGE_REL_ALPHA_REFQ1: WORD = 0x0015;
+pub const IMAGE_REL_ALPHA_GPRELLO: WORD = 0x0016;
+pub const IMAGE_REL_ALPHA_GPRELHI: WORD = 0x0017;
+pub const IMAGE_REL_PPC_ABSOLUTE: WORD = 0x0000;
+pub const IMAGE_REL_PPC_ADDR64: WORD = 0x0001;
+pub const IMAGE_REL_PPC_ADDR32: WORD = 0x0002;
+pub const IMAGE_REL_PPC_ADDR24: WORD = 0x0003;
+pub const IMAGE_REL_PPC_ADDR16: WORD = 0x0004;
+pub const IMAGE_REL_PPC_ADDR14: WORD = 0x0005;
+pub const IMAGE_REL_PPC_REL24: WORD = 0x0006;
+pub const IMAGE_REL_PPC_REL14: WORD = 0x0007;
+pub const IMAGE_REL_PPC_TOCREL16: WORD = 0x0008;
+pub const IMAGE_REL_PPC_TOCREL14: WORD = 0x0009;
+pub const IMAGE_REL_PPC_ADDR32NB: WORD = 0x000A;
+pub const IMAGE_REL_PPC_SECREL: WORD = 0x000B;
+pub const IMAGE_REL_PPC_SECTION: WORD = 0x000C;
+pub const IMAGE_REL_PPC_IFGLUE: WORD = 0x000D;
+pub const IMAGE_REL_PPC_IMGLUE: WORD = 0x000E;
+pub const IMAGE_REL_PPC_SECREL16: WORD = 0x000F;
+pub const IMAGE_REL_PPC_REFHI: WORD = 0x0010;
+pub const IMAGE_REL_PPC_REFLO: WORD = 0x0011;
+pub const IMAGE_REL_PPC_PAIR: WORD = 0x0012;
+pub const IMAGE_REL_PPC_SECRELLO: WORD = 0x0013;
+pub const IMAGE_REL_PPC_SECRELHI: WORD = 0x0014;
+pub const IMAGE_REL_PPC_GPREL: WORD = 0x0015;
+pub const IMAGE_REL_PPC_TOKEN: WORD = 0x0016;
+pub const IMAGE_REL_PPC_TYPEMASK: WORD = 0x00FF;
+pub const IMAGE_REL_PPC_NEG: WORD = 0x0100;
+pub const IMAGE_REL_PPC_BRTAKEN: WORD = 0x0200;
+pub const IMAGE_REL_PPC_BRNTAKEN: WORD = 0x0400;
+pub const IMAGE_REL_PPC_TOCDEFN: WORD = 0x0800;
+pub const IMAGE_REL_SH3_ABSOLUTE: WORD = 0x0000;
+pub const IMAGE_REL_SH3_DIRECT16: WORD = 0x0001;
+pub const IMAGE_REL_SH3_DIRECT32: WORD = 0x0002;
+pub const IMAGE_REL_SH3_DIRECT8: WORD = 0x0003;
+pub const IMAGE_REL_SH3_DIRECT8_WORD: WORD = 0x0004;
+pub const IMAGE_REL_SH3_DIRECT8_LONG: WORD = 0x0005;
+pub const IMAGE_REL_SH3_DIRECT4: WORD = 0x0006;
+pub const IMAGE_REL_SH3_DIRECT4_WORD: WORD = 0x0007;
+pub const IMAGE_REL_SH3_DIRECT4_LONG: WORD = 0x0008;
+pub const IMAGE_REL_SH3_PCREL8_WORD: WORD = 0x0009;
+pub const IMAGE_REL_SH3_PCREL8_LONG: WORD = 0x000A;
+pub const IMAGE_REL_SH3_PCREL12_WORD: WORD = 0x000B;
+pub const IMAGE_REL_SH3_STARTOF_SECTION: WORD = 0x000C;
+pub const IMAGE_REL_SH3_SIZEOF_SECTION: WORD = 0x000D;
+pub const IMAGE_REL_SH3_SECTION: WORD = 0x000E;
+pub const IMAGE_REL_SH3_SECREL: WORD = 0x000F;
+pub const IMAGE_REL_SH3_DIRECT32_NB: WORD = 0x0010;
+pub const IMAGE_REL_SH3_GPREL4_LONG: WORD = 0x0011;
+pub const IMAGE_REL_SH3_TOKEN: WORD = 0x0012;
+pub const IMAGE_REL_SHM_PCRELPT: WORD = 0x0013;
+pub const IMAGE_REL_SHM_REFLO: WORD = 0x0014;
+pub const IMAGE_REL_SHM_REFHALF: WORD = 0x0015;
+pub const IMAGE_REL_SHM_RELLO: WORD = 0x0016;
+pub const IMAGE_REL_SHM_RELHALF: WORD = 0x0017;
+pub const IMAGE_REL_SHM_PAIR: WORD = 0x0018;
+pub const IMAGE_REL_SH_NOMODE: WORD = 0x8000;
+pub const IMAGE_REL_ARM_ABSOLUTE: WORD = 0x0000;
+pub const IMAGE_REL_ARM_ADDR32: WORD = 0x0001;
+pub const IMAGE_REL_ARM_ADDR32NB: WORD = 0x0002;
+pub const IMAGE_REL_ARM_BRANCH24: WORD = 0x0003;
+pub const IMAGE_REL_ARM_BRANCH11: WORD = 0x0004;
+pub const IMAGE_REL_ARM_TOKEN: WORD = 0x0005;
+pub const IMAGE_REL_ARM_GPREL12: WORD = 0x0006;
+pub const IMAGE_REL_ARM_GPREL7: WORD = 0x0007;
+pub const IMAGE_REL_ARM_BLX24: WORD = 0x0008;
+pub const IMAGE_REL_ARM_BLX11: WORD = 0x0009;
+pub const IMAGE_REL_ARM_SECTION: WORD = 0x000E;
+pub const IMAGE_REL_ARM_SECREL: WORD = 0x000F;
+pub const IMAGE_REL_ARM_MOV32A: WORD = 0x0010;
+pub const IMAGE_REL_ARM_MOV32: WORD = 0x0010;
+pub const IMAGE_REL_ARM_MOV32T: WORD = 0x0011;
+pub const IMAGE_REL_THUMB_MOV32: WORD = 0x0011;
+pub const IMAGE_REL_ARM_BRANCH20T: WORD = 0x0012;
+pub const IMAGE_REL_THUMB_BRANCH20: WORD = 0x0012;
+pub const IMAGE_REL_ARM_BRANCH24T: WORD = 0x0014;
+pub const IMAGE_REL_THUMB_BRANCH24: WORD = 0x0014;
+pub const IMAGE_REL_ARM_BLX23T: WORD = 0x0015;
+pub const IMAGE_REL_THUMB_BLX23: WORD = 0x0015;
+pub const IMAGE_REL_AM_ABSOLUTE: WORD = 0x0000;
+pub const IMAGE_REL_AM_ADDR32: WORD = 0x0001;
+pub const IMAGE_REL_AM_ADDR32NB: WORD = 0x0002;
+pub const IMAGE_REL_AM_CALL32: WORD = 0x0003;
+pub const IMAGE_REL_AM_FUNCINFO: WORD = 0x0004;
+pub const IMAGE_REL_AM_REL32_1: WORD = 0x0005;
+pub const IMAGE_REL_AM_REL32_2: WORD = 0x0006;
+pub const IMAGE_REL_AM_SECREL: WORD = 0x0007;
+pub const IMAGE_REL_AM_SECTION: WORD = 0x0008;
+pub const IMAGE_REL_AM_TOKEN: WORD = 0x0009;
+pub const IMAGE_REL_ARM64_ABSOLUTE: WORD = 0x0000;
+pub const IMAGE_REL_ARM64_ADDR32: WORD = 0x0001;
+pub const IMAGE_REL_ARM64_ADDR32NB: WORD = 0x0002;
+pub const IMAGE_REL_ARM64_BRANCH26: WORD = 0x0003;
+pub const IMAGE_REL_ARM64_PAGEBASE_REL21: WORD = 0x0004;
+pub const IMAGE_REL_ARM64_REL21: WORD = 0x0005;
+pub const IMAGE_REL_ARM64_PAGEOFFSET_12A: WORD = 0x0006;
+pub const IMAGE_REL_ARM64_PAGEOFFSET_12L: WORD = 0x0007;
+pub const IMAGE_REL_ARM64_SECREL: WORD = 0x0008;
+pub const IMAGE_REL_ARM64_SECREL_LOW12A: WORD = 0x0009;
+pub const IMAGE_REL_ARM64_SECREL_HIGH12A: WORD = 0x000A;
+pub const IMAGE_REL_ARM64_SECREL_LOW12L: WORD = 0x000B;
+pub const IMAGE_REL_ARM64_TOKEN: WORD = 0x000C;
+pub const IMAGE_REL_ARM64_SECTION: WORD = 0x000D;
+pub const IMAGE_REL_ARM64_ADDR64: WORD = 0x000E;
+pub const IMAGE_REL_ARM64_BRANCH19: WORD = 0x000F;
+pub const IMAGE_REL_AMD64_ABSOLUTE: WORD = 0x0000;
+pub const IMAGE_REL_AMD64_ADDR64: WORD = 0x0001;
+pub const IMAGE_REL_AMD64_ADDR32: WORD = 0x0002;
+pub const IMAGE_REL_AMD64_ADDR32NB: WORD = 0x0003;
+pub const IMAGE_REL_AMD64_REL32: WORD = 0x0004;
+pub const IMAGE_REL_AMD64_REL32_1: WORD = 0x0005;
+pub const IMAGE_REL_AMD64_REL32_2: WORD = 0x0006;
+pub const IMAGE_REL_AMD64_REL32_3: WORD = 0x0007;
+pub const IMAGE_REL_AMD64_REL32_4: WORD = 0x0008;
+pub const IMAGE_REL_AMD64_REL32_5: WORD = 0x0009;
+pub const IMAGE_REL_AMD64_SECTION: WORD = 0x000A;
+pub const IMAGE_REL_AMD64_SECREL: WORD = 0x000B;
+pub const IMAGE_REL_AMD64_SECREL7: WORD = 0x000C;
+pub const IMAGE_REL_AMD64_TOKEN: WORD = 0x000D;
+pub const IMAGE_REL_AMD64_SREL32: WORD = 0x000E;
+pub const IMAGE_REL_AMD64_PAIR: WORD = 0x000F;
+pub const IMAGE_REL_AMD64_SSPAN32: WORD = 0x0010;
+pub const IMAGE_REL_IA64_ABSOLUTE: WORD = 0x0000;
+pub const IMAGE_REL_IA64_IMM14: WORD = 0x0001;
+pub const IMAGE_REL_IA64_IMM22: WORD = 0x0002;
+pub const IMAGE_REL_IA64_IMM64: WORD = 0x0003;
+pub const IMAGE_REL_IA64_DIR32: WORD = 0x0004;
+pub const IMAGE_REL_IA64_DIR64: WORD = 0x0005;
+pub const IMAGE_REL_IA64_PCREL21B: WORD = 0x0006;
+pub const IMAGE_REL_IA64_PCREL21M: WORD = 0x0007;
+pub const IMAGE_REL_IA64_PCREL21F: WORD = 0x0008;
+pub const IMAGE_REL_IA64_GPREL22: WORD = 0x0009;
+pub const IMAGE_REL_IA64_LTOFF22: WORD = 0x000A;
+pub const IMAGE_REL_IA64_SECTION: WORD = 0x000B;
+pub const IMAGE_REL_IA64_SECREL22: WORD = 0x000C;
+pub const IMAGE_REL_IA64_SECREL64I: WORD = 0x000D;
+pub const IMAGE_REL_IA64_SECREL32: WORD = 0x000E;
+pub const IMAGE_REL_IA64_DIR32NB: WORD = 0x0010;
+pub const IMAGE_REL_IA64_SREL14: WORD = 0x0011;
+pub const IMAGE_REL_IA64_SREL22: WORD = 0x0012;
+pub const IMAGE_REL_IA64_SREL32: WORD = 0x0013;
+pub const IMAGE_REL_IA64_UREL32: WORD = 0x0014;
+pub const IMAGE_REL_IA64_PCREL60X: WORD = 0x0015;
+pub const IMAGE_REL_IA64_PCREL60B: WORD = 0x0016;
+pub const IMAGE_REL_IA64_PCREL60F: WORD = 0x0017;
+pub const IMAGE_REL_IA64_PCREL60I: WORD = 0x0018;
+pub const IMAGE_REL_IA64_PCREL60M: WORD = 0x0019;
+pub const IMAGE_REL_IA64_IMMGPREL64: WORD = 0x001A;
+pub const IMAGE_REL_IA64_TOKEN: WORD = 0x001B;
+pub const IMAGE_REL_IA64_GPREL32: WORD = 0x001C;
+pub const IMAGE_REL_IA64_ADDEND: WORD = 0x001F;
+pub const IMAGE_REL_CEF_ABSOLUTE: WORD = 0x0000;
+pub const IMAGE_REL_CEF_ADDR32: WORD = 0x0001;
+pub const IMAGE_REL_CEF_ADDR64: WORD = 0x0002;
+pub const IMAGE_REL_CEF_ADDR32NB: WORD = 0x0003;
+pub const IMAGE_REL_CEF_SECTION: WORD = 0x0004;
+pub const IMAGE_REL_CEF_SECREL: WORD = 0x0005;
+pub const IMAGE_REL_CEF_TOKEN: WORD = 0x0006;
+pub const IMAGE_REL_CEE_ABSOLUTE: WORD = 0x0000;
+pub const IMAGE_REL_CEE_ADDR32: WORD = 0x0001;
+pub const IMAGE_REL_CEE_ADDR64: WORD = 0x0002;
+pub const IMAGE_REL_CEE_ADDR32NB: WORD = 0x0003;
+pub const IMAGE_REL_CEE_SECTION: WORD = 0x0004;
+pub const IMAGE_REL_CEE_SECREL: WORD = 0x0005;
+pub const IMAGE_REL_CEE_TOKEN: WORD = 0x0006;
+pub const IMAGE_REL_M32R_ABSOLUTE: WORD = 0x0000;
+pub const IMAGE_REL_M32R_ADDR32: WORD = 0x0001;
+pub const IMAGE_REL_M32R_ADDR32NB: WORD = 0x0002;
+pub const IMAGE_REL_M32R_ADDR24: WORD = 0x0003;
+pub const IMAGE_REL_M32R_GPREL16: WORD = 0x0004;
+pub const IMAGE_REL_M32R_PCREL24: WORD = 0x0005;
+pub const IMAGE_REL_M32R_PCREL16: WORD = 0x0006;
+pub const IMAGE_REL_M32R_PCREL8: WORD = 0x0007;
+pub const IMAGE_REL_M32R_REFHALF: WORD = 0x0008;
+pub const IMAGE_REL_M32R_REFHI: WORD = 0x0009;
+pub const IMAGE_REL_M32R_REFLO: WORD = 0x000A;
+pub const IMAGE_REL_M32R_PAIR: WORD = 0x000B;
+pub const IMAGE_REL_M32R_SECTION: WORD = 0x000C;
+pub const IMAGE_REL_M32R_SECREL32: WORD = 0x000D;
+pub const IMAGE_REL_M32R_TOKEN: WORD = 0x000E;
+pub const IMAGE_REL_EBC_ABSOLUTE: WORD = 0x0000;
+pub const IMAGE_REL_EBC_ADDR32NB: WORD = 0x0001;
+pub const IMAGE_REL_EBC_REL32: WORD = 0x0002;
+pub const IMAGE_REL_EBC_SECTION: WORD = 0x0003;
+pub const IMAGE_REL_EBC_SECREL: WORD = 0x0004;
+IMAGE_LINENUMBER_Type :: struct #raw_union {
+	[1]u32,
+	SymbolTableIndex SymbolTableIndex_mut: DWORD,
+	VirtualAddress VirtualAddress_mut: DWORD,
+}
+IMAGE_LINENUMBER :: struct {
+	Type: IMAGE_LINENUMBER_Type,
+	Linenumber: WORD,
+}
+PIMAGE_LINENUMBER :: ^IMAGE_LINENUMBER;
+IMAGE_BASE_RELOCATION :: struct {
+	VirtualAddress: DWORD,
+	SizeOfBlock: DWORD,
+}
+PIMAGE_BASE_RELOCATION :: ^IMAGE_BASE_RELOCATION;
+pub const IMAGE_REL_BASED_ABSOLUTE: WORD = 0;
+pub const IMAGE_REL_BASED_HIGH: WORD = 1;
+pub const IMAGE_REL_BASED_LOW: WORD = 2;
+pub const IMAGE_REL_BASED_HIGHLOW: WORD = 3;
+pub const IMAGE_REL_BASED_HIGHADJ: WORD = 4;
+pub const IMAGE_REL_BASED_MACHINE_SPECIFIC_5: WORD = 5;
+pub const IMAGE_REL_BASED_RESERVED: WORD = 6;
+pub const IMAGE_REL_BASED_MACHINE_SPECIFIC_7: WORD = 7;
+pub const IMAGE_REL_BASED_MACHINE_SPECIFIC_8: WORD = 8;
+pub const IMAGE_REL_BASED_MACHINE_SPECIFIC_9: WORD = 9;
+pub const IMAGE_REL_BASED_DIR64: WORD = 10;
+pub const IMAGE_REL_BASED_IA64_IMM64: WORD = 9;
+pub const IMAGE_REL_BASED_MIPS_JMPADDR: WORD = 5;
+pub const IMAGE_REL_BASED_MIPS_JMPADDR16: WORD = 9;
+pub const IMAGE_REL_BASED_ARM_MOV32: WORD = 5;
+pub const IMAGE_REL_BASED_THUMB_MOV32: WORD = 7;
+pub const IMAGE_ARCHIVE_START_SIZE: usize = 8;
+pub const IMAGE_ARCHIVE_START: string = "!<arch>\n";
+pub const IMAGE_ARCHIVE_END: string = "`\n";
+pub const IMAGE_ARCHIVE_PAD: string = "\n";
+pub const IMAGE_ARCHIVE_LINKER_MEMBER: string = "/               ";
+pub const IMAGE_ARCHIVE_LONGNAMES_MEMBER: string = "//              ";
+pub const IMAGE_ARCHIVE_HYBRIDMAP_MEMBER: string = "/<HYBRIDMAP>/   ";
+IMAGE_ARCHIVE_MEMBER_HEADER :: struct {
+	Name: [16]BYTE,
+	Date: [12]BYTE,
+	UserID: [6]BYTE,
+	GroupID: [6]BYTE,
+	Mode: [8]BYTE,
+	Size: [10]BYTE,
+	EndHeader: [2]BYTE,
+}
+PIMAGE_ARCHIVE_MEMBER_HEADER :: ^IMAGE_ARCHIVE_MEMBER_HEADER;
+pub const IMAGE_SIZEOF_ARCHIVE_MEMBER_HDR: usize = 60;
+IMAGE_EXPORT_DIRECTORY :: struct {
+	Characteristics: DWORD,
+	TimeDateStamp: DWORD,
+	MajorVersion: WORD,
+	MinorVersion: WORD,
+	Name: DWORD,
+	Base: DWORD,
+	NumberOfFunctions: DWORD,
+	NumberOfNames: DWORD,
+	AddressOfFunctions: DWORD,
+	AddressOfNames: DWORD,
+	AddressOfNameOrdinals: DWORD,
+}
+PIMAGE_EXPORT_DIRECTORY :: ^IMAGE_EXPORT_DIRECTORY;
+IMAGE_IMPORT_BY_NAME :: struct {
+	Hint: WORD,
+	Name: [1]CHAR,
+}
+PIMAGE_IMPORT_BY_NAME :: ^IMAGE_IMPORT_BY_NAME;
+IMAGE_THUNK_DATA64_u1 :: struct #raw_union {
+	[1]u64,
+	ForwarderString ForwarderString_mut: ULONGLONG,
+	Function Function_mut: ULONGLONG,
+	Ordinal Ordinal_mut: ULONGLONG,
+	AddressOfData AddressOfData_mut: ULONGLONG,
+}
+IMAGE_THUNK_DATA64 :: struct {
+	u1: IMAGE_THUNK_DATA64_u1,
+}
+PIMAGE_THUNK_DATA64 :: ^IMAGE_THUNK_DATA64;
+IMAGE_THUNK_DATA32_u1 :: struct #raw_union {
+	[1]u32,
+	ForwarderString ForwarderString_mut: DWORD,
+	Function Function_mut: DWORD,
+	Ordinal Ordinal_mut: DWORD,
+	AddressOfData AddressOfData_mut: DWORD,
+}
+IMAGE_THUNK_DATA32 :: struct {
+	u1: IMAGE_THUNK_DATA32_u1,
+}
+PIMAGE_THUNK_DATA32 :: ^IMAGE_THUNK_DATA32;
+pub const IMAGE_ORDINAL_FLAG64: ULONGLONG = 0x8000000000000000;
+pub const IMAGE_ORDINAL_FLAG32: DWORD = 0x80000000;
+#[inline]
+pub fn IMAGE_ORDINAL64(Ordinal: ULONGLONG) -> ULONGLONG {
+	Ordinal & 0xffff
+}
+#[inline]
+pub fn IMAGE_ORDINAL32(Ordinal: DWORD) -> DWORD {
+	Ordinal & 0xffff
+}
+#[inline]
+pub fn IMAGE_SNAP_BY_ORDINAL64(Ordinal: ULONGLONG) -> bool {
+	(Ordinal & IMAGE_ORDINAL_FLAG64) != 0
+}
+#[inline]
+pub fn IMAGE_SNAP_BY_ORDINAL32(Ordinal: DWORD) -> bool {
+	(Ordinal & IMAGE_ORDINAL_FLAG32) != 0
+}
+FN!{stdcall PIMAGE_TLS_CALLBACK(
+	DllHandle: PVOID,
+	Reason: DWORD,
+	Reserved: PVOID,
+) -> ()}
+IMAGE_TLS_DIRECTORY64 :: struct {
+	StartAddressOfRawData: ULONGLONG,
+	EndAddressOfRawData: ULONGLONG,
+	AddressOfIndex: ULONGLONG,
+	AddressOfCallBacks: ULONGLONG,
+	SizeOfZeroFill: DWORD,
+	Characteristics: DWORD,
+}
+BITFIELD!{IMAGE_TLS_DIRECTORY64 Characteristics: DWORD [
+	Reserved0 set_Reserved0[0..20],
+	Alignment set_Alignment[20..24],
+	Reserved1 set_Reserved1[24..32],
+}
+PIMAGE_TLS_DIRECTORY64 :: ^IMAGE_TLS_DIRECTORY64;
+IMAGE_TLS_DIRECTORY32 :: struct {
+	StartAddressOfRawData: DWORD,
+	EndAddressOfRawData: DWORD,
+	AddressOfIndex: DWORD,
+	AddressOfCallBacks: DWORD,
+	SizeOfZeroFill: DWORD,
+	Characteristics: DWORD,
+}
+BITFIELD!{IMAGE_TLS_DIRECTORY32 Characteristics: DWORD [
+	Reserved0 set_Reserved0[0..20],
+	Alignment set_Alignment[20..24],
+	Reserved1 set_Reserved1[24..32],
+}
+PIMAGE_TLS_DIRECTORY32 :: ^IMAGE_TLS_DIRECTORY32;
+#[cfg(target_pointer_width = "64")]
+IFDEF!{
+pub const IMAGE_ORDINAL_FLAG: ULONGLONG = IMAGE_ORDINAL_FLAG64;
+#[inline]
+pub fn IMAGE_ORDINAL(Ordinal: ULONGLONG) -> ULONGLONG {
+	IMAGE_ORDINAL64(Ordinal)
+}
+IMAGE_THUNK_DATA :: IMAGE_THUNK_DATA64;
+PIMAGE_THUNK_DATA :: PIMAGE_THUNK_DATA64;
+#[inline]
+pub fn IMAGE_SNAP_BY_ORDINAL(Ordinal: ULONGLONG) -> bool {
+	IMAGE_SNAP_BY_ORDINAL64(Ordinal)
+}
+IMAGE_TLS_DIRECTORY :: IMAGE_TLS_DIRECTORY64;
+PIMAGE_TLS_DIRECTORY :: PIMAGE_TLS_DIRECTORY64;
+}
+#[cfg(target_arch = "x86")]
+IFDEF!{
+pub const IMAGE_ORDINAL_FLAG: DWORD = IMAGE_ORDINAL_FLAG32;
+#[inline]
+pub fn IMAGE_ORDINAL(Ordinal: DWORD) -> DWORD {
+	IMAGE_ORDINAL32(Ordinal)
+}
+IMAGE_THUNK_DATA :: IMAGE_THUNK_DATA32;
+PIMAGE_THUNK_DATA :: PIMAGE_THUNK_DATA32;
+#[inline]
+pub fn IMAGE_SNAP_BY_ORDINAL(Ordinal: DWORD) -> bool {
+	IMAGE_SNAP_BY_ORDINAL32(Ordinal)
+}
+IMAGE_TLS_DIRECTORY :: IMAGE_TLS_DIRECTORY32;
+PIMAGE_TLS_DIRECTORY :: PIMAGE_TLS_DIRECTORY32;
+}
+IMAGE_IMPORT_DESCRIPTOR_u :: struct #raw_union {
+	[1]u32,
+	Characteristics Characteristics_mut: DWORD,
+	OriginalFirstThunk OriginalFirstThunk_mut: DWORD,
+}
+IMAGE_IMPORT_DESCRIPTOR :: struct {
+	u: IMAGE_IMPORT_DESCRIPTOR_u,
+	TimeDateStamp: DWORD,
+	ForwarderChain: DWORD,
+	Name: DWORD,
+	FirstThunk: DWORD,
+}
+PIMAGE_IMPORT_DESCRIPTOR :: ^IMAGE_IMPORT_DESCRIPTOR;
+IMAGE_BOUND_IMPORT_DESCRIPTOR :: struct {
+	TimeDateStamp: DWORD,
+	OffsetModuleName: WORD,
+	NumberOfModuleForwarderRefs: WORD,
+}
+PIMAGE_BOUND_IMPORT_DESCRIPTOR :: ^IMAGE_BOUND_IMPORT_DESCRIPTOR;
+IMAGE_BOUND_FORWARDER_REF :: struct {
+	TimeDateStamp: DWORD,
+	OffsetModuleName: WORD,
+	Reserved: WORD,
+}
+PIMAGE_BOUND_FORWARDER_REF :: ^IMAGE_BOUND_FORWARDER_REF;
+IMAGE_DELAYLOAD_DESCRIPTOR_Attributes :: struct {
+	AllAttributes: DWORD,
+}
+BITFIELD!{IMAGE_DELAYLOAD_DESCRIPTOR_Attributes AllAttributes: DWORD [
+	RvaBased set_RvaBased[0..1],
+	ReservedAttributes set_ReservedAttributes[1..32],
+}
+IMAGE_DELAYLOAD_DESCRIPTOR :: struct {
+	Attributes: IMAGE_DELAYLOAD_DESCRIPTOR_Attributes,
+	DllNameRVA: DWORD,
+	ModuleHandleRVA: DWORD,
+	ImportAddressTableRVA: DWORD,
+	ImportNameTableRVA: DWORD,
+	BoundImportAddressTableRVA: DWORD,
+	UnloadInformationTableRVA: DWORD,
+	TimeDateStamp: DWORD,
+}
+PIMAGE_DELAYLOAD_DESCRIPTOR :: ^IMAGE_DELAYLOAD_DESCRIPTOR;
+PCIMAGE_DELAYLOAD_DESCRIPTOR :: ^IMAGE_DELAYLOAD_DESCRIPTOR;
+IMAGE_RESOURCE_DIRECTORY :: struct {
+	Characteristics: DWORD,
+	TimeDateStamp: DWORD,
+	MajorVersion: WORD,
+	MinorVersion: WORD,
+	NumberOfNamedEntries: WORD,
+	NumberOfIdEntries: WORD,
+}
+PIMAGE_RESOURCE_DIRECTORY :: ^IMAGE_RESOURCE_DIRECTORY;
+pub const IMAGE_RESOURCE_NAME_IS_STRING: DWORD = 0x80000000;
+pub const IMAGE_RESOURCE_DATA_IS_DIRECTORY: DWORD = 0x80000000;
+IMAGE_RESOURCE_DIRECTORY_ENTRY_u_s :: struct {
+	BitFields: DWORD,
+}
+BITFIELD!{IMAGE_RESOURCE_DIRECTORY_ENTRY_u_s BitFields: DWORD [
+	NameOffset set_NameOffset[0..31],
+	NameIsString set_NameIsString[31..32],
+}
+IMAGE_RESOURCE_DIRECTORY_ENTRY_u :: struct #raw_union {
+	[1]u32,
+	s s_mut: IMAGE_RESOURCE_DIRECTORY_ENTRY_u_s,
+	Name Name_mut: DWORD,
+	Id Id_mut: WORD,
+}
+IMAGE_RESOURCE_DIRECTORY_ENTRY :: struct {
+	u: IMAGE_RESOURCE_DIRECTORY_ENTRY_u,
+	OffsetToData: DWORD,
+}
+BITFIELD!{IMAGE_RESOURCE_DIRECTORY_ENTRY OffsetToData: DWORD [
+	OffsetToDirectory set_OffsetToDirectory[0..31],
+	DataIsDirectory set_DataIsDirectory[31..32],
+}
+PIMAGE_RESOURCE_DIRECTORY_ENTRY :: ^IMAGE_RESOURCE_DIRECTORY_ENTRY;
+IMAGE_RESOURCE_DIRECTORY_STRING :: struct {
+	Length: WORD,
+	NameString: [1]CHAR,
+}
+PIMAGE_RESOURCE_DIRECTORY_STRING :: ^IMAGE_RESOURCE_DIRECTORY_STRING;
+IMAGE_RESOURCE_DIR_STRING_U :: struct {
+	Length: WORD,
+	NameString: [1]WCHAR,
+}
+PIMAGE_RESOURCE_DIR_STRING_U :: ^IMAGE_RESOURCE_DIR_STRING_U;
+IMAGE_RESOURCE_DATA_ENTRY :: struct {
+	OffsetToData: DWORD,
+	Size: DWORD,
+	CodePage: DWORD,
+	Reserved: DWORD,
+}
+PIMAGE_RESOURCE_DATA_ENTRY :: ^IMAGE_RESOURCE_DATA_ENTRY;
+IMAGE_LOAD_CONFIG_CODE_INTEGRITY :: struct {
+	Flags: WORD,
+	Catalog: WORD,
+	CatalogOffset: DWORD,
+	Reserved: DWORD,
+}
+PIMAGE_LOAD_CONFIG_CODE_INTEGRITY :: ^IMAGE_LOAD_CONFIG_CODE_INTEGRITY;
+IMAGE_DYNAMIC_RELOCATION_TABLE :: struct {
+	Version: DWORD,
+	Size: DWORD,
+}
+PIMAGE_DYNAMIC_RELOCATION_TABLE :: ^IMAGE_DYNAMIC_RELOCATION_TABLE;
+#[repr(packed)] IMAGE_DYNAMIC_RELOCATION32 :: struct {
+	Symbol: DWORD,
+	BaseRelocSize: DWORD,
+}
+PIMAGE_DYNAMIC_RELOCATION32 :: ^IMAGE_DYNAMIC_RELOCATION32;
+#[repr(packed)] IMAGE_DYNAMIC_RELOCATION64 :: struct {
+	Symbol: ULONGLONG,
+	BaseRelocSize: DWORD,
+}
+PIMAGE_DYNAMIC_RELOCATION64 :: ^IMAGE_DYNAMIC_RELOCATION64;
+#[repr(packed)] IMAGE_DYNAMIC_RELOCATION32_V2 :: struct {
+	HeaderSize: DWORD,
+	FixupInfoSize: DWORD,
+	Symbol: DWORD,
+	SymbolGroup: DWORD,
+	Flags: DWORD,
+}
+PIMAGE_DYNAMIC_RELOCATION32_V2 :: ^IMAGE_DYNAMIC_RELOCATION32_V2;
+#[repr(packed)] IMAGE_DYNAMIC_RELOCATION64_V2 :: struct {
+	HeaderSize: DWORD,
+	FixupInfoSize: DWORD,
+	Symbol: ULONGLONG,
+	SymbolGroup: DWORD,
+	Flags: DWORD,
+}
+PIMAGE_DYNAMIC_RELOCATION64_V2 :: ^IMAGE_DYNAMIC_RELOCATION64_V2;
+#[cfg(target_pointer_width = "64")]
+IFDEF!{
+IMAGE_DYNAMIC_RELOCATION :: IMAGE_DYNAMIC_RELOCATION64;
+PIMAGE_DYNAMIC_RELOCATION :: PIMAGE_DYNAMIC_RELOCATION64;
+IMAGE_DYNAMIC_RELOCATION_V2 :: IMAGE_DYNAMIC_RELOCATION64_V2;
+PIMAGE_DYNAMIC_RELOCATION_V2 :: PIMAGE_DYNAMIC_RELOCATION64_V2;
+}
+#[cfg(target_arch = "x86")]
+IFDEF!{
+IMAGE_DYNAMIC_RELOCATION :: IMAGE_DYNAMIC_RELOCATION32;
+PIMAGE_DYNAMIC_RELOCATION :: PIMAGE_DYNAMIC_RELOCATION32;
+IMAGE_DYNAMIC_RELOCATION_V2 :: IMAGE_DYNAMIC_RELOCATION32_V2;
+PIMAGE_DYNAMIC_RELOCATION_V2 :: PIMAGE_DYNAMIC_RELOCATION32_V2;
+}
+pub const IMAGE_DYNAMIC_RELOCATION_GUARD_RF_PROLOGUE: DWORD = 0x00000001;
+pub const IMAGE_DYNAMIC_RELOCATION_GUARD_RF_EPILOGUE: DWORD = 0x00000002;
+#[repr(packed)] IMAGE_PROLOGUE_DYNAMIC_RELOCATION_HEADER :: struct {
+	PrologueByteCount: BYTE,
+}
+PIMAGE_PROLOGUE_DYNAMIC_RELOCATION_HEADER :: ^IMAGE_PROLOGUE_DYNAMIC_RELOCATION_HEADER;
+#[repr(packed)] IMAGE_EPILOGUE_DYNAMIC_RELOCATION_HEADER :: struct {
+	EpilogueCount: DWORD,
+	EpilogueByteCount: BYTE,
+	BranchDescriptorElementSize: BYTE,
+	BranchDescriptorCount: WORD,
+}
+PIMAGE_EPILOGUE_DYNAMIC_RELOCATION_HEADER :: ^IMAGE_EPILOGUE_DYNAMIC_RELOCATION_HEADER;
+IMAGE_LOAD_CONFIG_DIRECTORY32 :: struct {
+	Size: DWORD,
+	TimeDateStamp: DWORD,
+	MajorVersion: WORD,
+	MinorVersion: WORD,
+	GlobalFlagsClear: DWORD,
+	GlobalFlagsSet: DWORD,
+	CriticalSectionDefaultTimeout: DWORD,
+	DeCommitFreeBlockThreshold: DWORD,
+	DeCommitTotalFreeThreshold: DWORD,
+	LockPrefixTable: DWORD,
+	MaximumAllocationSize: DWORD,
+	VirtualMemoryThreshold: DWORD,
+	ProcessHeapFlags: DWORD,
+	ProcessAffinityMask: DWORD,
+	CSDVersion: WORD,
+	DependentLoadFlags: WORD,
+	EditList: DWORD,
+	SecurityCookie: DWORD,
+	SEHandlerTable: DWORD,
+	SEHandlerCount: DWORD,
+	GuardCFCheckFunctionPointer: DWORD,
+	GuardCFDispatchFunctionPointer: DWORD,
+	GuardCFFunctionTable: DWORD,
+	GuardCFFunctionCount: DWORD,
+	GuardFlags: DWORD,
+	CodeIntegrity: IMAGE_LOAD_CONFIG_CODE_INTEGRITY,
+	GuardAddressTakenIatEntryTable: DWORD,
+	GuardAddressTakenIatEntryCount: DWORD,
+	GuardLongJumpTargetTable: DWORD,
+	GuardLongJumpTargetCount: DWORD,
+	DynamicValueRelocTable: DWORD,
+	CHPEMetadataPointer: DWORD,
+	GuardRFFailureRoutine: DWORD,
+	GuardRFFailureRoutineFunctionPointer: DWORD,
+	DynamicValueRelocTableOffset: DWORD,
+	DynamicValueRelocTableSection: WORD,
+	Reserved2: WORD,
+	GuardRFVerifyStackPointerFunctionPointer: DWORD,
+	HotPatchTableOffset: DWORD,
+	Reserved3: DWORD,
+	EnclaveConfigurationPointer: DWORD,
+}
+PIMAGE_LOAD_CONFIG_DIRECTORY32 :: ^IMAGE_LOAD_CONFIG_DIRECTORY32;
+IMAGE_LOAD_CONFIG_DIRECTORY64 :: struct {
+	Size: DWORD,
+	TimeDateStamp: DWORD,
+	MajorVersion: WORD,
+	MinorVersion: WORD,
+	GlobalFlagsClear: DWORD,
+	GlobalFlagsSet: DWORD,
+	CriticalSectionDefaultTimeout: DWORD,
+	DeCommitFreeBlockThreshold: ULONGLONG,
+	DeCommitTotalFreeThreshold: ULONGLONG,
+	LockPrefixTable: ULONGLONG,
+	MaximumAllocationSize: ULONGLONG,
+	VirtualMemoryThreshold: ULONGLONG,
+	ProcessAffinityMask: ULONGLONG,
+	ProcessHeapFlags: DWORD,
+	CSDVersion: WORD,
+	DependentLoadFlags: WORD,
+	EditList: ULONGLONG,
+	SecurityCookie: ULONGLONG,
+	SEHandlerTable: ULONGLONG,
+	SEHandlerCount: ULONGLONG,
+	GuardCFCheckFunctionPointer: ULONGLONG,
+	GuardCFDispatchFunctionPointer: ULONGLONG,
+	GuardCFFunctionTable: ULONGLONG,
+	GuardCFFunctionCount: ULONGLONG,
+	GuardFlags: DWORD,
+	CodeIntegrity: IMAGE_LOAD_CONFIG_CODE_INTEGRITY,
+	GuardAddressTakenIatEntryTable: ULONGLONG,
+	GuardAddressTakenIatEntryCount: ULONGLONG,
+	GuardLongJumpTargetTable: ULONGLONG,
+	GuardLongJumpTargetCount: ULONGLONG,
+	DynamicValueRelocTable: ULONGLONG,
+	CHPEMetadataPointer: ULONGLONG,
+	GuardRFFailureRoutine: ULONGLONG,
+	GuardRFFailureRoutineFunctionPointer: ULONGLONG,
+	DynamicValueRelocTableOffset: DWORD,
+	DynamicValueRelocTableSection: WORD,
+	Reserved2: WORD,
+	GuardRFVerifyStackPointerFunctionPointer: ULONGLONG,
+	HotPatchTableOffset: DWORD,
+	Reserved3: DWORD,
+	EnclaveConfigurationPointer: ULONGLONG,
+}
+PIMAGE_LOAD_CONFIG_DIRECTORY64 :: ^IMAGE_LOAD_CONFIG_DIRECTORY64;
+#[cfg(target_pointer_width = "64")]
+IFDEF!{
+IMAGE_LOAD_CONFIG_DIRECTORY :: IMAGE_LOAD_CONFIG_DIRECTORY64;
+PIMAGE_LOAD_CONFIG_DIRECTORY :: PIMAGE_LOAD_CONFIG_DIRECTORY64;
+}
+#[cfg(target_arch = "x86")]
+IFDEF!{
+IMAGE_LOAD_CONFIG_DIRECTORY :: IMAGE_LOAD_CONFIG_DIRECTORY32;
+PIMAGE_LOAD_CONFIG_DIRECTORY :: PIMAGE_LOAD_CONFIG_DIRECTORY32;
+}
+IMAGE_HOT_PATCH_INFO :: struct {
+	Version: DWORD,
+	Size: DWORD,
+	SequenceNumber: DWORD,
+	BaseImageList: DWORD,
+	BaseImageCount: DWORD,
+	BufferOffset: DWORD,
+}
+PIMAGE_HOT_PATCH_INFO :: ^IMAGE_HOT_PATCH_INFO;
+IMAGE_HOT_PATCH_BASE :: struct {
+	SequenceNumber: DWORD,
+	Flags: DWORD,
+	OriginalTimeDateStamp: DWORD,
+	OriginalCheckSum: DWORD,
+	CodeIntegrityInfo: DWORD,
+	CodeIntegritySize: DWORD,
+	PatchTable: DWORD,
+	BufferOffset: DWORD,
+}
+PIMAGE_HOT_PATCH_BASE :: ^IMAGE_HOT_PATCH_BASE;
+IMAGE_HOT_PATCH_HASHES :: struct {
+	SHA256: [32]BYTE,
+	SHA1: [20]BYTE,
+}
+PIMAGE_HOT_PATCH_HASHES :: ^IMAGE_HOT_PATCH_HASHES;
+pub const IMAGE_HOT_PATCH_BASE_OBLIGATORY: DWORD = 0x00000001;
+pub const IMAGE_HOT_PATCH_CHUNK_INVERSE: DWORD = 0x80000000;
+pub const IMAGE_HOT_PATCH_CHUNK_OBLIGATORY: DWORD = 0x40000000;
+pub const IMAGE_HOT_PATCH_CHUNK_RESERVED: DWORD = 0x3FF03000;
+pub const IMAGE_HOT_PATCH_CHUNK_TYPE: DWORD = 0x000FC000;
+pub const IMAGE_HOT_PATCH_CHUNK_SOURCE_RVA: DWORD = 0x00008000;
+pub const IMAGE_HOT_PATCH_CHUNK_TARGET_RVA: DWORD = 0x00004000;
+pub const IMAGE_HOT_PATCH_CHUNK_SIZE: DWORD = 0x00000FFF;
+pub const IMAGE_HOT_PATCH_NONE: DWORD = 0x00000000;
+pub const IMAGE_HOT_PATCH_FUNCTION: DWORD = 0x0001C000;
+pub const IMAGE_HOT_PATCH_ABSOLUTE: DWORD = 0x0002C000;
+pub const IMAGE_HOT_PATCH_REL32: DWORD = 0x0003C000;
+pub const IMAGE_HOT_PATCH_CALL_TARGET: DWORD = 0x00044000;
+pub const IMAGE_HOT_PATCH_INDIRECT: DWORD = 0x0005C000;
+pub const IMAGE_HOT_PATCH_NO_CALL_TARGET: DWORD = 0x00064000;
+pub const IMAGE_HOT_PATCH_DYNAMIC_VALUE: DWORD = 0x00078000;
+pub const IMAGE_GUARD_CF_INSTRUMENTED: DWORD = 0x00000100;
+pub const IMAGE_GUARD_CFW_INSTRUMENTED: DWORD = 0x00000200;
+pub const IMAGE_GUARD_CF_FUNCTION_TABLE_PRESENT: DWORD = 0x00000400;
+pub const IMAGE_GUARD_SECURITY_COOKIE_UNUSED: DWORD = 0x00000800;
+pub const IMAGE_GUARD_PROTECT_DELAYLOAD_IAT: DWORD = 0x00001000;
+pub const IMAGE_GUARD_DELAYLOAD_IAT_IN_ITS_OWN_SECTION: DWORD = 0x00002000;
+pub const IMAGE_GUARD_CF_EXPORT_SUPPRESSION_INFO_PRESENT: DWORD = 0x00004000;
+pub const IMAGE_GUARD_CF_ENABLE_EXPORT_SUPPRESSION: DWORD = 0x00008000;
+pub const IMAGE_GUARD_CF_LONGJUMP_TABLE_PRESENT: DWORD = 0x00010000;
+pub const IMAGE_GUARD_RF_INSTRUMENTED: DWORD = 0x00020000;
+pub const IMAGE_GUARD_RF_ENABLE: DWORD = 0x00040000;
+pub const IMAGE_GUARD_RF_STRICT: DWORD = 0x00080000;
+pub const IMAGE_GUARD_CF_FUNCTION_TABLE_SIZE_MASK: DWORD = 0xF0000000;
+pub const IMAGE_GUARD_CF_FUNCTION_TABLE_SIZE_SHIFT: usize = 28;
+pub const IMAGE_GUARD_FLAG_FID_SUPPRESSED: DWORD = 0x01;
+pub const IMAGE_GUARD_FLAG_EXPORT_SUPPRESSED: DWORD = 0x02;
+IMAGE_CE_RUNTIME_FUNCTION_ENTRY :: struct {
+	FuncStart: DWORD,
+	BitFields: DWORD,
+}
+BITFIELD!{IMAGE_CE_RUNTIME_FUNCTION_ENTRY BitFields: DWORD [
+	PrologLen set_PrologLen[0..8],
+	FuncLen set_FuncLen[8..30],
+	ThirtyTwoBit set_ThirtyTwoBit[30..31],
+	ExceptionFlag set_ExceptionFlag[31..32],
+}
+PIMAGE_CE_RUNTIME_FUNCTION_ENTRY :: ^IMAGE_CE_RUNTIME_FUNCTION_ENTRY;
+IMAGE_ARM_RUNTIME_FUNCTION_ENTRY :: struct {
+	BeginAddress: DWORD,
+	UnwindData: DWORD,
+}
+BITFIELD!{IMAGE_ARM_RUNTIME_FUNCTION_ENTRY UnwindData: DWORD [
+	Flag set_Flag[0..2],
+	FunctionLength set_FunctionLength[2..13],
+	Ret set_Ret[13..15],
+	H set_H[15..16],
+	Reg set_Reg[16..19],
+	R set_R[19..20],
+	L set_L[20..21],
+	C set_c[21..22],
+	StackAdjust set_StackAdjust[22..32],
+}
+PIMAGE_ARM_RUNTIME_FUNCTION_ENTRY :: ^IMAGE_ARM_RUNTIME_FUNCTION_ENTRY;
+IMAGE_ARM64_RUNTIME_FUNCTION_ENTRY :: struct {
+	BeginAddress: DWORD,
+	UnwindData: DWORD,
+}
+BITFIELD!{IMAGE_ARM64_RUNTIME_FUNCTION_ENTRY UnwindData: DWORD [
+	Flag set_Flag[0..2],
+	FunctionLength set_FunctionLength[2..13],
+	RegF set_RegF[13..16],
+	RegI set_RegI[16..20],
+	H set_H[20..21],
+	CR set_cR[21..23],
+	FrameSize set_FrameSize[23..32],
+}
+PIMAGE_ARM64_RUNTIME_FUNCTION_ENTRY :: ^IMAGE_ARM64_RUNTIME_FUNCTION_ENTRY;
+IMAGE_ALPHA64_RUNTIME_FUNCTION_ENTRY :: struct {
+	BeginAddress: ULONGLONG,
+	EndAddress: ULONGLONG,
+	ExceptionHandler: ULONGLONG,
+	HandlerData: ULONGLONG,
+	PrologEndAddress: ULONGLONG,
+}
+PIMAGE_ALPHA64_RUNTIME_FUNCTION_ENTRY :: ^IMAGE_ALPHA64_RUNTIME_FUNCTION_ENTRY;
+IMAGE_ALPHA_RUNTIME_FUNCTION_ENTRY :: struct {
+	BeginAddress: DWORD,
+	EndAddress: DWORD,
+	ExceptionHandler: DWORD,
+	HandlerData: DWORD,
+	PrologEndAddress: DWORD,
+}
+PIMAGE_ALPHA_RUNTIME_FUNCTION_ENTRY :: ^IMAGE_ALPHA_RUNTIME_FUNCTION_ENTRY;
+IMAGE_RUNTIME_FUNCTION_ENTRY_u :: struct #raw_union {
+	[1]u32,
+	UnwindInfoAddress UnwindInfoAddress_mut: DWORD,
+	UnwindData UnwindData_mut: DWORD,
+}
+_IMAGE_RUNTIME_FUNCTION_ENTRY :: struct {
+	BeginAddress: DWORD,
+	EndAddress: DWORD,
+	u: IMAGE_RUNTIME_FUNCTION_ENTRY_u,
+}
+type _PIMAGE_RUNTIME_FUNCTION_ENTRY = ^_IMAGE_RUNTIME_FUNCTION_ENTRY;
+IMAGE_IA64_RUNTIME_FUNCTION_ENTRY :: _IMAGE_RUNTIME_FUNCTION_ENTRY;
+PIMAGE_IA64_RUNTIME_FUNCTION_ENTRY :: _PIMAGE_RUNTIME_FUNCTION_ENTRY;
+#[cfg(target_arch = "aarch64")]
+IFDEF!{
+IMAGE_RUNTIME_FUNCTION_ENTRY :: IMAGE_ARM64_RUNTIME_FUNCTION_ENTRY;
+PIMAGE_RUNTIME_FUNCTION_ENTRY :: PIMAGE_ARM64_RUNTIME_FUNCTION_ENTRY;
+}
+#[cfg(not(target_arch = "aarch64"))]
+IFDEF!{
+IMAGE_RUNTIME_FUNCTION_ENTRY :: _IMAGE_RUNTIME_FUNCTION_ENTRY;
+PIMAGE_RUNTIME_FUNCTION_ENTRY :: _PIMAGE_RUNTIME_FUNCTION_ENTRY;
+}
+IMAGE_DEBUG_DIRECTORY :: struct {
+	Characteristics: DWORD,
+	TimeDateStamp: DWORD,
+	MajorVersion: WORD,
+	MinorVersion: WORD,
+	Type: DWORD,
+	SizeOfData: DWORD,
+	AddressOfRawData: DWORD,
+	PointerToRawData: DWORD,
+}
+PIMAGE_DEBUG_DIRECTORY :: ^IMAGE_DEBUG_DIRECTORY;
+pub const IMAGE_DEBUG_TYPE_UNKNOWN: DWORD = 0;
+pub const IMAGE_DEBUG_TYPE_COFF: DWORD = 1;
+pub const IMAGE_DEBUG_TYPE_CODEVIEW: DWORD = 2;
+pub const IMAGE_DEBUG_TYPE_FPO: DWORD = 3;
+pub const IMAGE_DEBUG_TYPE_MISC: DWORD = 4;
+pub const IMAGE_DEBUG_TYPE_EXCEPTION: DWORD = 5;
+pub const IMAGE_DEBUG_TYPE_FIXUP: DWORD = 6;
+pub const IMAGE_DEBUG_TYPE_OMAP_TO_SRC: DWORD = 7;
+pub const IMAGE_DEBUG_TYPE_OMAP_FROM_SRC: DWORD = 8;
+pub const IMAGE_DEBUG_TYPE_BORLAND: DWORD = 9;
+pub const IMAGE_DEBUG_TYPE_RESERVED10: DWORD = 10;
+pub const IMAGE_DEBUG_TYPE_CLSID: DWORD = 11;
+pub const IMAGE_DEBUG_TYPE_VC_FEATURE: DWORD = 12;
+pub const IMAGE_DEBUG_TYPE_POGO: DWORD = 13;
+pub const IMAGE_DEBUG_TYPE_ILTCG: DWORD = 14;
+pub const IMAGE_DEBUG_TYPE_MPX: DWORD = 15;
+pub const IMAGE_DEBUG_TYPE_REPRO: DWORD = 16;
+IMAGE_COFF_SYMBOLS_HEADER :: struct {
+	NumberOfSymbols: DWORD,
+	LvaToFirstSymbol: DWORD,
+	NumberOfLinenumbers: DWORD,
+	LvaToFirstLinenumber: DWORD,
+	RvaToFirstByteOfCode: DWORD,
+	RvaToLastByteOfCode: DWORD,
+	RvaToFirstByteOfData: DWORD,
+	RvaToLastByteOfData: DWORD,
+}
+PIMAGE_COFF_SYMBOLS_HEADER :: ^IMAGE_COFF_SYMBOLS_HEADER;
+pub const FRAME_FPO: WORD = 0;
+pub const FRAME_TRAP: WORD = 1;
+pub const FRAME_TSS: WORD = 2;
+pub const FRAME_NONFPO: WORD = 3;
+FPO_DATA :: struct {
+	ulOffStart: DWORD,
+	cbProcSize: DWORD,
+	cdwLocals: DWORD,
+	cdwParams: WORD,
+	BitFields: WORD,
+}
+BITFIELD!{FPO_DATA BitFields: WORD [
+	cbProlog set_cbProlog[0..8],
+	cbRegs set_cbRegs[8..11],
+	fHasSEH set_fHasSEH[11..12],
+	fUseBP set_fUseBP[12..13],
+	reserved set_reserved[13..14],
+	cbFrame set_cbFrame[14..16],
+}
+PFPO_DATA :: ^FPO_DATA;
+pub const SIZEOF_RFPO_DATA: usize = 16;
+pub const IMAGE_DEBUG_MISC_EXENAME: DWORD = 1;
+IMAGE_DEBUG_MISC :: struct {
+	DataType: DWORD,
+	Length: DWORD,
+	Unicode: BOOLEAN,
+	Reserved: [3]BYTE,
+	Data: [1]BYTE,
+}
+PIMAGE_DEBUG_MISC :: ^IMAGE_DEBUG_MISC;
+IMAGE_FUNCTION_ENTRY :: struct {
+	StartingAddress: DWORD,
+	EndingAddress: DWORD,
+	EndOfPrologue: DWORD,
+}
+PIMAGE_FUNCTION_ENTRY :: ^IMAGE_FUNCTION_ENTRY;
+IMAGE_FUNCTION_ENTRY64_u :: struct #raw_union {
+	[1]u64,
+	EndOfPrologue EndOfPrologue_mut: ULONGLONG,
+	UnwindInfoAddress UnwindInfoAddress_mut: ULONGLONG,
+}
+IMAGE_FUNCTION_ENTRY64 :: struct {
+	StartingAddress: ULONGLONG,
+	EndingAddress: ULONGLONG,
+	u: IMAGE_FUNCTION_ENTRY64_u,
+}
+PIMAGE_FUNCTION_ENTRY64 :: ^IMAGE_FUNCTION_ENTRY64;
+IMAGE_SEPARATE_DEBUG_HEADER :: struct {
+	Signature: WORD,
+	Flags: WORD,
+	Machine: WORD,
+	Characteristics: WORD,
+	TimeDateStamp: DWORD,
+	CheckSum: DWORD,
+	ImageBase: DWORD,
+	SizeOfImage: DWORD,
+	NumberOfSections: DWORD,
+	ExportedNamesSize: DWORD,
+	DebugDirectorySize: DWORD,
+	SectionAlignment: DWORD,
+	Reserved: [2]DWORD,
+}
+PIMAGE_SEPARATE_DEBUG_HEADER :: ^IMAGE_SEPARATE_DEBUG_HEADER;
+NON_PAGED_DEBUG_INFO :: struct {
+	Signature: WORD,
+	Flags: WORD,
+	Size: DWORD,
+	Machine: WORD,
+	Characteristics: WORD,
+	TimeDateStamp: DWORD,
+	CheckSum: DWORD,
+	SizeOfImage: DWORD,
+	ImageBase: ULONGLONG,
+}
+PNON_PAGED_DEBUG_INFO :: ^NON_PAGED_DEBUG_INFO;
+pub const IMAGE_SEPARATE_DEBUG_SIGNATURE: WORD = 0x4944;
+pub const NON_PAGED_DEBUG_SIGNATURE: WORD = 0x494E;
+pub const IMAGE_SEPARATE_DEBUG_FLAGS_MASK: WORD = 0x8000;
+pub const IMAGE_SEPARATE_DEBUG_MISMATCH: WORD = 0x8000;
+IMAGE_ARCHITECTURE_HEADER :: struct {
+	BitFields: c.uint,
+	FirstEntryRVA: DWORD,
+}
+BITFIELD!{IMAGE_ARCHITECTURE_HEADER BitFields: c.uint [
+	AmaskValue set_AmaskValue[0..1],
+	unused1 set_unused1[1..8],
+	AmaskShift set_AmaskShift[8..16],
+	unused2 set_unused2[8..32],
+}
+PIMAGE_ARCHITECTURE_HEADER :: ^IMAGE_ARCHITECTURE_HEADER;
+IMAGE_ARCHITECTURE_ENTRY :: struct {
+	FixupInstRVA: DWORD,
+	NewInst: DWORD,
+}
+PIMAGE_ARCHITECTURE_ENTRY :: ^IMAGE_ARCHITECTURE_ENTRY;
+pub const IMPORT_OBJECT_HDR_SIG2: WORD = 0xffff;
+IMPORT_OBJECT_HEADER_u :: struct #raw_union {
+	[1]u16,
+	Ordinal Ordinal_mut: WORD,
+	Hint Hint_mut: WORD,
+}
+IMPORT_OBJECT_HEADER :: struct {
+	Sig1: WORD,
+	Sig2: WORD,
+	Version: WORD,
+	Machine: WORD,
+	TimeDateStamp: DWORD,
+	SizeOfData: DWORD,
+	u: IMPORT_OBJECT_HEADER_u,
+	BitFields: WORD,
+}
+BITFIELD!{IMPORT_OBJECT_HEADER BitFields: WORD [
+	Type set_Type[0..2],
+	NameType set_NameType[2..5],
+	Reserved set_Reserved[5..16],
+}
+using IMPORT_OBJECT_TYPE :: enum c.int {
+	IMPORT_OBJECT_CODE = 0,
+	IMPORT_OBJECT_DATA = 1,
+	IMPORT_OBJECT_CONST = 2,
+}
+using IMPORT_OBJECT_NAME_TYPE :: enum c.int {
+	IMPORT_OBJECT_ORDINAL = 0,
+	IMPORT_OBJECT_NAME = 1,
+	IMPORT_OBJECT_NAME_NO_PREFIX = 2,
+	IMPORT_OBJECT_NAME_UNDECORATE = 3,
+	IMPORT_OBJECT_NAME_EXPORTAS = 4,
+}
+using ReplacesCorHdrNumericDefines :: enum c.int {
+	COMIMAGE_FLAGS_ILONLY = 0x00000001,
+	COMIMAGE_FLAGS_32BITREQUIRED = 0x00000002,
+	COMIMAGE_FLAGS_IL_LIBRARY = 0x00000004,
+	COMIMAGE_FLAGS_STRONGNAMESIGNED = 0x00000008,
+	COMIMAGE_FLAGS_NATIVE_ENTRYPOINT = 0x00000010,
+	COMIMAGE_FLAGS_TRACKDEBUGDATA = 0x00010000,
+	COMIMAGE_FLAGS_32BITPREFERRED = 0x00020000,
+	COR_VERSION_MAJOR_V2 = 2,
+	COR_VERSION_MAJOR = COR_VERSION_MAJOR_V2,
+	COR_VERSION_MINOR = 5,
+	COR_DELETED_NAME_LENGTH = 8,
+	COR_VTABLEGAP_NAME_LENGTH = 8,
+	NATIVE_TYPE_MAX_CB = 1,
+	COR_ILMETHOD_SECT_SMALL_MAX_DATASIZE= 0xFF,
+	IMAGE_COR_MIH_METHODRVA = 0x01,
+	IMAGE_COR_MIH_EHRVA = 0x02,
+	IMAGE_COR_MIH_BASICBLOCK = 0x08,
+	COR_VTABLE_32BIT = 0x01,
+	COR_VTABLE_64BIT = 0x02,
+	COR_VTABLE_FROM_UNMANAGED = 0x04,
+	COR_VTABLE_FROM_UNMANAGED_RETAIN_APPDOMAIN = 0x08,
+	COR_VTABLE_CALL_MOST_DERIVED = 0x10,
+	IMAGE_COR_EATJ_THUNK_SIZE = 32,
+	MAX_CLASS_NAME = 1024,
+	MAX_PACKAGE_NAME = 1024,
+}
+IMAGE_COR20_HEADER_u :: struct #raw_union {
+	[1]u32,
+	EntryPointToken EntryPointToken_mut: DWORD,
+	EntryPointRVA EntryPointRVA_mut: DWORD,
+}
+IMAGE_COR20_HEADER :: struct {
+	cb: DWORD,
+	MajorRuntimeVersion: WORD,
+	MinorRuntimeVersion: WORD,
+	MetaData: IMAGE_DATA_DIRECTORY,
+	Flags: DWORD,
+	u: IMAGE_COR20_HEADER_u,
+	Resources: IMAGE_DATA_DIRECTORY,
+	StrongNameSignature: IMAGE_DATA_DIRECTORY,
+	CodeManagerTable: IMAGE_DATA_DIRECTORY,
+	VTableFixups: IMAGE_DATA_DIRECTORY,
+	ExportAddressTableJumps: IMAGE_DATA_DIRECTORY,
+	ManagedNativeHeader: IMAGE_DATA_DIRECTORY,
+}
+PIMAGE_COR20_HEADER :: ^IMAGE_COR20_HEADER;
+extern "system" {
+	pub fn RtlCaptureStackBackTrace(
+		FramesToSkip: DWORD,
+		FramesToCapture: DWORD,
+		BackTrace: ^PVOID,
+		BackTraceHash: PDWORD,
+	) -> WORD;
+	pub fn RtlCaptureContext(
+		ContextRecord: PCONTEXT,
+	);
+	pub fn RtlUnwind(
+		TargetFrame: PVOID,
+		TargetIp: PVOID,
+		ExceptionRecord: PEXCEPTION_RECORD,
+		ReturnValue: PVOID,
+	);
+}
+#[cfg(target_pointer_width = "64")]
+extern "system" {
+	pub fn RtlAddFunctionTable(
+		FunctionTable: PRUNTIME_FUNCTION,
+		EntryCount: DWORD,
+		BaseAddress: DWORD64,
+	) -> BOOLEAN;
+	pub fn RtlDeleteFunctionTable(
+		FunctionTable: PRUNTIME_FUNCTION,
+	) -> BOOLEAN;
+	pub fn RtlInstallFunctionTableCallback(
+		TableIdentifier: DWORD64,
+		BaseAddress: DWORD64,
+		Length: DWORD,
+		Callback: PGET_RUNTIME_FUNCTION_CALLBACK,
+		Context: PVOID,
+		OutOfProcessCallbackDll: PCWSTR,
+	) -> BOOLEAN;
+	pub fn RtlAddGrowableFunctionTable(
+		DynamicTable: ^PVOID,
+		FunctionTable: PRUNTIME_FUNCTION,
+		EntryCount: DWORD,
+		MaximumEntryCount: DWORD,
+		RangeBase: ULONG_PTR,
+		RangeEnd: ULONG_PTR,
+	) -> DWORD;
+	pub fn RtlGrowFunctionTable(
+		DynamicTable: PVOID,
+		NewEntryCount: DWORD,
+	);
+	pub fn RtlDeleteGrowableFunctionTable(
+		DynamicTable: PVOID,
+	);
+	pub fn RtlLookupFunctionEntry(
+		ControlPc: DWORD64,
+		ImageBase: PDWORD64,
+		HistoryTable: PUNWIND_HISTORY_TABLE,
+	) -> PRUNTIME_FUNCTION;
+}
+#[cfg(target_arch = "x86_64")]
+IFDEF!{
+extern "C" {
+	pub fn RtlRestoreContext(
+		ContextRecord: PCONTEXT,
+		ExceptionRecord: ^EXCEPTION_RECORD,
+	);
+}
+extern "system" {
+	pub fn RtlUnwindEx(
+		TargetFrame: PVOID,
+		TargetIp: PVOID,
+		ExceptionRecord: PEXCEPTION_RECORD,
+		ReturnValue: PVOID,
+		ContextRecord: PCONTEXT,
+		HistoryTable: PUNWIND_HISTORY_TABLE,
+	);
+	pub fn RtlVirtualUnwind(
+		HandlerType: DWORD,
+		ImageBase: DWORD64,
+		ControlPc: DWORD64,
+		FunctionEntry: PRUNTIME_FUNCTION,
+		ContextRecord: PCONTEXT,
+		HandlerData: ^PVOID,
+		EstablisherFrame: PDWORD64,
+		ContextPointers: PKNONVOLATILE_CONTEXT_POINTERS,
+	) -> PEXCEPTION_ROUTINE;
+}
+}
+extern "system" {
+	pub fn RtlPcToFileHeader(
+		PcValue: PVOID,
+		BaseOfImage: ^PVOID,
+	) -> PVOID;
+	pub fn RtlCompareMemory(
+		Source1: ^VOID,
+		Source2: ^VOID,
+		Length: SIZE_T,
+	) -> SIZE_T;
+}
+SLIST_ENTRY :: struct {
+	Next: ^SLIST_ENTRY,
+}
+PSLIST_ENTRY :: ^SLIST_ENTRY;
+#[cfg(target_pointer_width = "64")]
+IFDEF!{
+SLIST_HEADER_s :: struct {
+	Alignment: ULONGLONG,
+	Region: ULONGLONG,
+}
+SLIST_HEADER_HeaderX64 :: struct {
+	BitFields1: ULONGLONG,
+	BitFields2: ULONGLONG,
+}
+BITFIELD!{SLIST_HEADER_HeaderX64 BitFields1: ULONGLONG [
+	Depth set_Depth[0..16],
+	Sequence set_Sequence[16..64],
+}
+BITFIELD!{SLIST_HEADER_HeaderX64 BitFields2: ULONGLONG [
+	Reserved set_Reserved[0..4],
+	NextEntry set_NextEntry[4..64],
+}
+SLIST_HEADER :: struct #raw_union {
+	[2]u64,
+	s s_mut: SLIST_HEADER_s,
+	HeaderX64 HeaderX64_mut: SLIST_HEADER_HeaderX64,
+}
+PSLIST_HEADER :: ^SLIST_HEADER;
+}
+#[cfg(target_arch = "x86")]
+IFDEF!{
+SLIST_HEADER_s :: struct {
+	Next: SLIST_ENTRY,
+	Depth: WORD,
+	Reserved: WORD,
+}
+SLIST_HEADER :: struct #raw_union {
+	[1]u64,
+	Alignment Alignment_mut: ULONGLONG,
+	s s_mut: SLIST_HEADER_s,
+}
+PSLIST_HEADER :: ^SLIST_HEADER;
+}
+extern "system" {
+	pub fn RtlInitializeSListHead(
+		ListHead: PSLIST_HEADER,
+	);
+	pub fn RtlFirstEntrySList(
+		ListHead: ^SLIST_HEADER,
+	) -> PSLIST_ENTRY;
+	pub fn RtlInterlockedPopEntrySList(
+		ListHead: PSLIST_HEADER,
+	) -> PSLIST_ENTRY;
+	pub fn RtlInterlockedPushEntrySList(
+		ListHead: PSLIST_HEADER,
+		ListEntry: PSLIST_ENTRY,
+	) -> PSLIST_ENTRY;
+	pub fn RtlInterlockedPushListSListEx(
+		ListHead: PSLIST_HEADER,
+		ListEntry: PSLIST_ENTRY,
+		ListEnd: PSLIST_ENTRY,
+		Count: DWORD,
+	) -> PSLIST_ENTRY;
+	pub fn RtlInterlockedFlushSList(
+		ListHead: PSLIST_HEADER,
+	) -> PSLIST_ENTRY;
+	pub fn RtlQueryDepthSList(
+		ListHead: PSLIST_HEADER,
+	) -> WORD;
+}
+pub const RTL_RUN_ONCE_INIT: RTL_RUN_ONCE = RTL_RUN_ONCE { Ptr: 0 as PVOID };
+pub const RTL_RUN_ONCE_CHECK_ONLY: ULONG = 0x00000001;
+pub const RTL_RUN_ONCE_ASYNC: ULONG = 0x00000002;
+pub const RTL_RUN_ONCE_INIT_FAILED: ULONG = 0x00000004;
+RTL_RUN_ONCE :: struct {
+	Ptr: PVOID,
+}
+PRTL_RUN_ONCE :: ^RTL_RUN_ONCE;
+RTL_BARRIER :: struct {
+	Reserved1: DWORD,
+	Reserved2: DWORD,
+	Reserved3: [2]ULONG_PTR,
+	Reserved4: DWORD,
+	Reserved5: DWORD,
+}
+PRTL_BARRIER :: ^RTL_BARRIER;
+pub const FAST_FAIL_LEGACY_GS_VIOLATION: c.uint = 0;
+pub const FAST_FAIL_VTGUARD_CHECK_FAILURE: c.uint = 1;
+pub const FAST_FAIL_STACK_COOKIE_CHECK_FAILURE: c.uint = 2;
+pub const FAST_FAIL_CORRUPT_LIST_ENTRY: c.uint = 3;
+pub const FAST_FAIL_INCORRECT_STACK: c.uint = 4;
+pub const FAST_FAIL_INVALID_ARG: c.uint = 5;
+pub const FAST_FAIL_GS_COOKIE_INIT: c.uint = 6;
+pub const FAST_FAIL_FATAL_APP_EXIT: c.uint = 7;
+pub const FAST_FAIL_RANGE_CHECK_FAILURE: c.uint = 8;
+pub const FAST_FAIL_UNSAFE_REGISTRY_ACCESS: c.uint = 9;
+pub const FAST_FAIL_GUARD_ICALL_CHECK_FAILURE: c.uint = 10;
+pub const FAST_FAIL_GUARD_WRITE_CHECK_FAILURE: c.uint = 11;
+pub const FAST_FAIL_INVALID_FIBER_SWITCH: c.uint = 12;
+pub const FAST_FAIL_INVALID_SET_OF_CONTEXT: c.uint = 13;
+pub const FAST_FAIL_INVALID_REFERENCE_COUNT: c.uint = 14;
+pub const FAST_FAIL_INVALID_JUMP_BUFFER: c.uint = 18;
+pub const FAST_FAIL_MRDATA_MODIFIED: c.uint = 19;
+pub const FAST_FAIL_CERTIFICATION_FAILURE: c.uint = 20;
+pub const FAST_FAIL_INVALID_EXCEPTION_CHAIN: c.uint = 21;
+pub const FAST_FAIL_CRYPTO_LIBRARY: c.uint = 22;
+pub const FAST_FAIL_INVALID_CALL_IN_DLL_CALLOUT: c.uint = 23;
+pub const FAST_FAIL_INVALID_IMAGE_BASE: c.uint = 24;
+pub const FAST_FAIL_DLOAD_PROTECTION_FAILURE: c.uint = 25;
+pub const FAST_FAIL_UNSAFE_EXTENSION_CALL: c.uint = 26;
+pub const FAST_FAIL_DEPRECATED_SERVICE_INVOKED: c.uint = 27;
+pub const FAST_FAIL_INVALID_BUFFER_ACCESS: c.uint = 28;
+pub const FAST_FAIL_INVALID_BALANCED_TREE: c.uint = 29;
+pub const FAST_FAIL_INVALID_NEXT_THREAD: c.uint = 30;
+pub const FAST_FAIL_GUARD_ICALL_CHECK_SUPPRESSED: c.uint = 31;
+pub const FAST_FAIL_APCS_DISABLED: c.uint = 32;
+pub const FAST_FAIL_INVALID_IDLE_STATE: c.uint = 33;
+pub const FAST_FAIL_MRDATA_PROTECTION_FAILURE: c.uint = 34;
+pub const FAST_FAIL_UNEXPECTED_HEAP_EXCEPTION: c.uint = 35;
+pub const FAST_FAIL_INVALID_LOCK_STATE: c.uint = 36;
+pub const FAST_FAIL_GUARD_JUMPTABLE: c.uint = 37;
+pub const FAST_FAIL_INVALID_LONGJUMP_TARGET: c.uint = 38;
+pub const FAST_FAIL_INVALID_DISPATCH_CONTEXT: c.uint = 39;
+pub const FAST_FAIL_INVALID_THREAD: c.uint = 40;
+pub const FAST_FAIL_INVALID_SYSCALL_NUMBER: c.uint = 41;
+pub const FAST_FAIL_INVALID_FILE_OPERATION: c.uint = 42;
+pub const FAST_FAIL_LPAC_ACCESS_DENIED: c.uint = 43;
+pub const FAST_FAIL_GUARD_SS_FAILURE: c.uint = 44;
+pub const FAST_FAIL_LOADER_CONTINUITY_FAILURE: c.uint = 45;
+pub const FAST_FAIL_GUARD_EXPORT_SUPPRESSION_FAILURE: c.uint = 46;
+pub const FAST_FAIL_INVALID_CONTROL_STACK: c.uint = 47;
+pub const FAST_FAIL_SET_CONTEXT_DENIED: c.uint = 48;
+pub const FAST_FAIL_INVALID_FAST_FAIL_CODE: c.uint = 0xFFFFFFFF;
+pub const HEAP_NO_SERIALIZE: DWORD = 0x00000001;
+pub const HEAP_GROWABLE: DWORD = 0x00000002;
+pub const HEAP_GENERATE_EXCEPTIONS: DWORD = 0x00000004;
+pub const HEAP_ZERO_MEMORY: DWORD = 0x00000008;
+pub const HEAP_REALLOC_IN_PLACE_ONLY: DWORD = 0x00000010;
+pub const HEAP_TAIL_CHECKING_ENABLED: DWORD = 0x00000020;
+pub const HEAP_FREE_CHECKING_ENABLED: DWORD = 0x00000040;
+pub const HEAP_DISABLE_COALESCE_ON_FREE: DWORD = 0x00000080;
+pub const HEAP_CREATE_ALIGN_16: DWORD = 0x00010000;
+pub const HEAP_CREATE_ENABLE_TRACING: DWORD = 0x00020000;
+pub const HEAP_CREATE_ENABLE_EXECUTE: DWORD = 0x00040000;
+pub const HEAP_MAXIMUM_TAG: DWORD = 0x0FFF;
+pub const HEAP_PSEUDO_TAG_FLAG: DWORD = 0x8000;
+pub const HEAP_TAG_SHIFT: usize = 18;
+pub const HEAP_CREATE_SEGMENT_HEAP: DWORD = 0x00000100;
+pub const HEAP_CREATE_HARDENED: DWORD = 0x00000200;
+#[inline]
+pub fn HEAP_MAKE_TAG_FLAGS(TagBase: DWORD, Tag: DWORD) -> DWORD {
+	TagBase + (Tag << HEAP_TAG_SHIFT)
+}
+pub const IS_TEXT_UNICODE_ASCII16: INT = 0x0001;
+pub const IS_TEXT_UNICODE_REVERSE_ASCII16: INT = 0x0010;
+pub const IS_TEXT_UNICODE_STATISTICS: INT = 0x0002;
+pub const IS_TEXT_UNICODE_REVERSE_STATISTICS: INT = 0x0020;
+pub const IS_TEXT_UNICODE_CONTROLS: INT = 0x0004;
+pub const IS_TEXT_UNICODE_REVERSE_CONTROLS: INT = 0x0040;
+pub const IS_TEXT_UNICODE_SIGNATURE: INT = 0x0008;
+pub const IS_TEXT_UNICODE_REVERSE_SIGNATURE: INT = 0x0080;
+pub const IS_TEXT_UNICODE_ILLEGAL_CHARS: INT = 0x0100;
+pub const IS_TEXT_UNICODE_ODD_LENGTH: INT = 0x0200;
+pub const IS_TEXT_UNICODE_DBCS_LEADBYTE: INT = 0x0400;
+pub const IS_TEXT_UNICODE_NULL_BYTES: INT = 0x1000;
+pub const IS_TEXT_UNICODE_UNICODE_MASK: INT = 0x000F;
+pub const IS_TEXT_UNICODE_REVERSE_MASK: INT = 0x00F0;
+pub const IS_TEXT_UNICODE_NOT_UNICODE_MASK: INT = 0x0F00;
+pub const IS_TEXT_UNICODE_NOT_ASCII_MASK: INT = 0xF000;
+pub const COMPRESSION_FORMAT_NONE: USHORT = 0x0000;
+pub const COMPRESSION_FORMAT_DEFAULT: USHORT = 0x0001;
+pub const COMPRESSION_FORMAT_LZNT1: USHORT = 0x0002;
+pub const COMPRESSION_FORMAT_XPRESS: USHORT = 0x0003;
+pub const COMPRESSION_FORMAT_XPRESS_HUFF: USHORT = 0x0004;
+pub const COMPRESSION_ENGINE_STANDARD: USHORT = 0x0000;
+pub const COMPRESSION_ENGINE_MAXIMUM: USHORT = 0x0100;
+pub const COMPRESSION_ENGINE_HIBER: USHORT = 0x0200;
+// RtlEqualMemory
+#[inline]
+pub unsafe fn RtlMoveMemory(Destination: rawptr, Source: rawptr, Length: usize) {
+	use core::ptr::copy;
+	copy(Source as ^u8, Destination as ^u8, Length);
+}
+#[inline]
+pub unsafe fn RtlCopyMemory(Destination: rawptr, Source: rawptr, Length: usize) {
+	use core::ptr::copy_nonoverlapping;
+	copy_nonoverlapping(Source as ^u8, Destination as ^u8, Length);
+}
+#[inline]
+pub unsafe fn RtlFillMemory(Destination: rawptr, Length: usize, Fill: u8) {
+	use core::ptr::write_bytes;
+	write_bytes(Destination as ^u8, Fill, Length);
+}
+#[inline]
+pub unsafe fn RtlZeroMemory(Destination: rawptr, Length: usize) {
+	use core::ptr::write_bytes;
+	write_bytes(Destination as ^u8, 0, Length);
+}
+pub const SEF_DACL_AUTO_INHERIT: ULONG = 0x01;
+pub const SEF_SACL_AUTO_INHERIT: ULONG = 0x02;
+pub const SEF_DEFAULT_DESCRIPTOR_FOR_OBJECT: ULONG = 0x04;
+pub const SEF_AVOID_PRIVILEGE_CHECK: ULONG = 0x08;
+pub const SEF_AVOID_OWNER_CHECK: ULONG = 0x10;
+pub const SEF_DEFAULT_OWNER_FROM_PARENT: ULONG = 0x20;
+pub const SEF_DEFAULT_GROUP_FROM_PARENT: ULONG = 0x40;
+pub const SEF_MACL_NO_WRITE_UP: ULONG = 0x100;
+pub const SEF_MACL_NO_READ_UP: ULONG = 0x200;
+pub const SEF_MACL_NO_EXECUTE_UP: ULONG = 0x400;
+pub const SEF_AI_USE_EXTRA_PARAMS: ULONG = 0x800;
+pub const SEF_AVOID_OWNER_RESTRICTION: ULONG = 0x1000;
+pub const SEF_MACL_VALID_FLAGS: ULONG = SEF_MACL_NO_WRITE_UP | SEF_MACL_NO_READ_UP
+	| SEF_MACL_NO_EXECUTE_UP;
+MESSAGE_RESOURCE_ENTRY :: struct {
+	Length: WORD,
+	Flags: WORD,
+	Text: [1]BYTE,
+}
+PMESSAGE_RESOURCE_ENTRY :: ^MESSAGE_RESOURCE_ENTRY;
+pub const MESSAGE_RESOURCE_UNICODE: WORD = 0x0001;
+MESSAGE_RESOURCE_BLOCK :: struct {
+	LowId: DWORD,
+	HighId: DWORD,
+	OffsetToEntries: DWORD,
+}
+PMESSAGE_RESOURCE_BLOCK :: ^MESSAGE_RESOURCE_BLOCK;
+MESSAGE_RESOURCE_DATA :: struct {
+	NumberOfBlocks: DWORD,
+	Blocks: [1]MESSAGE_RESOURCE_BLOCK,
+}
+PMESSAGE_RESOURCE_DATA :: ^MESSAGE_RESOURCE_DATA;
+OSVERSIONINFOA :: struct {
+	dwOSVersionInfoSize: DWORD,
+	dwMajorVersion: DWORD,
+	dwMinorVersion: DWORD,
+	dwBuildNumber: DWORD,
+	dwPlatformId: DWORD,
+	szCSDVersion: [128]CHAR,
+}
+POSVERSIONINFOA :: ^OSVERSIONINFOA;
+LPOSVERSIONINFOA :: ^OSVERSIONINFOA;
+OSVERSIONINFOW :: struct {
+	dwOSVersionInfoSize: DWORD,
+	dwMajorVersion: DWORD,
+	dwMinorVersion: DWORD,
+	dwBuildNumber: DWORD,
+	dwPlatformId: DWORD,
+	szCSDVersion: [128]WCHAR,
+}
+POSVERSIONINFOW :: ^OSVERSIONINFOW;
+LPOSVERSIONINFOW :: ^OSVERSIONINFOW;
+RTL_OSVERSIONINFOW :: OSVERSIONINFOW;
+PRTL_OSVERSIONINFOW :: ^OSVERSIONINFOW;
+OSVERSIONINFOEXA :: struct {
+	dwOSVersionInfoSize: DWORD,
+	dwMajorVersion: DWORD,
+	dwMinorVersion: DWORD,
+	dwBuildNumber: DWORD,
+	dwPlatformId: DWORD,
+	szCSDVersion: [128]CHAR,
+	wServicePackMajor: WORD,
+	wServicePackMinor: WORD,
+	wSuiteMask: WORD,
+	wProductType: BYTE,
+	wReserved: BYTE,
+}
+POSVERSIONINFOEXA :: ^OSVERSIONINFOEXA;
+LPOSVERSIONINFOEXA :: ^OSVERSIONINFOEXA;
+OSVERSIONINFOEXW :: struct {
+	dwOSVersionInfoSize: DWORD,
+	dwMajorVersion: DWORD,
+	dwMinorVersion: DWORD,
+	dwBuildNumber: DWORD,
+	dwPlatformId: DWORD,
+	szCSDVersion: [128]WCHAR,
+	wServicePackMajor: WORD,
+	wServicePackMinor: WORD,
+	wSuiteMask: WORD,
+	wProductType: BYTE,
+	wReserved: BYTE,
+}
+POSVERSIONINFOEXW :: ^OSVERSIONINFOEXW;
+LPOSVERSIONINFOEXW :: ^OSVERSIONINFOEXW;
+RTL_OSVERSIONINFOEXW :: OSVERSIONINFOEXW;
+PRTL_OSVERSIONINFOEXW :: ^OSVERSIONINFOEXW;
+pub const VER_EQUAL: BYTE = 1;
+pub const VER_GREATER: BYTE = 2;
+pub const VER_GREATER_EQUAL: BYTE = 3;
+pub const VER_LESS: BYTE = 4;
+pub const VER_LESS_EQUAL: BYTE = 5;
+pub const VER_AND: BYTE = 6;
+pub const VER_OR: BYTE = 7;
+pub const VER_CONDITION_MASK: BYTE = 7;
+pub const VER_NUM_BITS_PER_CONDITION_MASK: BYTE = 3;
+pub const VER_MINORVERSION: DWORD = 0x0000001;
+pub const VER_MAJORVERSION: DWORD = 0x0000002;
+pub const VER_BUILDNUMBER: DWORD = 0x0000004;
+pub const VER_PLATFORMID: DWORD = 0x0000008;
+pub const VER_SERVICEPACKMINOR: DWORD = 0x0000010;
+pub const VER_SERVICEPACKMAJOR: DWORD = 0x0000020;
+pub const VER_SUITENAME: DWORD = 0x0000040;
+pub const VER_PRODUCT_TYPE: DWORD = 0x0000080;
+pub const VER_NT_WORKSTATION: BYTE = 0x0000001;
+pub const VER_NT_DOMAIN_CONTROLLER: BYTE = 0x0000002;
+pub const VER_NT_SERVER: BYTE = 0x0000003;
+pub const VER_PLATFORM_WIN32s: DWORD = 0;
+pub const VER_PLATFORM_WIN32_WINDOWS: DWORD = 1;
+pub const VER_PLATFORM_WIN32_NT: DWORD = 2;
+extern "system" {
+	pub fn VerSetConditionMask(
+		ConditionMask: ULONGLONG,
+		TypeMask: DWORD,
+		Condition: BYTE,
+	) -> ULONGLONG;
+	pub fn RtlGetProductInfo(
+		OSMajorVersion: DWORD,
+		OSMinorVersion: DWORD,
+		SpMajorVersion: DWORD,
+		SpMinorVersion: DWORD,
+		ReturnedProductType: PDWORD,
+	) -> BOOLEAN;
+}
+pub const RTL_UMS_VERSION: DWORD = 0x100;
+using RTL_UMS_THREAD_INFO_CLASS :: enum c.int {
+	UmsThreadInvalidInfoClass = 0,
+	UmsThreadUserContext,
+	UmsThreadPriority,
+	UmsThreadAffinity,
+	UmsThreadTeb,
+	UmsThreadIsSuspended,
+	UmsThreadIsTerminated,
+	UmsThreadMaxInfoClass,
+}
+using RTL_UMS_SCHEDULER_REASON :: enum c.int {
+	UmsSchedulerStartup = 0,
+	UmsSchedulerThreadBlocked,
+	UmsSchedulerThreadYield,
+}
+FN!{stdcall PRTL_UMS_SCHEDULER_ENTRY_POINT(
+	Reason: RTL_UMS_SCHEDULER_REASON,
+	ActivationPayload: ULONG_PTR,
+	SchedulerParam: PVOID,
+) -> ()}
+#[inline]
+pub fn IS_VALIDATION_ENABLED(C: DWORD, L: DWORD) -> bool {
+	(L & C) != 0
+}
+pub const VRL_PREDEFINED_CLASS_BEGIN: DWORD = 1 << 0;
+pub const VRL_CUSTOM_CLASS_BEGIN: DWORD = 1 << 8;
+pub const VRL_CLASS_CONSISTENCY: DWORD = VRL_CUSTOM_CLASS_BEGIN << 8;
+pub const VRL_ENABLE_KERNEL_BREAKS: DWORD = 1 << 31;
+pub const CTMF_INCLUDE_APPCONTAINER: ULONG = 0x00000001;
+pub const CTMF_INCLUDE_LPAC: ULONG = 0x00000002;
+pub const CTMF_VALID_FLAGS: ULONG = CTMF_INCLUDE_APPCONTAINER | CTMF_INCLUDE_LPAC;
+extern "system" {
+	pub fn RtlCrc32(
+		Buffer: rawptr,
+		Size: size_t,
+		InitialCrc: DWORD,
+	) -> DWORD;
+	pub fn RtlCrc64(
+		Buffer: rawptr,
+		Size: size_t,
+		InitialCrc: ULONGLONG,
+	) -> ULONGLONG;
+}
+using OS_DEPLOYEMENT_STATE_VALUES :: enum c.int {
+	OS_DEPLOYMENT_STANDARD = 1,
+	OS_DEPLOYMENT_COMPACT,
+}
+extern "system" {
+	pub fn RtlOsDeploymentState(
+		Flags: DWORD,
+	) -> OS_DEPLOYEMENT_STATE_VALUES;
+}
+#[cfg(target_arch = "x86_64")]
+IFDEF!{
+NV_MEMORY_RANGE :: struct {
+	BaseAddress: ^VOID,
+	Length: SIZE_T,
+}
+PNV_MEMORY_RANGE :: ^NV_MEMORY_RANGE;
+pub const FLUSH_NV_MEMORY_IN_FLAG_NO_DRAIN: ULONG = 0x00000001;
+pub const FLUSH_NV_MEMORY_DEFAULT_TOKEN: ULONG_PTR = -1isize as usize;
+}
+RTL_CRITICAL_SECTION_DEBUG :: struct {
+	Type: WORD,
+	CreatorBackTraceIndex: WORD,
+	CriticalSection: ^RTL_CRITICAL_SECTION,
+	ProcessLocksList: LIST_ENTRY,
+	EntryCount: DWORD,
+	ContentionCount: DWORD,
+	Flags: DWORD,
+	CreatorBackTraceIndexHigh: WORD,
+	SpareWORD: WORD,
+}
+PRTL_CRITICAL_SECTION_DEBUG :: ^RTL_CRITICAL_SECTION_DEBUG;
+RTL_RESOURCE_DEBUG :: RTL_CRITICAL_SECTION_DEBUG;
+PRTL_RESOURCE_DEBUG :: ^RTL_CRITICAL_SECTION_DEBUG;
+pub const RTL_CRITICAL_SECTION_FLAG_NO_DEBUG_INFO: ULONG_PTR = 0x01000000;
+pub const RTL_CRITICAL_SECTION_FLAG_DYNAMIC_SPIN: ULONG_PTR = 0x02000000;
+pub const RTL_CRITICAL_SECTION_FLAG_STATIC_INIT: ULONG_PTR = 0x04000000;
+pub const RTL_CRITICAL_SECTION_FLAG_RESOURCE_TYPE: ULONG_PTR = 0x08000000;
+pub const RTL_CRITICAL_SECTION_FLAG_FORCE_DEBUG_INFO: ULONG_PTR = 0x10000000;
+pub const RTL_CRITICAL_SECTION_ALL_FLAG_BITS: ULONG_PTR = 0xFF000000;
+pub const RTL_CRITICAL_SECTION_FLAG_RESERVED: ULONG_PTR = RTL_CRITICAL_SECTION_ALL_FLAG_BITS
+	& !(RTL_CRITICAL_SECTION_FLAG_NO_DEBUG_INFO | RTL_CRITICAL_SECTION_FLAG_DYNAMIC_SPIN
+		| RTL_CRITICAL_SECTION_FLAG_STATIC_INIT | RTL_CRITICAL_SECTION_FLAG_RESOURCE_TYPE
+		| RTL_CRITICAL_SECTION_FLAG_FORCE_DEBUG_INFO);
+pub const RTL_CRITICAL_SECTION_DEBUG_FLAG_STATIC_INIT: DWORD = 0x00000001;
+RTL_CRITICAL_SECTION :: struct {
+	DebugInfo: PRTL_CRITICAL_SECTION_DEBUG,
+	LockCount: LONG,
+	RecursionCount: LONG,
+	OwningThread: HANDLE,
+	LockSemaphore: HANDLE,
+	SpinCount: ULONG_PTR,
+}
+PRTL_CRITICAL_SECTION :: ^RTL_CRITICAL_SECTION;
+RTL_SRWLOCK :: struct {
+	Ptr: PVOID,
+}
+PRTL_SRWLOCK :: ^RTL_SRWLOCK;
+pub const RTL_SRWLOCK_INIT: RTL_SRWLOCK = RTL_SRWLOCK { Ptr: 0 as PVOID };
+RTL_CONDITION_VARIABLE :: struct {
+	Ptr: PVOID,
+}
+PRTL_CONDITION_VARIABLE :: ^RTL_CONDITION_VARIABLE;
+pub const RTL_CONDITION_VARIABLE_INIT: RTL_CONDITION_VARIABLE = RTL_CONDITION_VARIABLE {
+	Ptr: 0 as PVOID,
+};
+pub const RTL_CONDITION_VARIABLE_LOCKMODE_SHARED: DWORD = 0x1;
+FN!{stdcall PAPCFUNC(
+	Parameter: ULONG_PTR,
+) -> ()}
+FN!{stdcall PVECTORED_EXCEPTION_HANDLER(
+	ExceptionInfo: ^EXCEPTION_POINTERS,
+) -> LONG}
+using HEAP_INFORMATION_CLASS :: enum c.int {
+	HeapCompatibilityInformation = 0,
+	HeapEnableTerminationOnCorruption = 1,
+	HeapOptimizeResources = 3,
+}
+pub const HEAP_OPTIMIZE_RESOURCES_CURRENT_VERSION: DWORD = 1;
+HEAP_OPTIMIZE_RESOURCES_INFORMATION :: struct {
+	Version: DWORD,
+	Flags: DWORD,
+}
+PHEAP_OPTIMIZE_RESOURCES_INFORMATION :: ^HEAP_OPTIMIZE_RESOURCES_INFORMATION;
+pub const WT_EXECUTEDEFAULT: ULONG = 0x00000000;
+pub const WT_EXECUTEINIOTHREAD: ULONG = 0x00000001;
+pub const WT_EXECUTEINUITHREAD: ULONG = 0x00000002;
+pub const WT_EXECUTEINWAITTHREAD: ULONG = 0x00000004;
+pub const WT_EXECUTEONLYONCE: ULONG = 0x00000008;
+pub const WT_EXECUTEINTIMERTHREAD: ULONG = 0x00000020;
+pub const WT_EXECUTELONGFUNCTION: ULONG = 0x00000010;
+pub const WT_EXECUTEINPERSISTENTIOTHREAD: ULONG = 0x00000040;
+pub const WT_EXECUTEINPERSISTENTTHREAD: ULONG = 0x00000080;
+pub const WT_TRANSFER_IMPERSONATION: ULONG = 0x00000100;
+#[inline]
+pub fn WT_SET_MAX_THREADPOOL_THREADS(Flags: ULONG, Limit: ULONG) -> ULONG {
+	Flags | (Limit << 16)
+}
+FN!{stdcall WAITORTIMERCALLBACKFUNC(
+	PVOID,
+	BOOLEAN,
+) -> ()}
+FN!{stdcall WORKERCALLBACKFUNC(
+	PVOID,
+) -> ()}
+FN!{stdcall APC_CALLBACK_FUNCTION(
+	DWORD,
+	PVOID,
+	PVOID,
+) -> ()}
+WAITORTIMERCALLBACK :: WAITORTIMERCALLBACKFUNC;
+FN!{stdcall PFLS_CALLBACK_FUNCTION(
+	lpFlsData: PVOID,
+) -> ()}
+FN!{stdcall PSECURE_MEMORY_CACHE_CALLBACK(
+	Addr: PVOID,
+	Range: SIZE_T,
+) -> BOOLEAN}
+pub const WT_EXECUTEINLONGTHREAD: ULONG = 0x00000010;
+pub const WT_EXECUTEDELETEWAIT: ULONG = 0x00000008;
+using ACTIVATION_CONTEXT_INFO_CLASS :: enum c.int {
+	ActivationContextBasicInformation = 1,
+	ActivationContextDetailedInformation = 2,
+	AssemblyDetailedInformationInActivationContext = 3,
+	FileInformationInAssemblyOfAssemblyInActivationContext = 4,
+	RunlevelInformationInActivationContext = 5,
+	CompatibilityInformationInActivationContext = 6,
+	ActivationContextManifestResourceName = 7,
+	MaxActivationContextInfoClass,
+	AssemblyDetailedInformationInActivationContxt = 3,
+	FileInformationInAssemblyOfAssemblyInActivationContxt = 4,
+}
+ACTIVATIONCONTEXTINFOCLASS :: ACTIVATION_CONTEXT_INFO_CLASS;
+ACTIVATION_CONTEXT_QUERY_INDEX :: struct {
+	ulAssemblyIndex: DWORD,
+	ulFileIndexInAssembly: DWORD,
+}
+PACTIVATION_CONTEXT_QUERY_INDEX :: ^ACTIVATION_CONTEXT_QUERY_INDEX;
+PCACTIVATION_CONTEXT_QUERY_INDEX :: ^ACTIVATION_CONTEXT_QUERY_INDEX;
+pub const ACTIVATION_CONTEXT_PATH_TYPE_NONE: DWORD = 1;
+pub const ACTIVATION_CONTEXT_PATH_TYPE_WIN32_FILE: DWORD = 2;
+pub const ACTIVATION_CONTEXT_PATH_TYPE_URL: DWORD = 3;
+pub const ACTIVATION_CONTEXT_PATH_TYPE_ASSEMBLYREF: DWORD = 4;
+ASSEMBLY_FILE_DETAILED_INFORMATION :: struct {
+	ulFlags: DWORD,
+	ulFilenameLength: DWORD,
+	ulPathLength: DWORD,
+	lpFileName: PCWSTR,
+	lpFilePath: PCWSTR,
+}
+PASSEMBLY_FILE_DETAILED_INFORMATION :: ^ASSEMBLY_FILE_DETAILED_INFORMATION;
+PCASSEMBLY_FILE_DETAILED_INFORMATION :: ^ASSEMBLY_FILE_DETAILED_INFORMATION;
+ASSEMBLY_DLL_REDIRECTION_DETAILED_INFORMATION :: ASSEMBLY_FILE_DETAILED_INFORMATION;
+PASSEMBLY_DLL_REDIRECTION_DETAILED_INFORMATION :: PASSEMBLY_FILE_DETAILED_INFORMATION;
+PCASSEMBLY_DLL_REDIRECTION_DETAILED_INFORMATION :: PCASSEMBLY_FILE_DETAILED_INFORMATION;
+ACTIVATION_CONTEXT_ASSEMBLY_DETAILED_INFORMATION :: struct {
+	ulFlags: DWORD,
+	ulEncodedAssemblyIdentityLength: DWORD,
+	ulManifestPathType: DWORD,
+	ulManifestPathLength: DWORD,
+	liManifestLastWriteTime: LARGE_INTEGER,
+	ulPolicyPathType: DWORD,
+	ulPolicyPathLength: DWORD,
+	liPolicyLastWriteTime: LARGE_INTEGER,
+	ulMetadataSatelliteRosterIndex: DWORD,
+	ulManifestVersionMajor: DWORD,
+	ulManifestVersionMinor: DWORD,
+	ulPolicyVersionMajor: DWORD,
+	ulPolicyVersionMinor: DWORD,
+	ulAssemblyDirectoryNameLength: DWORD,
+	lpAssemblyEncodedAssemblyIdentity: PCWSTR,
+	lpAssemblyManifestPath: PCWSTR,
+	lpAssemblyPolicyPath: PCWSTR,
+	lpAssemblyDirectoryName: PCWSTR,
+	ulFileCount: DWORD,
+}
+pub type PACTIVATION_CONTEXT_ASSEMBLY_DETAILED_INFORMATION
+	= ^ACTIVATION_CONTEXT_ASSEMBLY_DETAILED_INFORMATION;
+pub type PCACTIVATION_CONTEXT_ASSEMBLY_DETAILED_INFORMATION
+	= ^ACTIVATION_CONTEXT_ASSEMBLY_DETAILED_INFORMATION;
+using ACTCTX_REQUESTED_RUN_LEVEL :: enum c.int {
+	ACTCTX_RUN_LEVEL_UNSPECIFIED = 0,
+	ACTCTX_RUN_LEVEL_AS_INVOKER,
+	ACTCTX_RUN_LEVEL_HIGHEST_AVAILABLE,
+	ACTCTX_RUN_LEVEL_REQUIRE_ADMIN,
+	ACTCTX_RUN_LEVEL_NUMBERS,
+}
+ACTIVATION_CONTEXT_RUN_LEVEL_INFORMATION :: struct {
+	ulFlags: DWORD,
+	RunLevel: ACTCTX_REQUESTED_RUN_LEVEL,
+	UiAccess: DWORD,
+}
+PACTIVATION_CONTEXT_RUN_LEVEL_INFORMATION :: ^ACTIVATION_CONTEXT_RUN_LEVEL_INFORMATION;
+pub type PCACTIVATION_CONTEXT_RUN_LEVEL_INFORMATION
+	= ^ACTIVATION_CONTEXT_RUN_LEVEL_INFORMATION;
+using ACTCTX_COMPATIBILITY_ELEMENT_TYPE :: enum c.int {
+	ACTCTX_COMPATIBILITY_ELEMENT_TYPE_UNKNOWN = 0,
+	ACTCTX_COMPATIBILITY_ELEMENT_TYPE_OS,
+	ACTCTX_COMPATIBILITY_ELEMENT_TYPE_MITIGATION,
+}
+COMPATIBILITY_CONTEXT_ELEMENT :: struct {
+	Id: GUID,
+	Type: ACTCTX_COMPATIBILITY_ELEMENT_TYPE,
+}
+PCOMPATIBILITY_CONTEXT_ELEMENT :: ^COMPATIBILITY_CONTEXT_ELEMENT;
+PCCOMPATIBILITY_CONTEXT_ELEMENT :: ^COMPATIBILITY_CONTEXT_ELEMENT;
+ACTIVATION_CONTEXT_COMPATIBILITY_INFORMATION :: struct {
+	ElementCount: DWORD,
+	Elements: [0]COMPATIBILITY_CONTEXT_ELEMENT,
+}
+pub type PACTIVATION_CONTEXT_COMPATIBILITY_INFORMATION
+	= ^ACTIVATION_CONTEXT_COMPATIBILITY_INFORMATION;
+pub type PCACTIVATION_CONTEXT_COMPATIBILITY_INFORMATION
+	= ^ACTIVATION_CONTEXT_COMPATIBILITY_INFORMATION;
+SUPPORTED_OS_INFO :: struct {
+	MajorVersion: WORD,
+	MinorVersion: WORD,
+}
+PSUPPORTED_OS_INFO :: ^SUPPORTED_OS_INFO;
+ACTIVATION_CONTEXT_DETAILED_INFORMATION :: struct {
+	dwFlags: DWORD,
+	ulFormatVersion: DWORD,
+	ulAssemblyCount: DWORD,
+	ulRootManifestPathType: DWORD,
+	ulRootManifestPathChars: DWORD,
+	ulRootConfigurationPathType: DWORD,
+	ulRootConfigurationPathChars: DWORD,
+	ulAppDirPathType: DWORD,
+	ulAppDirPathChars: DWORD,
+	lpRootManifestPath: PCWSTR,
+	lpRootConfigurationPath: PCWSTR,
+	lpAppDirPath: PCWSTR,
+}
+PACTIVATION_CONTEXT_DETAILED_INFORMATION :: ^ACTIVATION_CONTEXT_DETAILED_INFORMATION;
+pub type PCACTIVATION_CONTEXT_DETAILED_INFORMATION
+	= ^ACTIVATION_CONTEXT_DETAILED_INFORMATION;
+pub const CREATE_BOUNDARY_DESCRIPTOR_ADD_APPCONTAINER_SID: DWORD = 0x1;
+HARDWARE_COUNTER_DATA :: struct {
+	Type: HARDWARE_COUNTER_TYPE,
+	Reserved: DWORD,
+	Value: DWORD64,
+}
+PHARDWARE_COUNTER_DATA :: ^HARDWARE_COUNTER_DATA;
+pub const PERFORMANCE_DATA_VERSION: BYTE = 1;
+PERFORMANCE_DATA :: struct {
+	Size: WORD,
+	Version: BYTE,
+	HwCountersCount: BYTE,
+	ContextSwitchCount: DWORD,
+	WaitReasonBitMap: DWORD64,
+	CycleTime: DWORD64,
+	RetryCount: DWORD,
+	Reserved: DWORD,
+	HwCounters: [MAX_HW_COUNTERS]HARDWARE_COUNTER_DATA,
+}
+PPERFORMANCE_DATA :: ^PERFORMANCE_DATA;
+pub const READ_THREAD_PROFILING_FLAG_DISPATCHING: DWORD = 0x00000001;
+pub const READ_THREAD_PROFILING_FLAG_HARDWARE_COUNTERS: DWORD = 0x00000002;
+pub const UNIFIEDBUILDREVISION_KEY: string
+	= "\\Registry\\Machine\\Software\\Microsoft\\Windows NT\\CurrentVersion";
+pub const UNIFIEDBUILDREVISION_VALUE: string = "UBR";
+pub const UNIFIEDBUILDREVISION_MIN: DWORD = 0x00000000;
+pub const DEVICEFAMILYDEVICEFORM_KEY: string
+	= "\\Registry\\Machine\\Software\\Microsoft\\Windows NT\\CurrentVersion\\OEM";
+pub const DEVICEFAMILYDEVICEFORM_VALUE: string = "DeviceForm";
+pub const DEVICEFAMILYINFOENUM_UAP: DWORD = 0x00000000;
+pub const DEVICEFAMILYINFOENUM_WINDOWS_8X: DWORD = 0x00000001;
+pub const DEVICEFAMILYINFOENUM_WINDOWS_PHONE_8X: DWORD = 0x00000002;
+pub const DEVICEFAMILYINFOENUM_DESKTOP: DWORD = 0x00000003;
+pub const DEVICEFAMILYINFOENUM_MOBILE: DWORD = 0x00000004;
+pub const DEVICEFAMILYINFOENUM_XBOX: DWORD = 0x00000005;
+pub const DEVICEFAMILYINFOENUM_TEAM: DWORD = 0x00000006;
+pub const DEVICEFAMILYINFOENUM_IOT: DWORD = 0x00000007;
+pub const DEVICEFAMILYINFOENUM_IOT_HEADLESS: DWORD = 0x00000008;
+pub const DEVICEFAMILYINFOENUM_SERVER: DWORD = 0x00000009;
+pub const DEVICEFAMILYINFOENUM_HOLOGRAPHIC: DWORD = 0x0000000A;
+pub const DEVICEFAMILYINFOENUM_XBOXSRA: DWORD = 0x0000000B;
+pub const DEVICEFAMILYINFOENUM_XBOXERA: DWORD = 0x0000000C;
+pub const DEVICEFAMILYINFOENUM_SERVER_NANO: DWORD = 0x0000000D;
+pub const DEVICEFAMILYINFOENUM_MAX: DWORD = 0x0000000D;
+pub const DEVICEFAMILYDEVICEFORM_UNKNOWN: DWORD = 0x00000000;
+pub const DEVICEFAMILYDEVICEFORM_PHONE: DWORD = 0x00000001;
+pub const DEVICEFAMILYDEVICEFORM_TABLET: DWORD = 0x00000002;
+pub const DEVICEFAMILYDEVICEFORM_DESKTOP: DWORD = 0x00000003;
+pub const DEVICEFAMILYDEVICEFORM_NOTEBOOK: DWORD = 0x00000004;
+pub const DEVICEFAMILYDEVICEFORM_CONVERTIBLE: DWORD = 0x00000005;
+pub const DEVICEFAMILYDEVICEFORM_DETACHABLE: DWORD = 0x00000006;
+pub const DEVICEFAMILYDEVICEFORM_ALLINONE: DWORD = 0x00000007;
+pub const DEVICEFAMILYDEVICEFORM_STICKPC: DWORD = 0x00000008;
+pub const DEVICEFAMILYDEVICEFORM_PUCK: DWORD = 0x00000009;
+pub const DEVICEFAMILYDEVICEFORM_LARGESCREEN: DWORD = 0x0000000A;
+pub const DEVICEFAMILYDEVICEFORM_HMD: DWORD = 0x0000000B;
+pub const DEVICEFAMILYDEVICEFORM_INDUSTRY_HANDHELD: DWORD = 0x0000000C;
+pub const DEVICEFAMILYDEVICEFORM_INDUSTRY_TABLET: DWORD = 0x0000000D;
+pub const DEVICEFAMILYDEVICEFORM_BANKING: DWORD = 0x0000000E;
+pub const DEVICEFAMILYDEVICEFORM_BUILDING_AUTOMATION: DWORD = 0x0000000F;
+pub const DEVICEFAMILYDEVICEFORM_DIGITAL_SIGNAGE: DWORD = 0x00000010;
+pub const DEVICEFAMILYDEVICEFORM_GAMING: DWORD = 0x00000011;
+pub const DEVICEFAMILYDEVICEFORM_HOME_AUTOMATION: DWORD = 0x00000012;
+pub const DEVICEFAMILYDEVICEFORM_INDUSTRIAL_AUTOMATION: DWORD = 0x00000013;
+pub const DEVICEFAMILYDEVICEFORM_KIOSK: DWORD = 0x00000014;
+pub const DEVICEFAMILYDEVICEFORM_MAKER_BOARD: DWORD = 0x00000015;
+pub const DEVICEFAMILYDEVICEFORM_MEDICAL: DWORD = 0x00000016;
+pub const DEVICEFAMILYDEVICEFORM_NETWORKING: DWORD = 0x00000017;
+pub const DEVICEFAMILYDEVICEFORM_POINT_OF_SERVICE: DWORD = 0x00000018;
+pub const DEVICEFAMILYDEVICEFORM_PRINTING: DWORD = 0x00000019;
+pub const DEVICEFAMILYDEVICEFORM_THIN_CLIENT: DWORD = 0x0000001A;
+pub const DEVICEFAMILYDEVICEFORM_TOY: DWORD = 0x0000001B;
+pub const DEVICEFAMILYDEVICEFORM_VENDING: DWORD = 0x0000001C;
+pub const DEVICEFAMILYDEVICEFORM_INDUSTRY_OTHER: DWORD = 0x0000001D;
+pub const DEVICEFAMILYDEVICEFORM_MAX: DWORD = 0x0000001D;
+extern "system" {
+	pub fn RtlGetDeviceFamilyInfoEnum(
+		pullUAPInfo: ^ULONGLONG,
+		pulDeviceFamily: ^DWORD,
+		pulDeviceForm: ^DWORD,
+	);
+	pub fn RtlConvertDeviceFamilyInfoToString(
+		pulDeviceFamilyBufferSize: PDWORD,
+		pulDeviceFormBufferSize: PDWORD,
+		DeviceFamily: PWSTR,
+		DeviceForm: PWSTR,
+	) -> DWORD;
+	pub fn RtlSwitchedVVI(
+		VersionInfo: PRTL_OSVERSIONINFOEXW,
+		TypeMask: DWORD,
+		ConditionMask: ULONGLONG,
+	) -> DWORD;
+}
+pub const DLL_PROCESS_ATTACH: DWORD = 1;
+pub const DLL_THREAD_ATTACH: DWORD = 2;
+pub const DLL_THREAD_DETACH: DWORD = 3;
+pub const DLL_PROCESS_DETACH: DWORD = 0;
+pub const EVENTLOG_SEQUENTIAL_READ: DWORD = 0x0001;
+pub const EVENTLOG_SEEK_READ: DWORD = 0x0002;
+pub const EVENTLOG_FORWARDS_READ: DWORD = 0x0004;
+pub const EVENTLOG_BACKWARDS_READ: DWORD = 0x0008;
+pub const EVENTLOG_SUCCESS: WORD = 0x0000;
+pub const EVENTLOG_ERROR_TYPE: WORD = 0x0001;
+pub const EVENTLOG_WARNING_TYPE: WORD = 0x0002;
+pub const EVENTLOG_INFORMATION_TYPE: WORD = 0x0004;
+pub const EVENTLOG_AUDIT_SUCCESS: WORD = 0x0008;
+pub const EVENTLOG_AUDIT_FAILURE: WORD = 0x0010;
+pub const EVENTLOG_START_PAIRED_EVENT: WORD = 0x0001;
+pub const EVENTLOG_END_PAIRED_EVENT: WORD = 0x0002;
+pub const EVENTLOG_END_ALL_PAIRED_EVENTS: WORD = 0x0004;
+pub const EVENTLOG_PAIRED_EVENT_ACTIVE: WORD = 0x0008;
+pub const EVENTLOG_PAIRED_EVENT_INACTIVE: WORD = 0x0010;
+EVENTLOGRECORD :: struct {
+	Length: DWORD,
+	Reserved: DWORD,
+	RecordNumber: DWORD,
+	TimeGenerated: DWORD,
+	TimeWritten: DWORD,
+	EventID: DWORD,
+	EventType: WORD,
+	NumStrings: WORD,
+	EventCategory: WORD,
+	ReservedFlags: WORD,
+	ClosingRecordNumber: DWORD,
+	StringOffset: DWORD,
+	UserSidLength: DWORD,
+	UserSidOffset: DWORD,
+	DataLength: DWORD,
+	DataOffset: DWORD,
+}
+PEVENTLOGRECORD :: ^EVENTLOGRECORD;
+pub const MAXLOGICALLOGNAMESIZE: usize = 256;
+PEVENTSFORLOGFILE :: ^EVENTSFORLOGFILE;
+PPACKEDEVENTINFO :: ^PACKEDEVENTINFO;
+EVENTSFORLOGFILE :: struct {
+	ulSize: DWORD,
+	szLogicalLogFile: [MAXLOGICALLOGNAMESIZE]WCHAR,
+	ulNumRecords: DWORD,
+	pEventLogRecords: [0]EVENTLOGRECORD,
+}
+PACKEDEVENTINFO :: struct {
+	ulSize: DWORD,
+	ulNumEventsForLogFile: DWORD,
+	ulOffsets: [0]DWORD,
+}
+pub const KEY_QUERY_VALUE: u32 = 0x0001;
+pub const KEY_SET_VALUE: u32 = 0x0002;
+pub const KEY_CREATE_SUB_KEY: u32 = 0x0004;
+pub const KEY_ENUMERATE_SUB_KEYS: u32 = 0x0008;
+pub const KEY_NOTIFY: u32 = 0x0010;
+pub const KEY_CREATE_LINK: u32 = 0x0020;
+pub const KEY_WOW64_32KEY: u32 = 0x0200;
+pub const KEY_WOW64_64KEY: u32 = 0x0100;
+pub const KEY_WOW64_RES: u32 = 0x0300;
+pub const KEY_READ: u32 = (STANDARD_RIGHTS_READ | KEY_QUERY_VALUE | KEY_ENUMERATE_SUB_KEYS
+	| KEY_NOTIFY) & !SYNCHRONIZE;
+pub const KEY_WRITE: u32 = (STANDARD_RIGHTS_WRITE | KEY_SET_VALUE | KEY_CREATE_SUB_KEY)
+	& !SYNCHRONIZE;
+pub const KEY_EXECUTE: u32 = KEY_READ & !SYNCHRONIZE;
+pub const KEY_ALL_ACCESS: u32 = (STANDARD_RIGHTS_ALL | KEY_QUERY_VALUE | KEY_SET_VALUE
+	| KEY_CREATE_SUB_KEY | KEY_ENUMERATE_SUB_KEYS | KEY_NOTIFY | KEY_CREATE_LINK) & !SYNCHRONIZE;
+pub const REG_OPTION_RESERVED: DWORD = 0x00000000;
+pub const REG_OPTION_NON_VOLATILE: DWORD = 0x00000000;
+pub const REG_OPTION_VOLATILE: DWORD = 0x00000001;
+pub const REG_OPTION_CREATE_LINK: DWORD = 0x00000002;
+pub const REG_OPTION_BACKUP_RESTORE: DWORD = 0x00000004;
+pub const REG_OPTION_OPEN_LINK: DWORD = 0x00000008;
+pub const REG_OPTION_DONT_VIRTUALIZE: DWORD = 0x00000010;
+pub const REG_LEGAL_OPTION: DWORD = REG_OPTION_RESERVED | REG_OPTION_NON_VOLATILE
+	| REG_OPTION_VOLATILE | REG_OPTION_CREATE_LINK | REG_OPTION_BACKUP_RESTORE
+	| REG_OPTION_OPEN_LINK | REG_OPTION_DONT_VIRTUALIZE;
+pub const REG_OPEN_LEGAL_OPTION: DWORD = REG_OPTION_RESERVED | REG_OPTION_BACKUP_RESTORE
+	| REG_OPTION_OPEN_LINK | REG_OPTION_DONT_VIRTUALIZE;
+pub const REG_CREATED_NEW_KEY: DWORD = 0x00000001;
+pub const REG_OPENED_EXISTING_KEY: DWORD = 0x00000002;
+pub const REG_STANDARD_FORMAT: DWORD = 1;
+pub const REG_LATEST_FORMAT: DWORD = 2;
+pub const REG_NO_COMPRESSION: DWORD = 4;
+pub const REG_WHOLE_HIVE_VOLATILE: DWORD = 0x00000001;
+pub const REG_REFRESH_HIVE: DWORD = 0x00000002;
+pub const REG_NO_LAZY_FLUSH: DWORD = 0x00000004;
+pub const REG_FORCE_RESTORE: DWORD = 0x00000008;
+pub const REG_APP_HIVE: DWORD = 0x00000010;
+pub const REG_PROCESS_PRIVATE: DWORD = 0x00000020;
+pub const REG_START_JOURNAL: DWORD = 0x00000040;
+pub const REG_HIVE_EXACT_FILE_GROWTH: DWORD = 0x00000080;
+pub const REG_HIVE_NO_RM: DWORD = 0x00000100;
+pub const REG_HIVE_SINGLE_LOG: DWORD = 0x00000200;
+pub const REG_BOOT_HIVE: DWORD = 0x00000400;
+pub const REG_LOAD_HIVE_OPEN_HANDLE: DWORD = 0x00000800;
+pub const REG_FLUSH_HIVE_FILE_GROWTH: DWORD = 0x00001000;
+pub const REG_OPEN_READ_ONLY: DWORD = 0x00002000;
+pub const REG_IMMUTABLE: DWORD = 0x00004000;
+pub const REG_APP_HIVE_OPEN_READ_ONLY: DWORD = REG_OPEN_READ_ONLY;
+pub const REG_FORCE_UNLOAD: DWORD = 1;
+pub const REG_UNLOAD_LEGAL_FLAGS: DWORD = REG_FORCE_UNLOAD;
+pub const REG_NOTIFY_CHANGE_NAME: DWORD = 0x00000001;
+pub const REG_NOTIFY_CHANGE_ATTRIBUTES: DWORD = 0x00000002;
+pub const REG_NOTIFY_CHANGE_LAST_SET: DWORD = 0x00000004;
+pub const REG_NOTIFY_CHANGE_SECURITY: DWORD = 0x00000008;
+pub const REG_NOTIFY_THREAD_AGNOSTIC: DWORD = 0x10000000;
+pub const REG_LEGAL_CHANGE_FILTER: DWORD = REG_NOTIFY_CHANGE_NAME | REG_NOTIFY_CHANGE_ATTRIBUTES
+	| REG_NOTIFY_CHANGE_LAST_SET | REG_NOTIFY_CHANGE_SECURITY | REG_NOTIFY_THREAD_AGNOSTIC;
+pub const REG_NONE: DWORD = 0;
+pub const REG_SZ: DWORD = 1;
+pub const REG_EXPAND_SZ: DWORD = 2;
+pub const REG_BINARY: DWORD = 3;
+pub const REG_DWORD: DWORD = 4;
+pub const REG_DWORD_LITTLE_ENDIAN: DWORD = 4;
+pub const REG_DWORD_BIG_ENDIAN: DWORD = 5;
+pub const REG_LINK: DWORD = 6;
+pub const REG_MULTI_SZ: DWORD = 7;
+pub const REG_RESOURCE_LIST: DWORD = 8;
+pub const REG_FULL_RESOURCE_DESCRIPTOR: DWORD = 9;
+pub const REG_RESOURCE_REQUIREMENTS_LIST: DWORD = 10;
+pub const REG_QWORD: DWORD = 11;
+pub const REG_QWORD_LITTLE_ENDIAN: DWORD = 11;
+pub const SERVICE_KERNEL_DRIVER: DWORD = 0x00000001;
+pub const SERVICE_FILE_SYSTEM_DRIVER: DWORD = 0x00000002;
+pub const SERVICE_ADAPTER: DWORD = 0x00000004;
+pub const SERVICE_RECOGNIZER_DRIVER: DWORD = 0x00000008;
+pub const SERVICE_DRIVER: DWORD = SERVICE_KERNEL_DRIVER | SERVICE_FILE_SYSTEM_DRIVER
+	| SERVICE_RECOGNIZER_DRIVER;
+pub const SERVICE_WIN32_OWN_PROCESS: DWORD = 0x00000010;
+pub const SERVICE_WIN32_SHARE_PROCESS: DWORD = 0x00000020;
+pub const SERVICE_WIN32: DWORD = SERVICE_WIN32_OWN_PROCESS | SERVICE_WIN32_SHARE_PROCESS;
+pub const SERVICE_USER_SERVICE: DWORD = 0x00000040;
+pub const SERVICE_USERSERVICE_INSTANCE: DWORD = 0x00000080;
+pub const SERVICE_USER_SHARE_PROCESS: DWORD = SERVICE_USER_SERVICE | SERVICE_WIN32_SHARE_PROCESS;
+pub const SERVICE_USER_OWN_PROCESS: DWORD = SERVICE_USER_SERVICE | SERVICE_WIN32_OWN_PROCESS;
+pub const SERVICE_INTERACTIVE_PROCESS: DWORD = 0x00000100;
+pub const SERVICE_PKG_SERVICE: DWORD = 0x00000200;
+pub const SERVICE_TYPE_ALL: DWORD = SERVICE_WIN32 | SERVICE_ADAPTER | SERVICE_DRIVER
+	| SERVICE_INTERACTIVE_PROCESS | SERVICE_USER_SERVICE | SERVICE_USERSERVICE_INSTANCE
+	| SERVICE_PKG_SERVICE;
+pub const SERVICE_BOOT_START: DWORD = 0x00000000;
+pub const SERVICE_SYSTEM_START: DWORD = 0x00000001;
+pub const SERVICE_AUTO_START: DWORD = 0x00000002;
+pub const SERVICE_DEMAND_START: DWORD = 0x00000003;
+pub const SERVICE_DISABLED: DWORD = 0x00000004;
+pub const SERVICE_ERROR_IGNORE: DWORD = 0x00000000;
+pub const SERVICE_ERROR_NORMAL: DWORD = 0x00000001;
+pub const SERVICE_ERROR_SEVERE: DWORD = 0x00000002;
+pub const SERVICE_ERROR_CRITICAL: DWORD = 0x00000003;
+using SERVICE_NODE_TYPE :: enum c.int {
+	DriverType = SERVICE_KERNEL_DRIVER,
+	FileSystemType = SERVICE_FILE_SYSTEM_DRIVER,
+	Win32ServiceOwnProcess = SERVICE_WIN32_OWN_PROCESS,
+	Win32ServiceShareProcess = SERVICE_WIN32_SHARE_PROCESS,
+	AdapterType = SERVICE_ADAPTER,
+	RecognizerType = SERVICE_RECOGNIZER_DRIVER,
+}
+using SERVICE_LOAD_TYPE :: enum c.int {
+	BootLoad = SERVICE_BOOT_START,
+	SystemLoad = SERVICE_SYSTEM_START,
+	AutoLoad = SERVICE_AUTO_START,
+	DemandLoad = SERVICE_DEMAND_START,
+	DisableLoad = SERVICE_DISABLED,
+}
+using SERVICE_ERROR_TYPE :: enum c.int {
+	IgnoreError = SERVICE_ERROR_IGNORE,
+	NormalError = SERVICE_ERROR_NORMAL,
+	SevereError = SERVICE_ERROR_SEVERE,
+	CriticalError = SERVICE_ERROR_CRITICAL,
+}
+pub const CM_SERVICE_NETWORK_BOOT_LOAD: DWORD = 0x00000001;
+pub const CM_SERVICE_VIRTUAL_DISK_BOOT_LOAD: DWORD = 0x00000002;
+pub const CM_SERVICE_USB_DISK_BOOT_LOAD: DWORD = 0x00000004;
+pub const CM_SERVICE_SD_DISK_BOOT_LOAD: DWORD = 0x00000008;
+pub const CM_SERVICE_USB3_DISK_BOOT_LOAD: DWORD = 0x00000010;
+pub const CM_SERVICE_MEASURED_BOOT_LOAD: DWORD = 0x00000020;
+pub const CM_SERVICE_VERIFIER_BOOT_LOAD: DWORD = 0x00000040;
+pub const CM_SERVICE_WINPE_BOOT_LOAD: DWORD = 0x00000080;
+pub const CM_SERVICE_VALID_PROMOTION_MASK: DWORD = CM_SERVICE_NETWORK_BOOT_LOAD
+	| CM_SERVICE_VIRTUAL_DISK_BOOT_LOAD | CM_SERVICE_USB_DISK_BOOT_LOAD
+	| CM_SERVICE_SD_DISK_BOOT_LOAD | CM_SERVICE_USB3_DISK_BOOT_LOAD
+	| CM_SERVICE_MEASURED_BOOT_LOAD | CM_SERVICE_VERIFIER_BOOT_LOAD | CM_SERVICE_WINPE_BOOT_LOAD;
+pub const TAPE_ERASE_SHORT: DWORD = 0;
+pub const TAPE_ERASE_LONG: DWORD = 1;
+TAPE_ERASE :: struct {
+	Type: DWORD,
+	Immediate: BOOLEAN,
+}
+PTAPE_ERASE :: ^TAPE_ERASE;
+pub const TAPE_LOAD: DWORD = 0;
+pub const TAPE_UNLOAD: DWORD = 1;
+pub const TAPE_TENSION: DWORD = 2;
+pub const TAPE_LOCK: DWORD = 3;
+pub const TAPE_UNLOCK: DWORD = 4;
+pub const TAPE_FORMAT: DWORD = 5;
+TAPE_PREPARE :: struct {
+	Operation: DWORD,
+	Immediate: BOOLEAN,
+}
+PTAPE_PREPARE :: ^TAPE_PREPARE;
+pub const TAPE_SETMARKS: DWORD = 0;
+pub const TAPE_FILEMARKS: DWORD = 1;
+pub const TAPE_SHORT_FILEMARKS: DWORD = 2;
+pub const TAPE_LONG_FILEMARKS: DWORD = 3;
+TAPE_WRITE_MARKS :: struct {
+	Type: DWORD,
+	Count: DWORD,
+	Immediate: BOOLEAN,
+}
+PTAPE_WRITE_MARKS :: ^TAPE_WRITE_MARKS;
+pub const TAPE_ABSOLUTE_POSITION: DWORD = 0;
+pub const TAPE_LOGICAL_POSITION: DWORD = 1;
+pub const TAPE_PSEUDO_LOGICAL_POSITION: DWORD = 2;
+TAPE_GET_POSITION :: struct {
+	Type: DWORD,
+	Partition: DWORD,
+	Offset: LARGE_INTEGER,
+}
+PTAPE_GET_POSITION :: ^TAPE_GET_POSITION;
+pub const TAPE_REWIND: DWORD = 0;
+pub const TAPE_ABSOLUTE_BLOCK: DWORD = 1;
+pub const TAPE_LOGICAL_BLOCK: DWORD = 2;
+pub const TAPE_PSEUDO_LOGICAL_BLOCK: DWORD = 3;
+pub const TAPE_SPACE_END_OF_DATA: DWORD = 4;
+pub const TAPE_SPACE_RELATIVE_BLOCKS: DWORD = 5;
+pub const TAPE_SPACE_FILEMARKS: DWORD = 6;
+pub const TAPE_SPACE_SEQUENTIAL_FMKS: DWORD = 7;
+pub const TAPE_SPACE_SETMARKS: DWORD = 8;
+pub const TAPE_SPACE_SEQUENTIAL_SMKS: DWORD = 9;
+TAPE_SET_POSITION :: struct {
+	Method: DWORD,
+	Partition: DWORD,
+	Offset: LARGE_INTEGER,
+	Immediate: BOOLEAN,
+}
+PTAPE_SET_POSITION :: ^TAPE_SET_POSITION;
+pub const TAPE_DRIVE_FIXED: DWORD = 0x00000001;
+pub const TAPE_DRIVE_SELECT: DWORD = 0x00000002;
+pub const TAPE_DRIVE_INITIATOR: DWORD = 0x00000004;
+pub const TAPE_DRIVE_ERASE_SHORT: DWORD = 0x00000010;
+pub const TAPE_DRIVE_ERASE_LONG: DWORD = 0x00000020;
+pub const TAPE_DRIVE_ERASE_BOP_ONLY: DWORD = 0x00000040;
+pub const TAPE_DRIVE_ERASE_IMMEDIATE: DWORD = 0x00000080;
+pub const TAPE_DRIVE_TAPE_CAPACITY: DWORD = 0x00000100;
+pub const TAPE_DRIVE_TAPE_REMAINING: DWORD = 0x00000200;
+pub const TAPE_DRIVE_FIXED_BLOCK: DWORD = 0x00000400;
+pub const TAPE_DRIVE_VARIABLE_BLOCK: DWORD = 0x00000800;
+pub const TAPE_DRIVE_WRITE_PROTECT: DWORD = 0x00001000;
+pub const TAPE_DRIVE_EOT_WZ_SIZE: DWORD = 0x00002000;
+pub const TAPE_DRIVE_ECC: DWORD = 0x00010000;
+pub const TAPE_DRIVE_COMPRESSION: DWORD = 0x00020000;
+pub const TAPE_DRIVE_PADDING: DWORD = 0x00040000;
+pub const TAPE_DRIVE_REPORT_SMKS: DWORD = 0x00080000;
+pub const TAPE_DRIVE_GET_ABSOLUTE_BLK: DWORD = 0x00100000;
+pub const TAPE_DRIVE_GET_LOGICAL_BLK: DWORD = 0x00200000;
+pub const TAPE_DRIVE_SET_EOT_WZ_SIZE: DWORD = 0x00400000;
+pub const TAPE_DRIVE_EJECT_MEDIA: DWORD = 0x01000000;
+pub const TAPE_DRIVE_CLEAN_REQUESTS: DWORD = 0x02000000;
+pub const TAPE_DRIVE_SET_CMP_BOP_ONLY: DWORD = 0x04000000;
+pub const TAPE_DRIVE_RESERVED_BIT: DWORD = 0x80000000;
+pub const TAPE_DRIVE_LOAD_UNLOAD: DWORD = 0x80000001;
+pub const TAPE_DRIVE_TENSION: DWORD = 0x80000002;
+pub const TAPE_DRIVE_LOCK_UNLOCK: DWORD = 0x80000004;
+pub const TAPE_DRIVE_REWIND_IMMEDIATE: DWORD = 0x80000008;
+pub const TAPE_DRIVE_SET_BLOCK_SIZE: DWORD = 0x80000010;
+pub const TAPE_DRIVE_LOAD_UNLD_IMMED: DWORD = 0x80000020;
+pub const TAPE_DRIVE_TENSION_IMMED: DWORD = 0x80000040;
+pub const TAPE_DRIVE_LOCK_UNLK_IMMED: DWORD = 0x80000080;
+pub const TAPE_DRIVE_SET_ECC: DWORD = 0x80000100;
+pub const TAPE_DRIVE_SET_COMPRESSION: DWORD = 0x80000200;
+pub const TAPE_DRIVE_SET_PADDING: DWORD = 0x80000400;
+pub const TAPE_DRIVE_SET_REPORT_SMKS: DWORD = 0x80000800;
+pub const TAPE_DRIVE_ABSOLUTE_BLK: DWORD = 0x80001000;
+pub const TAPE_DRIVE_ABS_BLK_IMMED: DWORD = 0x80002000;
+pub const TAPE_DRIVE_LOGICAL_BLK: DWORD = 0x80004000;
+pub const TAPE_DRIVE_LOG_BLK_IMMED: DWORD = 0x80008000;
+pub const TAPE_DRIVE_END_OF_DATA: DWORD = 0x80010000;
+pub const TAPE_DRIVE_RELATIVE_BLKS: DWORD = 0x80020000;
+pub const TAPE_DRIVE_FILEMARKS: DWORD = 0x80040000;
+pub const TAPE_DRIVE_SEQUENTIAL_FMKS: DWORD = 0x80080000;
+pub const TAPE_DRIVE_SETMARKS: DWORD = 0x80100000;
+pub const TAPE_DRIVE_SEQUENTIAL_SMKS: DWORD = 0x80200000;
+pub const TAPE_DRIVE_REVERSE_POSITION: DWORD = 0x80400000;
+pub const TAPE_DRIVE_SPACE_IMMEDIATE: DWORD = 0x80800000;
+pub const TAPE_DRIVE_WRITE_SETMARKS: DWORD = 0x81000000;
+pub const TAPE_DRIVE_WRITE_FILEMARKS: DWORD = 0x82000000;
+pub const TAPE_DRIVE_WRITE_SHORT_FMKS: DWORD = 0x84000000;
+pub const TAPE_DRIVE_WRITE_LONG_FMKS: DWORD = 0x88000000;
+pub const TAPE_DRIVE_WRITE_MARK_IMMED: DWORD = 0x90000000;
+pub const TAPE_DRIVE_FORMAT: DWORD = 0xA0000000;
+pub const TAPE_DRIVE_FORMAT_IMMEDIATE: DWORD = 0xC0000000;
+pub const TAPE_DRIVE_HIGH_FEATURES: DWORD = 0x80000000;
+TAPE_GET_DRIVE_PARAMETERS :: struct {
+	ECC: BOOLEAN,
+	Compression: BOOLEAN,
+	DataPadding: BOOLEAN,
+	ReportSetmarks: BOOLEAN,
+	DefaultBlockSize: DWORD,
+	MaximumBlockSize: DWORD,
+	MinimumBlockSize: DWORD,
+	MaximumPartitionCount: DWORD,
+	FeaturesLow: DWORD,
+	FeaturesHigh: DWORD,
+	EOTWarningZoneSize: DWORD,
+}
+PTAPE_GET_DRIVE_PARAMETERS :: ^TAPE_GET_DRIVE_PARAMETERS;
+TAPE_SET_DRIVE_PARAMETERS :: struct {
+	ECC: BOOLEAN,
+	Compression: BOOLEAN,
+	DataPadding: BOOLEAN,
+	ReportSetmarks: BOOLEAN,
+	EOTWarningZoneSize: DWORD,
+}
+PTAPE_SET_DRIVE_PARAMETERS :: ^TAPE_SET_DRIVE_PARAMETERS;
+TAPE_GET_MEDIA_PARAMETERS :: struct {
+	Capacity: LARGE_INTEGER,
+	Remaining: LARGE_INTEGER,
+	BlockSize: DWORD,
+	PartitionCount: DWORD,
+	WriteProtected: BOOLEAN,
+}
+PTAPE_GET_MEDIA_PARAMETERS :: ^TAPE_GET_MEDIA_PARAMETERS;
+TAPE_SET_MEDIA_PARAMETERS :: struct {
+	BlockSize: DWORD,
+}
+PTAPE_SET_MEDIA_PARAMETERS :: ^TAPE_SET_MEDIA_PARAMETERS;
+pub const TAPE_FIXED_PARTITIONS: DWORD = 0;
+pub const TAPE_SELECT_PARTITIONS: DWORD = 1;
+pub const TAPE_INITIATOR_PARTITIONS: DWORD = 2;
+TAPE_CREATE_PARTITION :: struct {
+	Method: DWORD,
+	Count: DWORD,
+	Size: DWORD,
+}
+PTAPE_CREATE_PARTITION :: ^TAPE_CREATE_PARTITION;
+pub const TAPE_QUERY_DRIVE_PARAMETERS: DWORD = 0;
+pub const TAPE_QUERY_MEDIA_CAPACITY: DWORD = 1;
+pub const TAPE_CHECK_FOR_DRIVE_PROBLEM: DWORD = 2;
+pub const TAPE_QUERY_IO_ERROR_DATA: DWORD = 3;
+pub const TAPE_QUERY_DEVICE_ERROR_DATA: DWORD = 4;
+TAPE_WMI_OPERATIONS :: struct {
+	Method: DWORD,
+	DataBufferSize: DWORD,
+	DataBuffer: PVOID,
+}
+PTAPE_WMI_OPERATIONS :: ^TAPE_WMI_OPERATIONS;
+using TAPE_DRIVE_PROBLEM_TYPE :: enum c.int {
+	TapeDriveProblemNone,
+	TapeDriveReadWriteWarning,
+	TapeDriveReadWriteError,
+	TapeDriveReadWarning,
+	TapeDriveWriteWarning,
+	TapeDriveReadError,
+	TapeDriveWriteError,
+	TapeDriveHardwareError,
+	TapeDriveUnsupportedMedia,
+	TapeDriveScsiConnectionError,
+	TapeDriveTimetoClean,
+	TapeDriveCleanDriveNow,
+	TapeDriveMediaLifeExpired,
+	TapeDriveSnappedTape,
+}
+pub const TRANSACTIONMANAGER_QUERY_INFORMATION: DWORD = 0x0001;
+pub const TRANSACTIONMANAGER_SET_INFORMATION: DWORD = 0x0002;
+pub const TRANSACTIONMANAGER_RECOVER: DWORD = 0x0004;
+pub const TRANSACTIONMANAGER_RENAME: DWORD = 0x0008;
+pub const TRANSACTIONMANAGER_CREATE_RM: DWORD = 0x0010;
+pub const TRANSACTIONMANAGER_BIND_TRANSACTION: DWORD = 0x0020;
+pub const TRANSACTIONMANAGER_GENERIC_READ: DWORD = STANDARD_RIGHTS_READ
+	| TRANSACTIONMANAGER_QUERY_INFORMATION;
+pub const TRANSACTIONMANAGER_GENERIC_WRITE: DWORD = STANDARD_RIGHTS_WRITE
+	| TRANSACTIONMANAGER_SET_INFORMATION | TRANSACTIONMANAGER_RECOVER | TRANSACTIONMANAGER_RENAME
+	| TRANSACTIONMANAGER_CREATE_RM;
+pub const TRANSACTIONMANAGER_GENERIC_EXECUTE: DWORD = STANDARD_RIGHTS_EXECUTE;
+pub const TRANSACTIONMANAGER_ALL_ACCESS: DWORD = STANDARD_RIGHTS_REQUIRED
+	| TRANSACTIONMANAGER_GENERIC_READ | TRANSACTIONMANAGER_GENERIC_WRITE
+	| TRANSACTIONMANAGER_GENERIC_EXECUTE | TRANSACTIONMANAGER_BIND_TRANSACTION;
+pub const TRANSACTION_QUERY_INFORMATION: DWORD = 0x0001;
+pub const TRANSACTION_SET_INFORMATION: DWORD = 0x0002;
+pub const TRANSACTION_ENLIST: DWORD = 0x0004;
+pub const TRANSACTION_COMMIT: DWORD = 0x0008;
+pub const TRANSACTION_ROLLBACK: DWORD = 0x0010;
+pub const TRANSACTION_PROPAGATE: DWORD = 0x0020;
+pub const TRANSACTION_RIGHT_RESERVED1: DWORD = 0x0040;
+pub const TRANSACTION_GENERIC_READ: DWORD = STANDARD_RIGHTS_READ | TRANSACTION_QUERY_INFORMATION
+	| SYNCHRONIZE;
+pub const TRANSACTION_GENERIC_WRITE: DWORD = STANDARD_RIGHTS_WRITE | TRANSACTION_SET_INFORMATION
+	| TRANSACTION_COMMIT | TRANSACTION_ENLIST | TRANSACTION_ROLLBACK | TRANSACTION_PROPAGATE
+	| SYNCHRONIZE;
+pub const TRANSACTION_GENERIC_EXECUTE: DWORD = STANDARD_RIGHTS_EXECUTE | TRANSACTION_COMMIT
+	| TRANSACTION_ROLLBACK | SYNCHRONIZE;
+pub const TRANSACTION_ALL_ACCESS: DWORD = STANDARD_RIGHTS_REQUIRED | TRANSACTION_GENERIC_READ
+	| TRANSACTION_GENERIC_WRITE | TRANSACTION_GENERIC_EXECUTE;
+pub const TRANSACTION_RESOURCE_MANAGER_RIGHTS: DWORD = TRANSACTION_GENERIC_READ
+	| STANDARD_RIGHTS_WRITE | TRANSACTION_SET_INFORMATION | TRANSACTION_ENLIST
+	| TRANSACTION_ROLLBACK | TRANSACTION_PROPAGATE | SYNCHRONIZE;
+pub const RESOURCEMANAGER_QUERY_INFORMATION: DWORD = 0x0001;
+pub const RESOURCEMANAGER_SET_INFORMATION: DWORD = 0x0002;
+pub const RESOURCEMANAGER_RECOVER: DWORD = 0x0004;
+pub const RESOURCEMANAGER_ENLIST: DWORD = 0x0008;
+pub const RESOURCEMANAGER_GET_NOTIFICATION: DWORD = 0x0010;
+pub const RESOURCEMANAGER_REGISTER_PROTOCOL: DWORD = 0x0020;
+pub const RESOURCEMANAGER_COMPLETE_PROPAGATION: DWORD = 0x0040;
+pub const RESOURCEMANAGER_GENERIC_READ: DWORD = STANDARD_RIGHTS_READ
+	| RESOURCEMANAGER_QUERY_INFORMATION | SYNCHRONIZE;
+pub const RESOURCEMANAGER_GENERIC_WRITE: DWORD = STANDARD_RIGHTS_WRITE
+	| RESOURCEMANAGER_SET_INFORMATION | RESOURCEMANAGER_RECOVER | RESOURCEMANAGER_ENLIST
+	| RESOURCEMANAGER_GET_NOTIFICATION | RESOURCEMANAGER_REGISTER_PROTOCOL
+	| RESOURCEMANAGER_COMPLETE_PROPAGATION | SYNCHRONIZE;
+pub const RESOURCEMANAGER_GENERIC_EXECUTE: DWORD = STANDARD_RIGHTS_EXECUTE
+	| RESOURCEMANAGER_RECOVER | RESOURCEMANAGER_ENLIST | RESOURCEMANAGER_GET_NOTIFICATION
+	| RESOURCEMANAGER_COMPLETE_PROPAGATION | SYNCHRONIZE;
+pub const RESOURCEMANAGER_ALL_ACCESS: DWORD = STANDARD_RIGHTS_REQUIRED
+	| RESOURCEMANAGER_GENERIC_READ | RESOURCEMANAGER_GENERIC_WRITE
+	| RESOURCEMANAGER_GENERIC_EXECUTE;
+pub const ENLISTMENT_QUERY_INFORMATION: DWORD = 0x0001;
+pub const ENLISTMENT_SET_INFORMATION: DWORD = 0x0002;
+pub const ENLISTMENT_RECOVER: DWORD = 0x0004;
+pub const ENLISTMENT_SUBORDINATE_RIGHTS: DWORD = 0x0008;
+pub const ENLISTMENT_SUPERIOR_RIGHTS: DWORD = 0x0010;
+pub const ENLISTMENT_GENERIC_READ: DWORD = STANDARD_RIGHTS_READ | ENLISTMENT_QUERY_INFORMATION;
+pub const ENLISTMENT_GENERIC_WRITE: DWORD = STANDARD_RIGHTS_WRITE | ENLISTMENT_SET_INFORMATION
+	| ENLISTMENT_RECOVER | ENLISTMENT_SUBORDINATE_RIGHTS | ENLISTMENT_SUPERIOR_RIGHTS;
+pub const ENLISTMENT_GENERIC_EXECUTE: DWORD = STANDARD_RIGHTS_EXECUTE | ENLISTMENT_RECOVER
+	| ENLISTMENT_SUBORDINATE_RIGHTS | ENLISTMENT_SUPERIOR_RIGHTS;
+pub const ENLISTMENT_ALL_ACCESS: DWORD = STANDARD_RIGHTS_REQUIRED | ENLISTMENT_GENERIC_READ
+	| ENLISTMENT_GENERIC_WRITE | ENLISTMENT_GENERIC_EXECUTE;
+using TRANSACTION_OUTCOME :: enum c.int {
+	TransactionOutcomeUndetermined = 1,
+	TransactionOutcomeCommitted,
+	TransactionOutcomeAborted,
+}
+using TRANSACTION_STATE :: enum c.int {
+	TransactionStateNormal = 1,
+	TransactionStateIndoubt,
+	TransactionStateCommittedNotify,
+}
+TRANSACTION_BASIC_INFORMATION :: struct {
+	TransactionId: GUID,
+	State: DWORD,
+	Outcome: DWORD,
+}
+PTRANSACTION_BASIC_INFORMATION :: ^TRANSACTION_BASIC_INFORMATION;
+TRANSACTIONMANAGER_BASIC_INFORMATION :: struct {
+	TmIdentity: GUID,
+	VirtualClock: LARGE_INTEGER,
+}
+PTRANSACTIONMANAGER_BASIC_INFORMATION :: ^TRANSACTIONMANAGER_BASIC_INFORMATION;
+TRANSACTIONMANAGER_LOG_INFORMATION :: struct {
+	LogIdentity: GUID,
+}
+PTRANSACTIONMANAGER_LOG_INFORMATION :: ^TRANSACTIONMANAGER_LOG_INFORMATION;
+TRANSACTIONMANAGER_LOGPATH_INFORMATION :: struct {
+	LogPathLength: DWORD,
+	LogPath: [1]WCHAR,
+}
+PTRANSACTIONMANAGER_LOGPATH_INFORMATION :: ^TRANSACTIONMANAGER_LOGPATH_INFORMATION;
+TRANSACTIONMANAGER_RECOVERY_INFORMATION :: struct {
+	LastRecoveredLsn: ULONGLONG,
+}
+PTRANSACTIONMANAGER_RECOVERY_INFORMATION :: ^TRANSACTIONMANAGER_RECOVERY_INFORMATION;
+TRANSACTIONMANAGER_OLDEST_INFORMATION :: struct {
+	OldestTransactionGuid: GUID,
+}
+PTRANSACTIONMANAGER_OLDEST_INFORMATION :: ^TRANSACTIONMANAGER_OLDEST_INFORMATION;
+TRANSACTION_PROPERTIES_INFORMATION :: struct {
+	IsolationLevel: DWORD,
+	IsolationFlags: DWORD,
+	Timeout: LARGE_INTEGER,
+	Outcome: DWORD,
+	DescriptionLength: DWORD,
+	Description: [1]WCHAR,
+}
+PTRANSACTION_PROPERTIES_INFORMATION :: ^TRANSACTION_PROPERTIES_INFORMATION;
+TRANSACTION_BIND_INFORMATION :: struct {
+	TmHandle: HANDLE,
+}
+PTRANSACTION_BIND_INFORMATION :: ^TRANSACTION_BIND_INFORMATION;
+TRANSACTION_ENLISTMENT_PAIR :: struct {
+	EnlistmentId: GUID,
+	ResourceManagerId: GUID,
+}
+PTRANSACTION_ENLISTMENT_PAIR :: ^TRANSACTION_ENLISTMENT_PAIR;
+TRANSACTION_ENLISTMENTS_INFORMATION :: struct {
+	NumberOfEnlistments: DWORD,
+	EnlistmentPair: [1]TRANSACTION_ENLISTMENT_PAIR,
+}
+PTRANSACTION_ENLISTMENTS_INFORMATION :: ^TRANSACTION_ENLISTMENTS_INFORMATION;
+TRANSACTION_SUPERIOR_ENLISTMENT_INFORMATION :: struct {
+	SuperiorEnlistmentPair: TRANSACTION_ENLISTMENT_PAIR,
+}
+pub type PTRANSACTION_SUPERIOR_ENLISTMENT_INFORMATION
+	= ^TRANSACTION_SUPERIOR_ENLISTMENT_INFORMATION;
+RESOURCEMANAGER_BASIC_INFORMATION :: struct {
+	ResourceManagerId: GUID,
+	DescriptionLength: DWORD,
+	Description: [1]WCHAR,
+}
+PRESOURCEMANAGER_BASIC_INFORMATION :: ^RESOURCEMANAGER_BASIC_INFORMATION;
+RESOURCEMANAGER_COMPLETION_INFORMATION :: struct {
+	IoCompletionPortHandle: HANDLE,
+	CompletionKey: ULONG_PTR,
+}
+PRESOURCEMANAGER_COMPLETION_INFORMATION :: ^RESOURCEMANAGER_COMPLETION_INFORMATION;
+using TRANSACTION_INFORMATION_CLASS :: enum c.int {
+	TransactionBasicInformation,
+	TransactionPropertiesInformation,
+	TransactionEnlistmentInformation,
+	TransactionSuperiorEnlistmentInformation,
+	TransactionBindInformation,
+	TransactionDTCPrivateInformation,
+}
+using TRANSACTIONMANAGER_INFORMATION_CLASS :: enum c.int {
+	TransactionManagerBasicInformation,
+	TransactionManagerLogInformation,
+	TransactionManagerLogPathInformation,
+	TransactionManagerRecoveryInformation = 4,
+	TransactionManagerOnlineProbeInformation = 3,
+	TransactionManagerOldestTransactionInformation = 5,
+}
+using RESOURCEMANAGER_INFORMATION_CLASS :: enum c.int {
+	ResourceManagerBasicInformation,
+	ResourceManagerCompletionInformation,
+}
+ENLISTMENT_BASIC_INFORMATION :: struct {
+	EnlistmentId: GUID,
+	TransactionId: GUID,
+	ResourceManagerId: GUID,
+}
+PENLISTMENT_BASIC_INFORMATION :: ^ENLISTMENT_BASIC_INFORMATION;
+ENLISTMENT_CRM_INFORMATION :: struct {
+	CrmTransactionManagerId: GUID,
+	CrmResourceManagerId: GUID,
+	CrmEnlistmentId: GUID,
+}
+PENLISTMENT_CRM_INFORMATION :: ^ENLISTMENT_CRM_INFORMATION;
+using ENLISTMENT_INFORMATION_CLASS :: enum c.int {
+	EnlistmentBasicInformation,
+	EnlistmentRecoveryInformation,
+	EnlistmentCrmInformation,
+}
+TRANSACTION_LIST_ENTRY :: struct {
+	UOW: UOW,
+}
+PTRANSACTION_LIST_ENTRY :: ^TRANSACTION_LIST_ENTRY;
+TRANSACTION_LIST_INFORMATION :: struct {
+	NumberOfTransactions: DWORD,
+	TransactionInformation: [1]TRANSACTION_LIST_ENTRY,
+}
+PTRANSACTION_LIST_INFORMATION :: ^TRANSACTION_LIST_INFORMATION;
+using KTMOBJECT_TYPE :: enum c.int {
+	KTMOBJECT_TRANSACTION,
+	KTMOBJECT_TRANSACTION_MANAGER,
+	KTMOBJECT_RESOURCE_MANAGER,
+	KTMOBJECT_ENLISTMENT,
+	KTMOBJECT_INVALID,
+}
+PKTMOBJECT_TYPE :: ^KTMOBJECT_TYPE;
+KTMOBJECT_CURSOR :: struct {
+	LastQuery: GUID,
+	ObjectIdCount: DWORD,
+	ObjectIds: [1]GUID,
+}
+PKTMOBJECT_CURSOR :: ^KTMOBJECT_CURSOR;
+TP_VERSION :: DWORD;
+PTP_VERSION :: ^DWORD;
+TP_CALLBACK_INSTANCE :: struct {
+	dummy: rawptr,
+}
+PTP_CALLBACK_INSTANCE :: ^TP_CALLBACK_INSTANCE;
+FN!{stdcall PTP_SIMPLE_CALLBACK(
+	Instance: PTP_CALLBACK_INSTANCE,
+	Context: PVOID,
+) -> ()}
+TP_POOL :: struct {
+	dummy: rawptr,
+}
+PTP_POOL :: ^TP_POOL;
+using TP_CALLBACK_PRIORITY :: enum c.int {
+	TP_CALLBACK_PRIORITY_HIGH,
+	TP_CALLBACK_PRIORITY_NORMAL,
+	TP_CALLBACK_PRIORITY_LOW,
+	TP_CALLBACK_PRIORITY_INVALID,
+	TP_CALLBACK_PRIORITY_COUNT = TP_CALLBACK_PRIORITY_INVALID,
+}
+TP_POOL_STACK_INFORMATION :: struct {
+	StackReserve: SIZE_T,
+	StackCommit: SIZE_T,
+}
+PTP_POOL_STACK_INFORMATION :: ^TP_POOL_STACK_INFORMATION;
+TP_CLEANUP_GROUP :: struct {
+	dummy: rawptr,
+}
+PTP_CLEANUP_GROUP :: ^TP_CLEANUP_GROUP;
+FN!{stdcall PTP_CLEANUP_GROUP_CANCEL_CALLBACK(
+	ObjectContext: PVOID,
+	CleanupContext: PVOID,
+) -> ()}
+TP_CALLBACK_ENVIRON_V3_u_s :: struct {
+	BitFields: DWORD,
+}
+BITFIELD!{TP_CALLBACK_ENVIRON_V3_u_s BitFields: DWORD [
+	LongFunction set_LongFunction[0..1],
+	Persistent set_Persistent[1..2],
+	Private set_Private[2..32],
+}
+TP_CALLBACK_ENVIRON_V3_u :: struct #raw_union {
+	[1]u32,
+	Flags Flags_mut: DWORD,
+	s s_mut: TP_CALLBACK_ENVIRON_V3_u_s,
+}
+TP_CALLBACK_ENVIRON_V3 :: struct {
+	Version: TP_VERSION,
+	Pool: PTP_POOL,
+	CleanupGroup: PTP_CLEANUP_GROUP,
+	CleanupGroupCancelCallback: PTP_CLEANUP_GROUP_CANCEL_CALLBACK,
+	RaceDll: PVOID,
+	ActivationContext: ^ACTIVATION_CONTEXT,
+	FinalizationCallback: PTP_SIMPLE_CALLBACK,
+	u: TP_CALLBACK_ENVIRON_V3_u,
+	CallbackPriority: TP_CALLBACK_PRIORITY,
+	Size: DWORD,
+}
+TP_CALLBACK_ENVIRON :: TP_CALLBACK_ENVIRON_V3;
+PTP_CALLBACK_ENVIRON :: ^TP_CALLBACK_ENVIRON_V3;
+TP_WORK :: struct {
+	dummy: rawptr,
+}
+PTP_WORK :: ^TP_WORK;
+FN!{stdcall PTP_WORK_CALLBACK(
+	Instance: PTP_CALLBACK_INSTANCE,
+	Context: PVOID,
+	Work: PTP_WORK,
+) -> ()}
+TP_TIMER :: struct {
+	dummy: rawptr,
+}
+PTP_TIMER :: ^TP_TIMER;
+FN!{stdcall PTP_TIMER_CALLBACK(
+	Instance: PTP_CALLBACK_INSTANCE,
+	Context: PVOID,
+	Timer: PTP_TIMER,
+) -> ()}
+TP_WAIT_RESULT :: DWORD;
+TP_WAIT :: struct {
+	dummy: rawptr,
+}
+PTP_WAIT :: ^TP_WAIT;
+FN!{stdcall PTP_WAIT_CALLBACK(
+	Instance: PTP_CALLBACK_INSTANCE,
+	Context: PVOID,
+	Wait: PTP_WAIT,
+	WaitResult: TP_WAIT_RESULT,
+) -> ()}
+TP_IO :: struct {
+	dummy: rawptr,
+}
+PTP_IO :: ^TP_IO;
+pub const ACTIVATION_CONTEXT_SECTION_ASSEMBLY_INFORMATION: ULONG = 1;
+pub const ACTIVATION_CONTEXT_SECTION_DLL_REDIRECTION: ULONG = 2;
+pub const ACTIVATION_CONTEXT_SECTION_WINDOW_CLASS_REDIRECTION: ULONG = 3;
+pub const ACTIVATION_CONTEXT_SECTION_COM_SERVER_REDIRECTION: ULONG = 4;
+pub const ACTIVATION_CONTEXT_SECTION_COM_INTERFACE_REDIRECTION: ULONG = 5;
+pub const ACTIVATION_CONTEXT_SECTION_COM_TYPE_LIBRARY_REDIRECTION: ULONG = 6;
+pub const ACTIVATION_CONTEXT_SECTION_COM_PROGID_REDIRECTION: ULONG = 7;
+pub const ACTIVATION_CONTEXT_SECTION_GLOBAL_OBJECT_RENAME_TABLE: ULONG = 8;
+pub const ACTIVATION_CONTEXT_SECTION_CLR_SURROGATES: ULONG = 9;
+pub const ACTIVATION_CONTEXT_SECTION_APPLICATION_SETTINGS: ULONG = 10;
+pub const ACTIVATION_CONTEXT_SECTION_COMPATIBILITY_INFO: ULONG = 11;
+ACTIVATION_CONTEXT :: struct {
+	dummy: rawptr,
+}
+
+
+*/

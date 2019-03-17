@@ -1,0 +1,110 @@
+// +build windows 386
+
+package w32
+
+XSAVE_FORMAT :: struct #align 16 {
+	ControlWord:    WORD,
+	StatusWord:     WORD,
+	TagWord:        BYTE,
+	Reserved1:      BYTE,
+	ErrorOpcode:    WORD,
+	ErrorOffset:    DWORD,
+	ErrorSelector:  WORD,
+	Reserved2:      WORD,
+	DataOffset:     DWORD,
+	DataSelector:   WORD,
+	Reserved3:      WORD,
+	MxCsr:          DWORD,
+	MxCsr_Mask:     DWORD,
+	FloatRegisters: [8]M128A,
+	XmmRegisters:   [8]M128A,
+	Reserved4:      [224]BYTE,
+}
+XSTATE_CONTEXT :: struct {
+	Mask:      DWORD64,
+	Length:    DWORD,
+	Reserved1: DWORD,
+	Area:      PXSAVE_AREA,
+	Reserved2: DWORD,
+	Buffer:    PVOID,
+	Reserved3: DWORD,
+}
+
+PXSAVE_FORMAT :: ^XSAVE_FORMAT;
+XSAVE_AREA_HEADER :: struct #align 8 {
+	Mask:           DWORD64,
+	CompactionMask: DWORD64,
+	Reserved2:      [6]DWORD64,
+}
+PXSAVE_AREA_HEADER :: ^XSAVE_AREA_HEADER;
+XSAVE_AREA :: struct #align 16 {
+	LegacyState: XSAVE_FORMAT,
+	Header:      XSAVE_AREA_HEADER,
+}
+PXSAVE_AREA     :: ^XSAVE_AREA;
+PXSTATE_CONTEXT :: ^XSTATE_CONTEXT;
+
+EXCEPTION_READ_FAULT        :: DWORD(0);
+EXCEPTION_WRITE_FAULT       :: DWORD(1);
+EXCEPTION_EXECUTE_FAULT     :: DWORD(8);
+SIZE_OF_80387_REGISTERS     :: usize(80);
+CONTEXT_i386                :: DWORD(0x00010000);
+CONTEXT_i486                :: DWORD(0x00010000);
+CONTEXT_CONTROL             :: DWORD(CONTEXT_i386 | 0x00000001);
+CONTEXT_INTEGER             :: DWORD(CONTEXT_i386 | 0x00000002);
+CONTEXT_SEGMENTS            :: DWORD(CONTEXT_i386 | 0x00000004);
+CONTEXT_FLOATING_POINT      :: DWORD(CONTEXT_i386 | 0x00000008);
+CONTEXT_DEBUG_REGISTERS     :: DWORD(CONTEXT_i386 | 0x00000010);
+CONTEXT_EXTENDED_REGISTERS  :: DWORD(CONTEXT_i386 | 0x00000020);
+CONTEXT_FULL                :: DWORD(CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_SEGMENTS);
+CONTEXT_ALL                 :: DWORD(CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_SEGMENTS | CONTEXT_FLOATING_POINT | CONTEXT_DEBUG_REGISTERS | CONTEXT_EXTENDED_REGISTERS);
+CONTEXT_XSTATE              :: DWORD(CONTEXT_i386 | 0x00000040);
+CONTEXT_EXCEPTION_ACTIVE    :: DWORD(0x08000000);
+CONTEXT_SERVICE_ACTIVE      :: DWORD(0x10000000);
+CONTEXT_EXCEPTION_REQUEST   :: DWORD(0x40000000);
+CONTEXT_EXCEPTION_REPORTING :: DWORD(0x80000000);
+
+FLOATING_SAVE_AREA :: struct {
+	ControlWord: DWORD,
+	StatusWord: DWORD,
+	TagWord: DWORD,
+	ErrorOffset: DWORD,
+	ErrorSelector: DWORD,
+	DataOffset: DWORD,
+	DataSelector: DWORD,
+	RegisterArea: [SIZE_OF_80387_REGISTERS]BYTE,
+	Spare0: DWORD,
+}
+PFLOATING_SAVE_AREA :: ^FLOATING_SAVE_AREA;
+
+MAXIMUM_SUPPORTED_EXTENSION :: 512;
+CONTEXT :: struct {
+	ContextFlags: DWORD,
+	Dr0: DWORD,
+	Dr1: DWORD,
+	Dr2: DWORD,
+	Dr3: DWORD,
+	Dr6: DWORD,
+	Dr7: DWORD,
+	FloatSave: FLOATING_SAVE_AREA,
+	SegGs: DWORD,
+	SegFs: DWORD,
+	SegEs: DWORD,
+	SegDs: DWORD,
+	Edi: DWORD,
+	Esi: DWORD,
+	Ebx: DWORD,
+	Edx: DWORD,
+	Ecx: DWORD,
+	Eax: DWORD,
+	Ebp: DWORD,
+	Eip: DWORD,
+	SegCs: DWORD,
+	EFlags: DWORD,
+	Esp: DWORD,
+	SegSs: DWORD,
+	ExtendedRegisters: [MAXIMUM_SUPPORTED_EXTENSION]BYTE,
+}
+PCONTEXT :: ^CONTEXT;
+
+

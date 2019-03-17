@@ -32,3 +32,6 @@ IsEqualGUID :: inline proc(g1: ^GUID, g2: ^GUID) -> bool {
     b := (cast(^[4]u32)g2)^;
     return a[0] == b[0] && a[1] == b[1] && a[2] == b[2] && a[3] == b[3];
 }
+
+
+UOW :: GUID;

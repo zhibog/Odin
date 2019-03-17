@@ -1,0 +1,324 @@
+// +build windows
+package w32
+
+import "core:c"
+
+SECURITY_ATTRIBUTES :: struct {
+	nLength: DWORD,
+	lpSecurityDescriptor: LPVOID,
+	bInheritHandle: BOOL,
+}
+PSECURITY_ATTRIBUTES :: ^SECURITY_ATTRIBUTES;
+LPSECURITY_ATTRIBUTES :: ^SECURITY_ATTRIBUTES;
+OVERLAPPED_u_s :: struct {
+	Offset: DWORD,
+	OffsetHigh: DWORD,
+}
+OVERLAPPED_u :: struct #raw_union {
+	u1: [2]u32,
+	u2: [1]u64,
+	s: OVERLAPPED_u_s,
+	Pointer: PVOID,
+}
+OVERLAPPED :: struct {
+	Internal: ULONG_PTR,
+	InternalHigh: ULONG_PTR,
+	u: OVERLAPPED_u,
+	hEvent: HANDLE,
+}
+LPOVERLAPPED :: ^OVERLAPPED;
+OVERLAPPED_ENTRY :: struct {
+	lpCompletionKey: ULONG_PTR,
+	lpOverlapped: LPOVERLAPPED,
+	Internal: ULONG_PTR,
+	dwNumberOfBytesTransferred: DWORD,
+}
+LPOVERLAPPED_ENTRY :: ^OVERLAPPED_ENTRY;
+SYSTEMTIME :: struct {
+	wYear: WORD,
+	wMonth: WORD,
+	wDayOfWeek: WORD,
+	wDay: WORD,
+	wHour: WORD,
+	wMinute: WORD,
+	wSecond: WORD,
+	wMilliseconds: WORD,
+}
+PSYSTEMTIME :: ^SYSTEMTIME;
+LPSYSTEMTIME :: ^SYSTEMTIME;
+WIN32_FIND_DATAA :: struct {
+	dwFileAttributes: DWORD,
+	ftCreationTime: FILETIME,
+	ftLastAccessTime: FILETIME,
+	ftLastWriteTime: FILETIME,
+	nFileSizeHigh: DWORD,
+	nFileSizeLow: DWORD,
+	dwReserved0: DWORD,
+	dwReserved1: DWORD,
+	cFileName: [MAX_PATH]CHAR,
+	cAlternateFileName: [14]CHAR,
+}
+PWIN32_FIND_DATAA :: ^WIN32_FIND_DATAA;
+LPWIN32_FIND_DATAA :: ^WIN32_FIND_DATAA;
+WIN32_FIND_DATAW :: struct {
+	dwFileAttributes: DWORD,
+	ftCreationTime: FILETIME,
+	ftLastAccessTime: FILETIME,
+	ftLastWriteTime: FILETIME,
+	nFileSizeHigh: DWORD,
+	nFileSizeLow: DWORD,
+	dwReserved0: DWORD,
+	dwReserved1: DWORD,
+	cFileName: [MAX_PATH]WCHAR,
+	cAlternateFileName: [14]WCHAR,
+}
+PWIN32_FIND_DATAW :: ^WIN32_FIND_DATAW;
+LPWIN32_FIND_DATAW :: ^WIN32_FIND_DATAW;
+using FINDEX_INFO_LEVELS :: enum c.int {
+	FindExInfoStandard,
+	FindExInfoBasic,
+	FindExInfoMaxInfoLevel,
+}
+
+FIND_FIRST_EX_CASE_SENSITIVE :: DWORD(0x00000001);
+FIND_FIRST_EX_LARGE_FETCH    :: DWORD(0x00000002);
+
+using FINDEX_SEARCH_OPS :: enum c.int {
+	FindExSearchNameMatch,
+	FindExSearchLimitToDirectories,
+	FindExSearchLimitToDevices,
+	FindExSearchMaxSearchOp,
+}
+using GET_FILEEX_INFO_LEVELS :: enum c.int {
+	GetFileExInfoStandard,
+	GetFileExMaxInfoLevel,
+}
+using FILE_INFO_BY_HANDLE_CLASS :: enum c.int {
+	FileBasicInfo,
+	FileStandardInfo,
+	FileNameInfo,
+	FileRenameInfo,
+	FileDispositionInfo,
+	FileAllocationInfo,
+	FileEndOfFileInfo,
+	FileStreamInfo,
+	FileCompressionInfo,
+	FileAttributeTagInfo,
+	FileIdBothDirectoryInfo,
+	FileIdBothDirectoryRestartInfo,
+	FileIoPriorityHintInfo,
+	FileRemoteProtocolInfo,
+	FileFullDirectoryInfo,
+	FileFullDirectoryRestartInfo,
+	FileStorageInfo,
+	FileAlignmentInfo,
+	FileIdInfo,
+	FileIdExtdDirectoryInfo,
+	FileIdExtdDirectoryRestartInfo,
+	FileDispositionInfoEx,
+	FileRenameInfoEx,
+	MaximumFileInfoByHandleClass,
+}
+PFILE_INFO_BY_HANDLE_CLASS :: ^FILE_INFO_BY_HANDLE_CLASS;
+CRITICAL_SECTION :: RTL_CRITICAL_SECTION;
+PCRITICAL_SECTION :: PRTL_CRITICAL_SECTION;
+LPCRITICAL_SECTION :: PRTL_CRITICAL_SECTION;
+CRITICAL_SECTION_DEBUG :: RTL_CRITICAL_SECTION_DEBUG;
+PCRITICAL_SECTION_DEBUG :: PRTL_CRITICAL_SECTION_DEBUG;
+LPCRITICAL_SECTION_DEBUG :: PRTL_CRITICAL_SECTION_DEBUG;
+LPOVERLAPPED_COMPLETION_ROUTINE :: #type proc "stdcall" (
+	dwErrorCode: DWORD,
+	dwNumberOfBytesTransfered: DWORD,
+	lpOverlapped: LPOVERLAPPED,
+);
+
+LOCKFILE_FAIL_IMMEDIATELY :: DWORD(0x00000001);
+LOCKFILE_EXCLUSIVE_LOCK   :: DWORD(0x00000002);
+
+PROCESS_HEAP_ENTRY_Block :: struct {
+	hMem: HANDLE,
+	dwReserved: [3]DWORD,
+}
+PROCESS_HEAP_ENTRY_Region :: struct {
+	dwCommittedSize: DWORD,
+	dwUnCommittedSize: DWORD,
+	lpFirstBlock: LPVOID,
+	lpLastBlock: LPVOID,
+}
+PROCESS_HEAP_ENTRY_u :: struct #raw_union {
+	u1: [4]u32,
+	u2: [3]u64,
+	Block: PROCESS_HEAP_ENTRY_Block,
+	Region: PROCESS_HEAP_ENTRY_Region,
+}
+PROCESS_HEAP_ENTRY :: struct {
+	lpData: PVOID,
+	cbData: DWORD,
+	cbOverhead: BYTE,
+	iRegionIndex: BYTE,
+	wFlags: WORD,
+	u: PROCESS_HEAP_ENTRY_u,
+}
+LPPROCESS_HEAP_ENTRY :: ^PROCESS_HEAP_ENTRY;
+PPROCESS_HEAP_ENTRY :: ^PROCESS_HEAP_ENTRY;
+
+PROCESS_HEAP_REGION            :: WORD(0x0001);
+PROCESS_HEAP_UNCOMMITTED_RANGE :: WORD(0x0002);
+PROCESS_HEAP_ENTRY_BUSY        :: WORD(0x0004);
+PROCESS_HEAP_SEG_ALLOC         :: WORD(0x0008);
+PROCESS_HEAP_ENTRY_MOVEABLE    :: WORD(0x0010);
+PROCESS_HEAP_ENTRY_DDESHARE    :: WORD(0x0020);
+
+REASON_CONTEXT_Detailed :: struct {
+	LocalizedReasonModule: HMODULE,
+	LocalizedReasonId: ULONG,
+	ReasonStringCount: ULONG,
+	ReasonStrings: ^LPWSTR,
+}
+REASON_CONTEXT_Reason :: struct #raw_union {
+	u1: [4]u32,
+	u2: [3]u64,
+	Detailed: REASON_CONTEXT_Detailed,
+	SimpleReasonString: LPWSTR,
+}
+REASON_CONTEXT :: struct {
+	Version: ULONG,
+	Flags: DWORD,
+	Reason: REASON_CONTEXT_Reason,
+}
+PREASON_CONTEXT :: ^REASON_CONTEXT;
+
+EXCEPTION_DEBUG_EVENT      :: DWORD(1);
+CREATE_THREAD_DEBUG_EVENT  :: DWORD(2);
+CREATE_PROCESS_DEBUG_EVENT :: DWORD(3);
+EXIT_THREAD_DEBUG_EVENT    :: DWORD(4);
+EXIT_PROCESS_DEBUG_EVENT   :: DWORD(5);
+LOAD_DLL_DEBUG_EVENT       :: DWORD(6);
+UNLOAD_DLL_DEBUG_EVENT     :: DWORD(7);
+OUTPUT_DEBUG_STRING_EVENT  :: DWORD(8);
+RIP_EVENT                  :: DWORD(9);
+
+PTHREAD_START_ROUTINE :: #type proc "stdcall" (lpThreadParameter: LPVOID) -> DWORD;
+LPTHREAD_START_ROUTINE :: PTHREAD_START_ROUTINE;
+PENCLAVE_ROUTINE :: #type proc "stdcall" (lpThreadParameter: LPVOID) -> DWORD;
+LPENCLAVE_ROUTINE :: PENCLAVE_ROUTINE;
+EXCEPTION_DEBUG_INFO :: struct {
+	ExceptionRecord: EXCEPTION_RECORD,
+	dwFirstChance: DWORD,
+}
+LPEXCEPTION_DEBUG_INFO :: ^EXCEPTION_DEBUG_INFO;
+CREATE_THREAD_DEBUG_INFO :: struct {
+	hThread: HANDLE,
+	lpThreadLocalBase: LPVOID,
+	lpStartAddress: LPTHREAD_START_ROUTINE,
+}
+LPCREATE_THREAD_DEBUG_INFO :: ^CREATE_THREAD_DEBUG_INFO;
+CREATE_PROCESS_DEBUG_INFO :: struct {
+	hFile: HANDLE,
+	hProcess: HANDLE,
+	hThread: HANDLE,
+	lpBaseOfImage: LPVOID,
+	dwDebugInfoFileOffset: DWORD,
+	nDebugInfoSize: DWORD,
+	lpThreadLocalBase: LPVOID,
+	lpStartAddress: LPTHREAD_START_ROUTINE,
+	lpImageName: LPVOID,
+	fUnicode: WORD,
+}
+LPCREATE_PROCESS_DEBUG_INFO :: ^CREATE_PROCESS_DEBUG_INFO;
+EXIT_THREAD_DEBUG_INFO :: struct {
+	dwExitCode: DWORD,
+}
+LPEXIT_THREAD_DEBUG_INFO :: ^EXIT_THREAD_DEBUG_INFO;
+EXIT_PROCESS_DEBUG_INFO :: struct {
+	dwExitCode: DWORD,
+}
+LPEXIT_PROCESS_DEBUG_INFO :: ^EXIT_PROCESS_DEBUG_INFO;
+LOAD_DLL_DEBUG_INFO :: struct {
+	hFile: HANDLE,
+	lpBaseOfDll: LPVOID,
+	dwDebugInfoFileOffset: DWORD,
+	nDebugInfoSize: DWORD,
+	lpImageName: LPVOID,
+	fUnicode: WORD,
+}
+LPLOAD_DLL_DEBUG_INFO :: ^LOAD_DLL_DEBUG_INFO;
+UNLOAD_DLL_DEBUG_INFO :: struct {
+	lpBaseOfDll: LPVOID,
+}
+LPUNLOAD_DLL_DEBUG_INFO :: ^UNLOAD_DLL_DEBUG_INFO;
+OUTPUT_DEBUG_STRING_INFO :: struct {
+	lpDebugStringData: LPSTR,
+	fUnicode: WORD,
+	nDebugStringLength: WORD,
+}
+LPOUTPUT_DEBUG_STRING_INFO :: ^OUTPUT_DEBUG_STRING_INFO;
+RIP_INFO :: struct {
+	dwError: DWORD,
+	dwType: DWORD,
+}
+LPRIP_INFO :: ^RIP_INFO;
+DEBUG_EVENT_u :: struct #raw_union {
+	u1: [21]u32,
+	u2: [20]u64,
+	Exception: EXCEPTION_DEBUG_INFO,
+	CreateThread: CREATE_THREAD_DEBUG_INFO,
+	CreateProcessInfo: CREATE_PROCESS_DEBUG_INFO,
+	ExitThread: EXIT_THREAD_DEBUG_INFO,
+	ExitProcess: EXIT_PROCESS_DEBUG_INFO,
+	LoadDll: LOAD_DLL_DEBUG_INFO,
+	UnloadDll: UNLOAD_DLL_DEBUG_INFO,
+	DebugString: OUTPUT_DEBUG_STRING_INFO,
+	RipInfo: RIP_INFO,
+}
+DEBUG_EVENT :: struct {
+	dwDebugEventCode: DWORD,
+	dwProcessId: DWORD,
+	dwThreadId: DWORD,
+	u: DEBUG_EVENT_u,
+}
+LPDEBUG_EVENT :: ^DEBUG_EVENT;
+LPCONTEXT :: PCONTEXT;
+
+STILL_ACTIVE                       :: DWORD(STATUS_PENDING);
+EXCEPTION_ACCESS_VIOLATION         :: DWORD(STATUS_ACCESS_VIOLATION);
+EXCEPTION_DATATYPE_MISALIGNMENT    :: DWORD(STATUS_DATATYPE_MISALIGNMENT);
+EXCEPTION_BREAKPOINT               :: DWORD(STATUS_BREAKPOINT);
+EXCEPTION_SINGLE_STEP              :: DWORD(STATUS_SINGLE_STEP);
+EXCEPTION_ARRAY_BOUNDS_EXCEEDED    :: DWORD(STATUS_ARRAY_BOUNDS_EXCEEDED);
+EXCEPTION_FLT_DENORMAL_OPERAND     :: DWORD(STATUS_FLOAT_DENORMAL_OPERAND);
+EXCEPTION_FLT_DIVIDE_BY_ZERO       :: DWORD(STATUS_FLOAT_DIVIDE_BY_ZERO);
+EXCEPTION_FLT_INEXACT_RESULT       :: DWORD(STATUS_FLOAT_INEXACT_RESULT);
+EXCEPTION_FLT_INVALID_OPERATION    :: DWORD(STATUS_FLOAT_INVALID_OPERATION);
+EXCEPTION_FLT_OVERFLOW             :: DWORD(STATUS_FLOAT_OVERFLOW);
+EXCEPTION_FLT_STACK_CHECK          :: DWORD(STATUS_FLOAT_STACK_CHECK);
+EXCEPTION_FLT_UNDERFLOW            :: DWORD(STATUS_FLOAT_UNDERFLOW);
+EXCEPTION_INT_DIVIDE_BY_ZERO       :: DWORD(STATUS_INTEGER_DIVIDE_BY_ZERO);
+EXCEPTION_INT_OVERFLOW             :: DWORD(STATUS_INTEGER_OVERFLOW);
+EXCEPTION_PRIV_INSTRUCTION         :: DWORD(STATUS_PRIVILEGED_INSTRUCTION);
+EXCEPTION_IN_PAGE_ERROR            :: DWORD(STATUS_IN_PAGE_ERROR);
+EXCEPTION_ILLEGAL_INSTRUCTION      :: DWORD(STATUS_ILLEGAL_INSTRUCTION);
+EXCEPTION_NONCONTINUABLE_EXCEPTION :: DWORD(STATUS_NONCONTINUABLE_EXCEPTION);
+EXCEPTION_STACK_OVERFLOW           :: DWORD(STATUS_STACK_OVERFLOW);
+EXCEPTION_INVALID_DISPOSITION      :: DWORD(STATUS_INVALID_DISPOSITION);
+EXCEPTION_GUARD_PAGE               :: DWORD(STATUS_GUARD_PAGE_VIOLATION);
+EXCEPTION_INVALID_HANDLE           :: DWORD(STATUS_INVALID_HANDLE);
+// EXCEPTION_POSSIBLE_DEADLOCK        :: DWORD(STATUS_POSSIBLE_DEADLOCK);
+CONTROL_C_EXIT                     :: DWORD(STATUS_CONTROL_C_EXIT);
+LMEM_FIXED                         :: UINT(0x0000);
+LMEM_MOVEABLE                      :: UINT(0x0002);
+LMEM_NOCOMPACT                     :: UINT(0x0010);
+LMEM_NODISCARD                     :: UINT(0x0020);
+LMEM_ZEROINIT                      :: UINT(0x0040);
+LMEM_MODIFY                        :: UINT(0x0080);
+LMEM_DISCARDABLE                   :: UINT(0x0F00);
+LMEM_VALID_FLAGS                   :: UINT(0x0F72);
+LMEM_INVALID_HANDLE                :: UINT(0x8000);
+LHND                               :: UINT(LMEM_MOVEABLE | LMEM_ZEROINIT);
+LPTR                               :: UINT(LMEM_FIXED | LMEM_ZEROINIT);
+NONZEROLHND                        :: UINT(LMEM_MOVEABLE);
+NONZEROLPTR                        :: UINT(LMEM_FIXED);
+
+LMEM_DISCARDED :: UINT(0x4000);
+LMEM_LOCKCOUNT :: UINT(0x00FF);
+NUMA_NO_PREFERRED_NODE :: ~DWORD(0);

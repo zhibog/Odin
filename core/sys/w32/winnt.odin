@@ -16,7 +16,6 @@ EXCEPTION_EXECUTE_HANDLER    :: i32(1);
 EXCEPTION_CONTINUE_SEARCH    :: i32(0);
 EXCEPTION_CONTINUE_EXECUTION :: i32(-1);
 
-
 ANYSIZE_ARRAY :: 1;
 MAX_NATURAL_ALIGNMENT :: size_of(uint) == 8 ? 4 : 8;
 MEMORY_ALLOCATION_ALIGNMENT :: size_of(uint) == 8 ? 8 : 16;
@@ -7938,16 +7937,12 @@ KTMOBJECT_CURSOR :: struct {
 PKTMOBJECT_CURSOR :: ^KTMOBJECT_CURSOR;
 TP_VERSION :: DWORD;
 PTP_VERSION :: ^DWORD;
-TP_CALLBACK_INSTANCE :: struct {
-	dummy: rawptr,
-}
+TP_CALLBACK_INSTANCE :: distinct opaque rawptr;
 PTP_CALLBACK_INSTANCE :: ^TP_CALLBACK_INSTANCE;
 
 PTP_SIMPLE_CALLBACK :: #type proc "stdcall" (Instance: PTP_CALLBACK_INSTANCE, Context: PVOID);
 
-TP_POOL :: struct {
-	dummy: rawptr,
-}
+TP_POOL :: distinct opaque rawptr;
 PTP_POOL :: ^TP_POOL;
 using TP_CALLBACK_PRIORITY :: enum c.int {
 	TP_CALLBACK_PRIORITY_HIGH,
@@ -7961,9 +7956,7 @@ TP_POOL_STACK_INFORMATION :: struct {
 	StackCommit: SIZE_T,
 }
 PTP_POOL_STACK_INFORMATION :: ^TP_POOL_STACK_INFORMATION;
-TP_CLEANUP_GROUP :: struct {
-	dummy: rawptr,
-}
+TP_CLEANUP_GROUP :: distinct opaque rawptr;
 PTP_CLEANUP_GROUP :: ^TP_CLEANUP_GROUP;
 
 PTP_CLEANUP_GROUP_CANCEL_CALLBACK :: #type proc "stdcall" (ObjectContext, CleanupContext: PVOID);
@@ -7995,9 +7988,7 @@ TP_CALLBACK_ENVIRON_V3 :: struct {
 }
 TP_CALLBACK_ENVIRON :: TP_CALLBACK_ENVIRON_V3;
 PTP_CALLBACK_ENVIRON :: ^TP_CALLBACK_ENVIRON_V3;
-TP_WORK :: struct {
-	dummy: rawptr,
-}
+TP_WORK :: distinct opaque rawptr;
 PTP_WORK :: ^TP_WORK;
 PTP_WORK_CALLBACK :: #type proc "stdcall" (
 	Instance: PTP_CALLBACK_INSTANCE,
@@ -8005,9 +7996,7 @@ PTP_WORK_CALLBACK :: #type proc "stdcall" (
 	Work: PTP_WORK,
 );
 
-TP_TIMER :: struct {
-	dummy: rawptr,
-}
+TP_TIMER :: distinct opaque rawptr;
 PTP_TIMER :: ^TP_TIMER;
 PTP_TIMER_CALLBACK :: #type proc "stdcall" (
 	Instance: PTP_CALLBACK_INSTANCE,
@@ -8016,9 +8005,7 @@ PTP_TIMER_CALLBACK :: #type proc "stdcall" (
 );
 
 TP_WAIT_RESULT :: DWORD;
-TP_WAIT :: struct {
-	dummy: rawptr,
-}
+TP_WAIT :: distinct opaque rawptr;
 PTP_WAIT :: ^TP_WAIT;
 PTP_WAIT_CALLBACK :: #type proc "stdcall" (
 	Instance: PTP_CALLBACK_INSTANCE,
@@ -8027,9 +8014,7 @@ PTP_WAIT_CALLBACK :: #type proc "stdcall" (
 	WaitResult: TP_WAIT_RESULT,
 );
 
-TP_IO :: struct {
-	dummy: rawptr,
-}
+TP_IO :: distinct opaque rawptr;
 PTP_IO :: ^TP_IO;
 ACTIVATION_CONTEXT_SECTION_ASSEMBLY_INFORMATION         :: ULONG(1);
 ACTIVATION_CONTEXT_SECTION_DLL_REDIRECTION              :: ULONG(2);
@@ -8042,7 +8027,5 @@ ACTIVATION_CONTEXT_SECTION_GLOBAL_OBJECT_RENAME_TABLE   :: ULONG(8);
 ACTIVATION_CONTEXT_SECTION_CLR_SURROGATES               :: ULONG(9);
 ACTIVATION_CONTEXT_SECTION_APPLICATION_SETTINGS         :: ULONG(10);
 ACTIVATION_CONTEXT_SECTION_COMPATIBILITY_INFO           :: ULONG(11);
-ACTIVATION_CONTEXT :: struct {
-	dummy: rawptr,
-}
+ACTIVATION_CONTEXT :: distinct opaque rawptr;
 

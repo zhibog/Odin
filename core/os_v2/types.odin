@@ -4,6 +4,8 @@ import "core:time"
 
 Handle :: distinct uintptr;
 
+File :: distinct Handle;
+
 Error :: enum {
 	None,
 	Invalid,
@@ -14,6 +16,8 @@ Error :: enum {
 	Already_Closed,
 	File_Is_Pipe,
 	EOF,
+
+	Platform_Specific,
 }
 
 File_Mode :: distinct u32;
@@ -23,12 +27,13 @@ File_Info :: struct {
 	name:              string,
 	size:              i64,
 	mode:              File_Mode,
+	creation_time:     time.Time,
 	modification_time: time.Time,
 	is_directory:      bool,
 }
 
 
-Open_Option :: enum {
+File_Flag :: enum {
 	Read,
 	Write,
 	Append,
@@ -37,14 +42,7 @@ Open_Option :: enum {
 	Create,
 	Create_New, // if set, .Create and .Truncate are ignored
 }
-Open_Options :: bit_set[Open_Option];
-
-
-Permission :: enum {
-	Read_Only,
-}
-Permissions :: bit_set[Permission];
-
+File_Flags :: bit_set[File_Flag];
 
 
 

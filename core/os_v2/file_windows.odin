@@ -1,7 +1,7 @@
 package os_v2
 
 import "core:mem"
-import "core:unicode/utf8"
+import "core:time"
 
 foreign import kernel32 "system:kernel32.lib"
 
@@ -31,25 +31,38 @@ foreign kernel32 {
 	) -> i32 ---
 }
 
+@(private)
+@(default_calling_convention="stdcall")
+foreign kernel32 {
+	GetStdHandle :: proc(nStdHandle: u32) -> rawptr ---
+}
 
 
-open :: proc(path: string, options := Open_Options{.Read}, perm: File_Mode = 0) -> (fd: Handle, err: Error) {
+stdin  := File(GetStdHandle(~u32(0)-10));
+stdout := File(GetStdHandle(~u32(0)-11));
+stderr := File(GetStdHandle(~u32(0)-12));
+
+
+
+open :: proc(path: string, flags := File_Flags{.Read}, perm: File_Mode = 0) -> (f: File, err: Error) {
+	if flags == nil do flags = {.Read};
+
 	return 0, nil;
 }
 
-create :: proc(path: string) -> (fd: Handle, err: Error) {
+create :: proc(path: string) -> (f: File, err: Error) {
 	return open(path, {.Read, .Write, .Create, .Truncate}, 0o666);
 }
 
-close :: proc(fd: Handle) -> (err: Error) {
-	if fd == 0 {
+close :: proc(f: File) -> (err: Error) {
+	if f == 0 {
 		err = .Invalid;
 		return;
 	}
-	// if is_directory(fd) {
+	// if is_directory(f) {
 	// 	return;
 	// }
-	if ok := CloseHandle(rawptr(fd)); !ok {
+	if ok := CloseHandle(rawptr(f)); !ok {
 		err = .Invalid;
 		switch gle := GetLastError(); gle {
 		// TODO(bill): Handle cases
@@ -70,7 +83,7 @@ rename :: proc(oldpath, newpath: string) -> Error #no_bounds_check {
 }
 
 
-seek :: proc(fd: Handle, offset: i64, whence: int) -> (n: i64, err: Error) {
+seek :: proc(f: File, offset: i64, whence: int) -> (n: i64, err: Error) {
 	FILE_TYPE_PIPE :: 0x0003;
 	INVALID_SET_FILE_POINTER :: ~u32(0);
 
@@ -82,12 +95,12 @@ seek :: proc(fd: Handle, offset: i64, whence: int) -> (n: i64, err: Error) {
 	}
 	hi := i32(offset>>32);
 	lo := i32(offset);
-	ft := GetFileType(rawptr(fd));
+	ft := GetFileType(rawptr(f));
 	if ft == FILE_TYPE_PIPE {
 		return 0, Error.File_Is_Pipe;
 	}
 
-	dw_ptr := SetFilePointer(rawptr(fd), lo, &hi, w);
+	dw_ptr := SetFilePointer(rawptr(f), lo, &hi, w);
 	if dw_ptr == INVALID_SET_FILE_POINTER {
 		last_error := GetLastError();
 		err: Error;
@@ -96,7 +109,7 @@ seek :: proc(fd: Handle, offset: i64, whence: int) -> (n: i64, err: Error) {
 	return i64(hi)<<32 + i64(dw_ptr), nil;
 }
 
-read :: proc(fd: Handle, data: []byte) -> (n: int, err: Error) {
+read :: proc(f: File, data: []byte) -> (n: int, err: Error) {
 	if len(data) == 0 do return;
 
 	single_read_length: i32;
@@ -107,7 +120,7 @@ read :: proc(fd: Handle, data: []byte) -> (n: int, err: Error) {
 		remaining := length - total_read;
 		to_read: u32 = min(u32(remaining), max(u32));
 
-		e := ReadFile(rawptr(fd), &data[total_read], to_read, &single_read_length, nil);
+		e := ReadFile(rawptr(f), &data[total_read], to_read, &single_read_length, nil);
 		if single_read_length <= 0 || !e {
 			last_error := GetLastError();
 			err: Error;
@@ -118,36 +131,35 @@ read :: proc(fd: Handle, data: []byte) -> (n: int, err: Error) {
 	return int(total_read), nil;
 }
 
-read_ptr :: proc(fd: Handle, ptr: rawptr, length: int) -> (n: int, err: Error) {
-	return read(fd, mem.slice_ptr((^byte)(ptr), length));
-}
 
-read_at :: proc(fd: Handle, data: []byte, offset: i64) -> (n: int, err: Error) {
+
+read_at :: proc(f: File, data: []byte, offset: i64) -> (n: int, err: Error) {
 	prev: i64;
-	prev, err = seek(fd, offset, SEEK_CURRENT);
+	prev, err = seek(f, offset, SEEK_CURRENT);
 	if err != nil {
 		return 0, err;
 	}
 
-	n, err = read(fd, data);
+	n, err = read(f, data);
 	if err != nil {
-		_, _ = seek(fd, prev, SEEK_BEGIN);
+		_, _ = seek(f, prev, SEEK_BEGIN);
 		return;
 	}
 
-	_, err = seek(fd, prev, SEEK_BEGIN);
+	_, err = seek(f, prev, SEEK_BEGIN);
 	// NOTE(bill): No need to check 'err'
 	return;
 }
 
-read_ptr_at :: proc(fd: Handle, ptr: rawptr, length: int, offset: i64) -> (n: int, err: Error) {
-	return read_at(fd, mem.slice_ptr((^byte)(ptr), length), offset);
+
+file_size :: proc(f: File) -> (i64, Error) {
+	// TODO(bill): file_size for windows
+	return 0, nil;
 }
 
 
 
-
-write :: proc(fd: Handle, data: []byte) -> (n: int, err: Error) {
+write :: proc(f: File, data: []byte) -> (n: int, err: Error) {
 	if len(data) == 0 do return;
 
 	single_write_length: i32;
@@ -158,7 +170,7 @@ write :: proc(fd: Handle, data: []byte) -> (n: int, err: Error) {
 		remaining := length - total_write;
 		to_write := u32(min(i32(remaining), max(i32)));
 
-		e := WriteFile(rawptr(fd), &data[total_write], to_write, &single_write_length, nil);
+		e := WriteFile(rawptr(f), &data[total_write], to_write, &single_write_length, nil);
 		if single_write_length <= 0 || !e {
 			last_error := GetLastError();
 			err: Error;
@@ -169,94 +181,80 @@ write :: proc(fd: Handle, data: []byte) -> (n: int, err: Error) {
 	return int(total_write), nil;
 }
 
-write_ptr :: proc(fd: Handle, ptr: rawptr, length: int) -> (n: int, err: Error) {
-	return write(fd, mem.slice_ptr((^byte)(ptr), length));
-}
-
-write_at :: proc(fd: Handle, data: []byte, offset: i64) -> (n: int, err: Error) {
+write_at :: proc(f: File, data: []byte, offset: i64) -> (n: int, err: Error) {
 	prev: i64;
-	prev, err = seek(fd, offset, SEEK_CURRENT);
+	prev, err = seek(f, offset, SEEK_CURRENT);
 	if err != nil {
 		return 0, err;
 	}
 
-	n, err = write(fd, data);
+	n, err = write(f, data);
 	if err != nil {
-		_, _ = seek(fd, prev, SEEK_BEGIN);
+		_, _ = seek(f, prev, SEEK_BEGIN);
 		return;
 	}
 
-	_, err = seek(fd, prev, SEEK_BEGIN);
+	_, err = seek(f, prev, SEEK_BEGIN);
 	// NOTE(bill): No need to check 'err'
 	return;
 }
 
-write_ptr_at :: proc(fd: Handle, ptr: rawptr, length: int, offset: i64) -> (n: int, err: Error) {
-	return write_at(fd, mem.slice_ptr((^byte)(ptr), length), offset);
+
+truncate :: proc(fd: File, size: i64) -> Error {
+	return nil;
+}
+
+sync :: proc(f: File) -> Error {
+	return nil;
+}
+
+remove :: proc(name: string) -> Error {
+	return nil;
+}
+
+pipe :: proc() -> (r, w: File, err: Error) {
+	return 0, 0, nil;
+}
+
+link :: proc(old_name, new_name: string) -> Error {
+	return nil;
+}
+
+symlink :: proc(old_name, new_name: string) -> Error {
+	return nil;
+}
+
+read_link :: proc(name: string) -> (string, Error) {
+	return "", nil;
 }
 
 
-write_string :: proc(fd: Handle, str: string) -> (n: int, err: Error) {
-	return write(fd, ([]byte)(str));
-}
-write_byte :: proc(fd: Handle, b: byte) -> (n: int, err: Error) {
-	return write(fd, []byte{b});
-}
-write_rune :: proc(fd: Handle, r: rune) -> (n: int, err: Error) {
-	if r < utf8.RUNE_SELF {
-		return write_byte(fd, byte(r));
-	}
-
-	b, w := utf8.encode_rune(r);
-	return write(fd, b[:w]);
+change_mode :: proc(f: File, mode: File_Mode) -> Error {
+	return nil;
 }
 
+change_ownership :: proc(f: File, uid, gid: int) -> Error {
+	return .Platform_Specific;
+}
+
+change_ownership_link :: proc(f: File, uid, gid: int) -> Error {
+	return .Platform_Specific;
+}
+
+change_times :: proc(name: string, atime, mtime: time.Time) -> Error {
+	return nil;
+}
 
 
-// read_entire_file :: proc(name: string) -> (data: []byte, err: Error) {
-// 	fd, err := open(name, O_RDONLY, 0);
-// 	if err != 0 {
-// 		return nil, err;
-// 	}
-// 	defer close(fd);
-
-// 	length: i64;
-// 	if length, err = file_size(fd); err != 0 {
-// 		return nil, err;
-// 	}
-
-// 	if length <= 0 {
-// 		return nil, nil;
-// 	}
-
-// 	data = make([]byte, int(length));
-// 	if data == nil {
-// 		return nil, err;
-// 	}
-
-// 	bytes_read, read_err := read(fd, data);
-// 	if read_err != 0 {
-// 		delete(data);
-// 		return nil, err;
-// 	}
-// 	return data[0:bytes_read], nill;
-// }
 
 
-// write_entire_file :: proc(name: string, data: []byte, truncate := true) -> (err: Error) {
-// 	flags: int = O_WRONLY|O_CREATE;
-// 	if truncate {
-// 		flags |= O_TRUNC;
-// 	}
-// 	fd, err := open(name, flags, 0);
-// 	if err != 0 {
-// 		return false;
-// 	}
-// 	defer close(fd);
 
-// 	_, write_err := write(fd, data);
-// 	return write_err == 0;
-// }
+
+
+
+
+
+
 
 
 

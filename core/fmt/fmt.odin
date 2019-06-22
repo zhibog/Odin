@@ -3,7 +3,7 @@ package fmt
 import "core:runtime"
 import "core:os"
 import "core:mem"
-import "core:bits"
+import "core:math/bits"
 import "core:unicode/utf8"
 import "core:types"
 import "core:strconv"
@@ -59,12 +59,12 @@ fprintf :: proc(fd: os.Handle, fmt: string, args: ..any) -> int {
 
 
 // print* procedures return the number of bytes written
-print       :: proc(args: ..any)              -> int { return fprint(os.stdout, ..args); }
-print_err   :: proc(args: ..any)              -> int { return fprint(os.stderr, ..args); }
-println     :: proc(args: ..any)              -> int { return fprintln(os.stdout, ..args); }
-println_err :: proc(args: ..any)              -> int { return fprintln(os.stderr, ..args); }
-printf      :: proc(fmt: string, args: ..any) -> int { return fprintf(os.stdout, fmt, ..args); }
-printf_err  :: proc(fmt: string, args: ..any) -> int { return fprintf(os.stderr, fmt, ..args); }
+print       :: proc(args: ..any)              -> int { return fprint(context.stdout, ..args); }
+print_err   :: proc(args: ..any)              -> int { return fprint(context.stderr, ..args); }
+println     :: proc(args: ..any)              -> int { return fprintln(context.stdout, ..args); }
+println_err :: proc(args: ..any)              -> int { return fprintln(context.stderr, ..args); }
+printf      :: proc(fmt: string, args: ..any) -> int { return fprintf(context.stdout, fmt, ..args); }
+printf_err  :: proc(fmt: string, args: ..any) -> int { return fprintf(context.stderr, fmt, ..args); }
 
 
 // aprint* procedures return a string that was allocated with the current context
@@ -336,7 +336,7 @@ _arg_number :: proc(fi: ^Info, arg_index: int, format: string, offset, arg_count
 	parse_arg_number :: proc(format: string) -> (int, int, bool) {
 		if len(format) < 3 do return 0, 1, false;
 
-		for i in 1..len(format)-1 {
+		for i in 1..<len(format) {
 			if format[i] == ']' {
 				width, new_index, ok := _parse_int(format, 1);
 				if !ok || new_index != i {
@@ -495,6 +495,71 @@ _fmt_int :: proc(fi: ^Info, u: u64, base: int, is_signed: bool, bit_size: int, d
 	_pad(fi, s);
 }
 
+_fmt_int_128 :: proc(fi: ^Info, u: u128, base: int, is_signed: bool, bit_size: int, digits: string) {
+	_, neg := strconv.is_integer_negative_128(u, is_signed, bit_size);
+
+	BUF_SIZE :: 256;
+	if fi.width_set || fi.prec_set {
+		width := fi.width + fi.prec + 3; // 3 extra bytes for sign and prefix
+		if width > BUF_SIZE {
+			// TODO(bill):????
+			panic("_fmt_int: buffer overrun. Width and precision too big");
+		}
+	}
+
+	prec := 0;
+	if fi.prec_set {
+		prec = fi.prec;
+		if prec == 0 && u == 0 {
+			prev_zero := fi.zero;
+			fi.zero = false;
+			fmt_write_padding(fi, fi.width);
+			fi.zero = prev_zero;
+			return;
+		}
+	} else if fi.zero && fi.width_set {
+		prec = fi.width;
+		if neg || fi.plus || fi.space {
+			// There needs to be space for the "sign"
+			prec -= 1;
+		}
+	}
+
+	switch base {
+	case 2, 8, 10, 12, 16:
+		break;
+	case:
+		panic("_fmt_int: unknown base, whoops");
+	}
+
+	buf: [256]byte;
+	start := 0;
+
+	flags: strconv.Int_Flags;
+	if fi.hash && !fi.zero do flags |= {.Prefix};
+	if fi.plus             do flags |= {.Plus};
+	if fi.space            do flags |= {.Space};
+	s := strconv.append_bits_128(buf[start:], u, base, is_signed, bit_size, digits, flags);
+
+	if fi.hash && fi.zero {
+		c: byte = 0;
+		switch base {
+		case 2:  c = 'b';
+		case 8:  c = 'o';
+		case 12: c = 'z';
+		case 16: c = 'x';
+		}
+		if c != 0 {
+			strings.write_byte(fi.buf, '0');
+			strings.write_byte(fi.buf, c);
+		}
+	}
+
+	prev_zero := fi.zero;
+	defer fi.zero = prev_zero;
+	fi.zero = false;
+	_pad(fi, s);
+}
 
 __DIGITS_LOWER := "0123456789abcdefx";
 __DIGITS_UPPER := "0123456789ABCDEFX";
@@ -526,6 +591,31 @@ fmt_int :: proc(fi: ^Info, u: u64, is_signed: bool, bit_size: int, verb: rune) {
 		} else {
 			strings.write_string(fi.buf, "U+");
 			_fmt_int(fi, u, 16, false, bit_size, __DIGITS_UPPER);
+		}
+
+	case:
+		fmt_bad_verb(fi, verb);
+	}
+}
+
+fmt_int_128 :: proc(fi: ^Info, u: u128, is_signed: bool, bit_size: int, verb: rune) {
+	switch verb {
+	case 'v': _fmt_int_128(fi, u, 10, is_signed, bit_size, __DIGITS_LOWER);
+	case 'b': _fmt_int_128(fi, u,  2, is_signed, bit_size, __DIGITS_LOWER);
+	case 'o': _fmt_int_128(fi, u,  8, is_signed, bit_size, __DIGITS_LOWER);
+	case 'd': _fmt_int_128(fi, u, 10, is_signed, bit_size, __DIGITS_LOWER);
+	case 'z': _fmt_int_128(fi, u, 12, is_signed, bit_size, __DIGITS_LOWER);
+	case 'x': _fmt_int_128(fi, u, 16, is_signed, bit_size, __DIGITS_LOWER);
+	case 'X': _fmt_int_128(fi, u, 16, is_signed, bit_size, __DIGITS_UPPER);
+	case 'c', 'r':
+		fmt_rune(fi, rune(u), verb);
+	case 'U':
+		r := rune(u);
+		if r < 0 || r > utf8.MAX_RUNE {
+			fmt_bad_verb(fi, verb);
+		} else {
+			strings.write_string(fi.buf, "U+");
+			_fmt_int_128(fi, u, 16, false, bit_size, __DIGITS_UPPER);
 		}
 
 	case:
@@ -658,7 +748,7 @@ fmt_string :: proc(fi: ^Info, s: string, verb: rune) {
 		fi.space = false;
 		defer fi.space = space;
 
-		for i in 0..len(s)-1 {
+		for i in 0..<len(s) {
 			if i > 0 && space do strings.write_byte(fi.buf, ' ');
 			char_set := __DIGITS_UPPER;
 			if verb == 'x' do char_set = __DIGITS_LOWER;
@@ -822,8 +912,8 @@ fmt_bit_set :: proc(fi: ^Info, v: any, name: string = "") {
 		fmt_bit_set(fi, val, info.name);
 
 	case runtime.Type_Info_Bit_Set:
-		bits: u64;
-		bit_size := u64(8*type_info.size);
+		bits: u128;
+		bit_size := u128(8*type_info.size);
 
 		do_byte_swap := is_bit_set_different_endian_to_platform(info.underlying);
 
@@ -831,19 +921,23 @@ fmt_bit_set :: proc(fi: ^Info, v: any, name: string = "") {
 		case  0: bits = 0;
 		case  8:
 			x := (^u8)(v.data)^;
-			bits = u64(x);
+			bits = u128(x);
 		case 16:
 			x := (^u16)(v.data)^;
 			if do_byte_swap do x = byte_swap(x);
-			bits = u64(x);
+			bits = u128(x);
 		case 32:
 			x := (^u32)(v.data)^;
 			if do_byte_swap do x = byte_swap(x);
-			bits = u64(x);
+			bits = u128(x);
 		case 64:
 			x := (^u64)(v.data)^;
 			if do_byte_swap do x = byte_swap(x);
-			bits = u64(x);
+			bits = u128(x);
+		case 128:
+			x := (^u128)(v.data)^;
+			if do_byte_swap do x = byte_swap(x);
+			bits = u128(x);
 		case: panic("unknown bit_size size");
 		}
 
@@ -859,7 +953,7 @@ fmt_bit_set :: proc(fi: ^Info, v: any, name: string = "") {
 
 		e, is_enum := et.variant.(runtime.Type_Info_Enum);
 		commas := 0;
-		loop: for i in 0 .. bit_size-1 {
+		loop: for i in 0 ..< bit_size {
 			if bits & (1<<i) == 0 {
 				continue loop;
 			}
@@ -868,7 +962,7 @@ fmt_bit_set :: proc(fi: ^Info, v: any, name: string = "") {
 
 			if is_enum do for ev, evi in e.values {
 				v := enum_value_to_u64(ev);
-				if v == i {
+				if v == u64(i) {
 					strings.write_string(fi.buf, e.names[evi]);
 					commas += 1;
 					continue loop;
@@ -929,7 +1023,7 @@ fmt_opaque :: proc(fi: ^Info, v: any) {
 		if n == 0 do return true;
 
 		a := (^byte)(data);
-		for i in 0..n-1 do if mem.ptr_offset(a, i)^ != 0 {
+		for i in 0..<n do if mem.ptr_offset(a, i)^ != 0 {
 			return false;
 		}
 		return true;
@@ -1001,7 +1095,7 @@ fmt_value :: proc(fi: ^Info, v: any, verb: rune) {
 				field_count += 1;
 
 				if !hash && field_count > 0 do strings.write_string(fi.buf, ", ");
-				if hash do for in 0..fi.indent-1 do strings.write_byte(fi.buf, '\t');
+				if hash do for in 0..<fi.indent do strings.write_byte(fi.buf, '\t');
 
 				strings.write_string(fi.buf, name);
 				strings.write_string(fi.buf, " = ");
@@ -1016,7 +1110,7 @@ fmt_value :: proc(fi: ^Info, v: any, verb: rune) {
 				if hash do strings.write_string(fi.buf, ",\n");
 			}
 
-			if hash do for in 0..indent-1 do strings.write_byte(fi.buf, '\t');
+			if hash do for in 0..<indent do strings.write_byte(fi.buf, '\t');
 			strings.write_byte(fi.buf, '}');
 
 		case runtime.Type_Info_Bit_Set:
@@ -1083,7 +1177,7 @@ fmt_value :: proc(fi: ^Info, v: any, verb: rune) {
 	case runtime.Type_Info_Array:
 		strings.write_byte(fi.buf, '[');
 		defer strings.write_byte(fi.buf, ']');
-		for i in 0..info.count-1 {
+		for i in 0..<info.count {
 			if i > 0 do strings.write_string(fi.buf, ", ");
 
 			data := uintptr(v.data) + uintptr(i*info.elem_size);
@@ -1098,7 +1192,7 @@ fmt_value :: proc(fi: ^Info, v: any, verb: rune) {
 			strings.write_byte(fi.buf, '[');
 			defer strings.write_byte(fi.buf, ']');
 			array := cast(^mem.Raw_Dynamic_Array)v.data;
-			for i in 0..array.len-1 {
+			for i in 0..<array.len {
 				if i > 0 do strings.write_string(fi.buf, ", ");
 
 				data := uintptr(array.data) + uintptr(i*info.elem_size);
@@ -1112,7 +1206,7 @@ fmt_value :: proc(fi: ^Info, v: any, verb: rune) {
 		}
 		strings.write_byte(fi.buf, '<');
 		defer strings.write_byte(fi.buf, '>');
-		for i in 0..info.count-1 {
+		for i in 0..<info.count {
 			if i > 0 do strings.write_string(fi.buf, ", ");
 
 			data := uintptr(v.data) + uintptr(i*info.elem_size);
@@ -1128,7 +1222,7 @@ fmt_value :: proc(fi: ^Info, v: any, verb: rune) {
 			strings.write_byte(fi.buf, '[');
 			defer strings.write_byte(fi.buf, ']');
 			slice := cast(^mem.Raw_Slice)v.data;
-			for i in 0..slice.len-1 {
+			for i in 0..<slice.len {
 				if i > 0 do strings.write_string(fi.buf, ", ");
 
 				data := uintptr(slice.data) + uintptr(i*info.elem_size);
@@ -1155,7 +1249,7 @@ fmt_value :: proc(fi: ^Info, v: any, verb: rune) {
 			entry_type := ed.elem.variant.(runtime.Type_Info_Struct);
 			entry_size := ed.elem_size;
 
-			for i in 0..entries.len-1 {
+			for i in 0..<entries.len {
 				if i > 0 do strings.write_string(fi.buf, ", ");
 
 				data := uintptr(entries.data) + uintptr(i*entry_size);
@@ -1194,7 +1288,7 @@ fmt_value :: proc(fi: ^Info, v: any, verb: rune) {
 		for _, i in info.names {
 			if !hash && i > 0 do strings.write_string(fi.buf, ", ");
 			if hash {
-				for in 0..fi.indent-1 {
+				for in 0..<fi.indent {
 					strings.write_byte(fi.buf, '\t');
 				}
 			}
@@ -1358,6 +1452,15 @@ fmt_arg :: proc(fi: ^Info, arg: any, verb: rune) {
 	case u32be:     fmt_int(fi, u64(a), false, 32, verb);
 	case i64be:     fmt_int(fi, u64(a), true,  64, verb);
 	case u64be:     fmt_int(fi, u64(a), false, 64, verb);
+
+	case i128:     fmt_int_128(fi, u128(a), true,  128, verb);
+	case u128:     fmt_int_128(fi, u128(a), false, 128, verb);
+
+	case i128le:   fmt_int_128(fi, u128(a), true,  128, verb);
+	case u128le:   fmt_int_128(fi, u128(a), false, 128, verb);
+
+	case i128be:   fmt_int_128(fi, u128(a), true,  128, verb);
+	case u128be:   fmt_int_128(fi, u128(a), false, 128, verb);
 
 	case: fmt_value(fi, arg, verb);
 	}

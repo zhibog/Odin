@@ -7,10 +7,12 @@ void check_expr(CheckerContext *c, Operand *operand, Ast *expression);
 bool is_operand_value(Operand o) {
 	switch (o.mode) {
 	case Addressing_Value:
-	case Addressing_Variable:
 	case Addressing_Immutable:
+	case Addressing_Context:
+	case Addressing_Variable:
 	case Addressing_Constant:
 	case Addressing_MapIndex:
+	case Addressing_OptionalOk:
 		return true;
 	}
 	return false;
@@ -788,6 +790,11 @@ void init_checker_info(CheckerInfo *i) {
 	map_init(&i->files,           a);
 	map_init(&i->packages,        a);
 	array_init(&i->variable_init_order, a);
+
+	i->allow_identifier_uses = build_context.query_data_set_settings.kind == QueryDataSet_GoToDefinitions;
+	if (i->allow_identifier_uses) {
+		array_init(&i->identifier_uses, a);
+	}
 }
 
 void destroy_checker_info(CheckerInfo *i) {
@@ -802,6 +809,7 @@ void destroy_checker_info(CheckerInfo *i) {
 	map_destroy(&i->files);
 	map_destroy(&i->packages);
 	array_free(&i->variable_init_order);
+	array_free(&i->identifier_uses);
 }
 
 CheckerContext make_checker_context(Checker *c) {
@@ -824,13 +832,14 @@ void destroy_checker_context(CheckerContext *ctx) {
 	destroy_checker_poly_path(ctx->poly_path);
 }
 
-void init_checker(Checker *c, Parser *parser) {
+bool init_checker(Checker *c, Parser *parser) {
+	c->parser = parser;
+
 	if (global_error_collector.count > 0) {
-		gb_exit(1);
+		return false;
 	}
 	gbAllocator a = heap_allocator();
 
-	c->parser = parser;
 	init_checker_info(&c->info);
 
 	array_init(&c->procs_to_check, a);
@@ -844,6 +853,7 @@ void init_checker(Checker *c, Parser *parser) {
 	c->allocator = heap_allocator();
 
 	c->init_ctx = make_checker_context(c);
+	return true;
 }
 
 void destroy_checker(Checker *c) {
@@ -1021,7 +1031,6 @@ void add_entity_definition(CheckerInfo *i, Ast *identifier, Entity *entity) {
 		return;
 	}
 	GB_ASSERT(entity != nullptr);
-
 	identifier->Ident.entity = entity;
 	entity->identifier = identifier;
 	array_add(&i->definitions, entity);
@@ -1065,6 +1074,10 @@ bool add_entity_with_name(Checker *c, Scope *scope, Ast *identifier, Entity *ent
 		}
 	}
 	if (identifier != nullptr) {
+		if (entity->file == nullptr) {
+			GB_ASSERT(c->curr_ctx != nullptr);
+			entity->file = c->curr_ctx->file;
+		}
 		add_entity_definition(&c->info, identifier, entity);
 	}
 	return true;
@@ -1085,6 +1098,10 @@ void add_entity_use(CheckerContext *c, Ast *identifier, Entity *entity) {
 			entity->identifier = identifier;
 		}
 		identifier->Ident.entity = entity;
+
+		if (c->info->allow_identifier_uses) {
+			array_add(&c->info->identifier_uses, identifier);
+		}
 
 		String dmsg = entity->deprecated_message;
 		if (dmsg.len > 0) {
@@ -1338,6 +1355,7 @@ void add_curr_ast_file(CheckerContext *ctx, AstFile *file) {
 		ctx->decl  = file->pkg->decl_info;
 		ctx->scope = file->scope;
 		ctx->pkg   = file->pkg;
+		ctx->checker->curr_ctx = ctx;
 	}
 }
 
@@ -1567,6 +1585,9 @@ void generate_minimum_dependency_set(Checker *c, Entity *start) {
 
 		str_lit("quo_complex64"),
 		str_lit("quo_complex128"),
+
+		str_lit("umodti3"),
+		str_lit("udivti3"),
 	};
 	for (isize i = 0; i < gb_count_of(required_runtime_entities); i++) {
 		add_dependency_to_set(c, scope_lookup(c->info.runtime_package->scope, required_runtime_entities[i]));
@@ -1606,7 +1627,8 @@ void generate_minimum_dependency_set(Checker *c, Entity *start) {
 	if (!build_context.no_bounds_check) {
 		String bounds_check_entities[] = {
 			str_lit("bounds_check_error"),
-			str_lit("slice_expr_error"),
+			str_lit("slice_expr_error_hi"),
+			str_lit("slice_expr_error_lo_hi"),
 			str_lit("dynamic_array_expr_error"),
 		};
 		for (isize i = 0; i < gb_count_of(bounds_check_entities); i++) {
@@ -2186,7 +2208,11 @@ DECL_ATTRIBUTE_PROC(var_decl_attribute) {
 			    model == "localexec") {
 				ac->thread_local_model = model;
 			} else {
-				error(elem, "Invalid thread local model '%.*s'", LIT(model));
+				error(elem, "Invalid thread local model '%.*s'. Valid models:", LIT(model));
+				error_line("\tdefault\n");
+				error_line("\tlocaldynamic\n");
+				error_line("\tinitialexec\n");
+				error_line("\tlocalexec\n");
 			}
 		} else {
 			error(elem, "Expected either no value or a string for '%.*s'", LIT(name));
@@ -2565,7 +2591,7 @@ void check_collect_value_decl(CheckerContext *c, Ast *decl) {
 					pl->type->ProcType.calling_convention = cc;
 				}
 				d->proc_lit = init;
-				d->type_expr = pl->type;
+				d->type_expr = vd->type;
 			} else if (init->kind == Ast_ProcGroup) {
 				ast_node(pg, ProcGroup, init);
 				e = alloc_entity_proc_group(d->scope, token, nullptr);
@@ -2573,6 +2599,7 @@ void check_collect_value_decl(CheckerContext *c, Ast *decl) {
 					error(name, "Procedure groups are not allowed within a foreign block");
 				}
 				d->init_expr = init;
+				d->type_expr = vd->type;
 			} else {
 				e = alloc_entity_constant(d->scope, token, nullptr, empty_exact_value);
 				d->type_expr = vd->type;
@@ -2594,10 +2621,13 @@ void check_collect_value_decl(CheckerContext *c, Ast *decl) {
 
 			if (e->kind != Entity_Procedure) {
 				if (fl != nullptr) {
+					begin_error_block();
+					defer (end_error_block());
+
 					AstKind kind = init->kind;
 					error(name, "Only procedures and variables are allowed to be in a foreign block, got %.*s", LIT(ast_strings[kind]));
 					if (kind == Ast_ProcType) {
-						gb_printf_err("\tDid you forget to append '---' to the procedure?\n");
+						error_line("\tDid you forget to append '---' to the procedure?\n");
 					}
 				}
 			}
@@ -3034,11 +3064,13 @@ void check_add_import_decl(CheckerContext *ctx, Ast *decl) {
 	}
 
 	String import_name = path_to_entity_name(id->import_name.string, id->fullpath, false);
-	// String import_name = id->import_name.string;
-	if (import_name.len == 0 || import_name == "_") {
-		import_name = scope->pkg->name;
-	}
-	if (is_blank_ident(import_name)) {
+
+	// NOTE(bill, 2019-05-19): If the directory path is not a valid entity name, force the user to assign a custom one
+	// if (import_name.len == 0 || import_name == "_") {
+	// 	import_name = scope->pkg->name;
+	// }
+
+	if (import_name.len == 0 || is_blank_ident(import_name)) {
 		if (id->is_using) {
 			// TODO(bill): Should this be a warning?
 		} else {

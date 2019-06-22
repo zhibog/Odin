@@ -5,6 +5,7 @@ enum CallArgumentError {
 	CallArgumentError_NonVariadicExpand,
 	CallArgumentError_VariadicTuple,
 	CallArgumentError_MultipleVariadicExpand,
+	CallArgumentError_AmbiguousPolymorphicVariadic,
 	CallArgumentError_ArgumentCount,
 	CallArgumentError_TooFewArguments,
 	CallArgumentError_TooManyArguments,
@@ -84,6 +85,11 @@ void     check_union_type               (CheckerContext *c, Type *union_type, As
 CallArgumentData check_call_arguments   (CheckerContext *c, Operand *operand, Type *proc_type, Ast *call);
 Type *           check_init_variable    (CheckerContext *c, Entity *e, Operand *operand, String context_name);
 
+
+Type *type_to_abi_compat_param_type(gbAllocator a, Type *original_type, ProcCallingConvention cc);
+Type *type_to_abi_compat_result_type(gbAllocator a, Type *original_type, ProcCallingConvention cc);
+bool abi_compat_return_by_pointer(gbAllocator a, ProcCallingConvention cc, Type *abi_return_type);
+void set_procedure_abi_types(CheckerContext *c, Type *type);
 
 
 Entity *entity_from_expr(Ast *expr) {
@@ -365,6 +371,7 @@ bool find_or_generate_polymorphic_procedure(CheckerContext *c, Entity *base_enti
 	add_entity_and_decl_info(&nctx, ident, entity, d);
 	// NOTE(bill): Set the scope afterwards as this is not real overloading
 	entity->scope = scope->parent;
+	entity->file = base_entity->file;
 	entity->pkg = base_entity->pkg;
 
 	AstFile *file = nullptr;
@@ -525,14 +532,13 @@ i64 check_distance_between_types(CheckerContext *c, Operand *operand, Type *type
 	}
 
 	if (is_type_bit_field_value(operand->type) && is_type_integer(type)) {
-		Type *bfv = base_type(operand->type);
-		i32 bits = bfv->BitFieldValue.bits;
-		i32 size = next_pow2((bits+7)/8);
-		i32 dst_size = cast(i32)type_size_of(type);
-		i32 diff = gb_abs(dst_size - size);
-		// TODO(bill): figure out a decent rule here
 		return 1;
 	}
+
+	if (is_type_bit_field_value(operand->type) && is_type_bit_field_value(type)) {
+		return 1;
+	}
+
 
 
 	{
@@ -807,7 +813,7 @@ bool is_polymorphic_type_assignable(CheckerContext *c, Type *poly, Type *source,
 			}
 		}
 		if (modify_type) {
-			Type *ds = default_type(source);
+			Type *ds = default_type(source); // IMPORTANT TODO(bill): IS THIS CORRECT?
 			gb_memmove(poly, ds, gb_size_of(Type));
 		}
 		return true;
@@ -935,6 +941,7 @@ bool is_polymorphic_type_assignable(CheckerContext *c, Type *poly, Type *source,
 			if (x->result_count != y->result_count) {
 				return false;
 			}
+
 			for (isize i = 0; i < x->param_count; i++) {
 				Entity *a = x->params->Tuple.variables[i];
 				Entity *b = y->params->Tuple.variables[i];
@@ -947,7 +954,11 @@ bool is_polymorphic_type_assignable(CheckerContext *c, Type *poly, Type *source,
 				bool ok = is_polymorphic_type_assignable(c, a->type, b->type, false, modify_type);
 				if (!ok) return false;
 			}
-			// TODO(bill): Polymorphic type assignment
+
+			if (modify_type) {
+				set_procedure_abi_types(c, source);
+			}
+
 			return true;
 			#endif
 		}
@@ -1300,6 +1311,9 @@ bool check_representable_as_constant(CheckerContext *c, ExactValue in_value, Typ
 	} else if (is_type_string(type)) {
 		return in_value.kind == ExactValue_String;
 	} else if (is_type_integer(type) || is_type_rune(type)) {
+		if (in_value.kind == ExactValue_Bool) {
+			return false;
+		}
 		ExactValue v = exact_value_to_integer(in_value);
 		if (v.kind != ExactValue_Integer) {
 			return false;
@@ -1318,9 +1332,29 @@ bool check_representable_as_constant(CheckerContext *c, ExactValue in_value, Typ
 		BigInt imin = {};
 		BigInt imax = {};
 
-		big_int_from_u64(&umax, unsigned_integer_maxs[bit_size]);
-		big_int_from_i64(&imin, signed_integer_mins[bit_size]);
-		big_int_from_i64(&imax, signed_integer_maxs[bit_size]);
+		if (bit_size < 16) {
+			big_int_from_u64(&umax, unsigned_integer_maxs[bit_size]);
+			big_int_from_i64(&imin, signed_integer_mins[bit_size]);
+			big_int_from_i64(&imax, signed_integer_maxs[bit_size]);
+		} else {
+			big_int_from_u64(&umax, 1);
+			big_int_from_i64(&imin, 1);
+			big_int_from_i64(&imax, 1);
+
+			BigInt bi128 = {};
+			BigInt bi127 = {};
+			big_int_from_i64(&bi128, 128);
+			big_int_from_i64(&bi127, 127);
+
+			big_int_shl_eq(&umax, &bi128);
+			big_int_sub_eq(&umax, &BIG_INT_ONE);
+
+			big_int_shl_eq(&imin, &bi127);
+			big_int_neg(&imin, &imin);
+
+			big_int_shl_eq(&imax, &bi127);
+			big_int_sub_eq(&imax, &BIG_INT_ONE);
+		}
 
 		switch (type->Basic.kind) {
 		case Basic_rune:
@@ -1328,14 +1362,17 @@ bool check_representable_as_constant(CheckerContext *c, ExactValue in_value, Typ
 		case Basic_i16:
 		case Basic_i32:
 		case Basic_i64:
+		case Basic_i128:
 		case Basic_int:
 
 		case Basic_i16le:
 		case Basic_i32le:
 		case Basic_i64le:
+		case Basic_i128le:
 		case Basic_i16be:
 		case Basic_i32be:
 		case Basic_i64be:
+		case Basic_i128be:
 			{
 				// return imin <= i && i <= imax;
 				int a = big_int_cmp(&imin, &i);
@@ -1347,15 +1384,18 @@ bool check_representable_as_constant(CheckerContext *c, ExactValue in_value, Typ
 		case Basic_u16:
 		case Basic_u32:
 		case Basic_u64:
+		case Basic_u128:
 		case Basic_uint:
 		case Basic_uintptr:
 
 		case Basic_u16le:
 		case Basic_u32le:
 		case Basic_u64le:
+		case Basic_u128le:
 		case Basic_u16be:
 		case Basic_u32be:
 		case Basic_u64be:
+		case Basic_u128be:
 			{
 				// return 0ull <= i && i <= umax;
 				int b = big_int_cmp(&i, &umax);
@@ -1427,7 +1467,6 @@ bool check_representable_as_constant(CheckerContext *c, ExactValue in_value, Typ
 			return true;
 		}
 	}
-
 
 	return false;
 }
@@ -2513,6 +2552,45 @@ ExactValue convert_exact_value_for_type(ExactValue v, Type *type) {
 	return v;
 }
 
+Type *check_assignment_bit_field(CheckerContext *ctx, Operand *operand, Type *target_type) {
+	if (is_type_bit_field_value(target_type)) {
+		Type *lt = base_type(target_type);
+		i64 lhs_bits = lt->BitFieldValue.bits;
+		if (operand->mode == Addressing_Constant) {
+			ExactValue v = exact_value_to_integer(operand->value);
+			if (v.kind == ExactValue_Integer) {
+				BigInt i = v.value_integer;
+				if (!i.neg) {
+					u64 imax_ = ~cast(u64)0ull;
+					if (lhs_bits < 64) {
+						imax_ = (1ull << cast(u64)lhs_bits) - 1ull;
+					}
+
+					BigInt imax = big_int_make_u64(imax_);
+					if (big_int_cmp(&i, &imax) <= 0) {
+						return operand->type;
+					}
+				}
+			} else if (operand->value.kind == ExactValue_Bool) {
+				bool b = operand->value.value_bool;
+				if (lhs_bits == 1) {
+					return operand->type;
+				}
+			}
+		} else if (is_type_integer(operand->type)) {
+			// TODO(bill): Any other checks?
+			return operand->type;
+		} else if (is_type_boolean(operand->type)) {
+			if (lhs_bits == 1) {
+				return operand->type;
+			}
+		}
+		return nullptr;
+	}
+
+	return nullptr;
+}
+
 void convert_to_typed(CheckerContext *c, Operand *operand, Type *target_type) {
 	GB_ASSERT_NOT_NULL(target_type);
 	if (operand->mode == Addressing_Invalid ||
@@ -2601,6 +2679,14 @@ void convert_to_typed(CheckerContext *c, Operand *operand, Type *target_type) {
 		break;
 	}
 
+	case Type_BitFieldValue: {
+		Type *res = check_assignment_bit_field(c, operand, target_type);
+		if (res == nullptr) {
+			convert_untyped_error(c, operand, target_type);
+		}
+		break;
+	}
+
 	case Type_Union:
 		if (!is_operand_nil(*operand) && !is_operand_undef(*operand)) {
 			isize count = t->Union.variants.count;
@@ -2646,47 +2732,53 @@ void convert_to_typed(CheckerContext *c, Operand *operand, Type *target_type) {
 				target_type = t->Union.variants[first_success_index];
 				break;
 			} else if (valid_count > 1) {
+				begin_error_block();
+				defer (end_error_block());
+
 				GB_ASSERT(first_success_index >= 0);
 				operand->mode = Addressing_Invalid;
 				convert_untyped_error(c, operand, target_type);
 
-				gb_printf_err("Ambiguous type conversion to '%s', which variant did you mean:\n\t", type_str);
+				error_line("Ambiguous type conversion to '%s', which variant did you mean:\n\t", type_str);
 				i32 j = 0;
 				for (i32 i = 0; i < valid_count; i++) {
 					ValidIndexAndScore valid = valids[i];
-					if (j > 0 && valid_count > 2) gb_printf_err(", ");
+					if (j > 0 && valid_count > 2) error_line(", ");
 					if (j == valid_count-1) {
-						if (valid_count == 2) gb_printf_err(" ");
-						gb_printf_err("or ");
+						if (valid_count == 2) error_line(" ");
+						error_line("or ");
 					}
 					gbString str = type_to_string(t->Union.variants[valid.index]);
-					gb_printf_err("'%s'", str);
+					error_line("'%s'", str);
 					gb_string_free(str);
 					j++;
 				}
-				gb_printf_err("\n\n");
+				error_line("\n\n");
 
 				return;
 			} else if (is_type_untyped_undef(operand->type) && type_has_undef(target_type)) {
 				target_type = t_untyped_undef;
 			} else if (!is_type_untyped_nil(operand->type) || !type_has_nil(target_type)) {
+				begin_error_block();
+				defer (end_error_block());
+
 				operand->mode = Addressing_Invalid;
 				convert_untyped_error(c, operand, target_type);
 				if (count > 0) {
-					gb_printf_err("'%s' is a union which only excepts the following types:\n", type_str);
-					gb_printf_err("\t");
+					error_line("'%s' is a union which only excepts the following types:\n", type_str);
+					error_line("\t");
 					for (i32 i = 0; i < count; i++) {
 						Type *v = t->Union.variants[i];
-						if (i > 0 && count > 2) gb_printf_err(", ");
+						if (i > 0 && count > 2) error_line(", ");
 						if (i == count-1) {
-							if (count == 2) gb_printf_err(" ");
-							gb_printf_err("or ");
+							if (count == 2) error_line(" ");
+							error_line("or ");
 						}
 						gbString str = type_to_string(v);
-						gb_printf_err("'%s'", str);
+						error_line("'%s'", str);
 						gb_string_free(str);
 					}
-					gb_printf_err("\n\n");
+					error_line("\n\n");
 
 				}
 				return;
@@ -3124,6 +3216,76 @@ bool check_builtin_procedure(CheckerContext *c, Operand *operand, Ast *call, i32
 
 			operand->type = t_source_code_location;
 			operand->mode = Addressing_Value;
+		} else if (name == "load") {
+			if (ce->args.count != 1) {
+				error(ce->args[0], "'#load' expects 1 argument, got %td", ce->args.count);
+				return false;
+			}
+
+			Ast *arg = ce->args[0];
+			Operand o = {};
+			check_expr(c, &o, arg);
+			if (o.mode != Addressing_Constant) {
+				error(arg, "'#load' expected a constant string argument");
+				return false;
+			}
+
+			if (!is_type_string(o.type)) {
+				gbString str = type_to_string(o.type);
+				error(arg, "'#load' expected a constant string, got %s", str);
+				gb_string_free(str);
+				return false;
+			}
+
+			gbAllocator a = heap_allocator();
+
+			GB_ASSERT(o.value.kind == ExactValue_String);
+			String base_dir = dir_from_path(bd->token.pos.file);
+			String original_string = o.value.value_string;
+
+
+			gbMutex *ignore_mutex = nullptr;
+			String path = {};
+			bool ok = determine_path_from_string(ignore_mutex, call, base_dir, original_string, &path);
+
+			char *c_str = alloc_cstring(a, path);
+			defer (gb_free(a, c_str));
+
+
+			gbFile f = {};
+			gbFileError file_err = gb_file_open(&f, c_str);
+			defer (gb_file_close(&f));
+
+			switch (file_err) {
+			default:
+			case gbFileError_Invalid:
+				error(ce->proc, "Failed to `#load` file: %s; invalid file or cannot be found", c_str);
+				return false;
+			case gbFileError_NotExists:
+				error(ce->proc, "Failed to `#load` file: %s; file cannot be found", c_str);
+				return false;
+			case gbFileError_Permission:
+				error(ce->proc, "Failed to `#load` file: %s; file permissions problem", c_str);
+				return false;
+			case gbFileError_None:
+				// Okay
+				break;
+			}
+
+			String result = {};
+			isize file_size = cast(isize)gb_file_size(&f);
+			if (file_size > 0) {
+				u8 *data = cast(u8 *)gb_alloc(a, file_size+1);
+				gb_file_read_at(&f, data, file_size, 0);
+				data[file_size] = '\0';
+				result.text = data;
+				result.len = file_size;
+			}
+
+			operand->type = t_u8_slice;
+			operand->mode = Addressing_Constant;
+			operand->value = exact_value_string(result);
+
 		} else if (name == "assert") {
 			if (ce->args.count != 1) {
 				error(call, "'#assert' expects 1 argument, got %td", ce->args.count);
@@ -4006,7 +4168,7 @@ bool check_builtin_procedure(CheckerContext *c, Operand *operand, Ast *call, i32
 
 	case BuiltinProc_clamp: {
 		// clamp :: proc(a, min, max: ordered) -> ordered
-		Type *type = base_type(operand->type);
+		Type *type = operand->type;
 		if (!is_type_ordered(type) || !(is_type_numeric(type) || is_type_string(type))) {
 			gbString type_str = type_to_string(operand->type);
 			error(call, "Expected a ordered numeric or string type to 'clamp', got '%s'", type_str);
@@ -4281,12 +4443,14 @@ isize add_dependencies_from_unpacking(CheckerContext *c, Entity **lhs, isize lhs
 	if (lhs != nullptr) {
 		for (isize j = 0; (tuple_index + j) < lhs_count && j < tuple_count; j++) {
 			Entity *e = lhs[tuple_index + j];
-			DeclInfo *decl = decl_info_of_entity(e);
-			if (decl != nullptr) {
-				c->decl = decl; // will be reset by the 'defer' any way
-				for_array(k, decl->deps.entries) {
-					Entity *dep = decl->deps.entries[k].ptr;
-					add_declaration_dependency(c, dep); // TODO(bill): Should this be here?
+			if (e != nullptr) {
+				DeclInfo *decl = decl_info_of_entity(e);
+				if (decl != nullptr) {
+					c->decl = decl; // will be reset by the 'defer' any way
+					for_array(k, decl->deps.entries) {
+						Entity *dep = decl->deps.entries[k].ptr;
+						add_declaration_dependency(c, dep); // TODO(bill): Should this be here?
+					}
 				}
 			}
 		}
@@ -4353,7 +4517,7 @@ bool check_assignment_arguments(CheckerContext *ctx, Array<Operand> const &lhs, 
 
 
 
-bool check_unpack_arguments(CheckerContext *ctx, Entity **lhs, isize lhs_count, Array<Operand> *operands, Array<Ast *> const &rhs, bool allow_ok) {
+bool check_unpack_arguments(CheckerContext *ctx, Entity **lhs, isize lhs_count, Array<Operand> *operands, Array<Ast *> const &rhs, bool allow_ok, bool is_variadic) {
 	bool optional_ok = false;
 	isize tuple_index = 0;
 	for_array(i, rhs) {
@@ -4367,9 +4531,29 @@ bool check_unpack_arguments(CheckerContext *ctx, Entity **lhs, isize lhs_count, 
 		if (lhs != nullptr && tuple_index < lhs_count) {
 			// NOTE(bill): override DeclInfo for dependency
 			Entity *e = lhs[tuple_index];
-			DeclInfo *decl = decl_info_of_entity(e);
-			if (decl) c->decl = decl;
-			type_hint = e->type;
+			if (e != nullptr) {
+				// DeclInfo *decl = decl_info_of_entity(e);
+				// if (decl) c->decl = decl;
+				type_hint = e->type;
+				if (e->flags & EntityFlag_Ellipsis) {
+					GB_ASSERT(is_type_slice(e->type));
+					GB_ASSERT(e->type->kind == Type_Slice);
+					type_hint = e->type->Slice.elem;
+				}
+			}
+		} else if (lhs != nullptr && tuple_index >= lhs_count && is_variadic) {
+			// NOTE(bill): override DeclInfo for dependency
+			Entity *e = lhs[lhs_count-1];
+			if (e != nullptr) {
+				// DeclInfo *decl = decl_info_of_entity(e);
+				// if (decl) c->decl = decl;
+				type_hint = e->type;
+				if (e->flags & EntityFlag_Ellipsis) {
+					GB_ASSERT(is_type_slice(e->type));
+					GB_ASSERT(e->type->kind == Type_Slice);
+					type_hint = e->type->Slice.elem;
+				}
+			}
 		}
 
 		check_expr_base(c, &o, rhs[i], type_hint);
@@ -4492,6 +4676,15 @@ CALL_ARGUMENT_CHECKER(check_call_arguments_internal) {
 		err = CallArgumentError_NonVariadicExpand;
 	} else if (operands.count == 0 && param_count_excluding_defaults == 0) {
 		err = CallArgumentError_None;
+
+		if (variadic) {
+			GB_ASSERT(param_tuple != nullptr && param_tuple->variables.count > 0);
+			Type *t = param_tuple->variables[0]->type;
+			if (is_type_polymorphic(t)) {
+				error(call, "Ambiguous call to a polymorphic variadic procedure with no variadic input");
+				err = CallArgumentError_AmbiguousPolymorphicVariadic;
+			}
+		}
 	} else {
 		i32 error_code = 0;
 		if (operands.count < param_count_excluding_defaults) {
@@ -4583,6 +4776,12 @@ CALL_ARGUMENT_CHECKER(check_call_arguments_internal) {
 				GB_ASSERT(is_type_slice(slice));
 				Type *elem = base_type(slice)->Slice.elem;
 				Type *t = elem;
+
+				if (is_type_polymorphic(t)) {
+					error(call, "Ambiguous call to a polymorphic variadic procedure with no variadic input");
+					err = CallArgumentError_AmbiguousPolymorphicVariadic;
+				}
+
 				for (; operand_index < operands.count; operand_index++) {
 					Operand o = operands[operand_index];
 					if (vari_expand) {
@@ -4761,11 +4960,24 @@ CALL_ARGUMENT_CHECKER(check_named_call_arguments) {
 
 
 	for (isize i = 0; i < param_count; i++) {
+		Entity *e = pt->params->Tuple.variables[i];
 		Operand *o = &ordered_operands[i];
+		bool param_is_variadic = pt->variadic && pt->variadic_index == i;
+
+
 		if (o->mode == Addressing_Invalid) {
+			if (param_is_variadic) {
+				Type *slice = e->type;
+				GB_ASSERT(is_type_slice(slice));
+				Type *elem = base_type(slice)->Slice.elem;
+				if (is_type_polymorphic(elem)) {
+					error(call, "Ambiguous call to a polymorphic variadic procedure with no variadic input");
+					err = CallArgumentError_AmbiguousPolymorphicVariadic;
+					return err;
+				}
+			}
 			continue;
 		}
-		Entity *e = pt->params->Tuple.variables[i];
 
 		if (e->kind == Entity_TypeName) {
 			GB_ASSERT(pt->is_polymorphic);
@@ -4782,7 +4994,6 @@ CALL_ARGUMENT_CHECKER(check_named_call_arguments) {
 			}
 		} else {
 			i64 s = 0;
-			bool param_is_variadic = pt->variadic && pt->variadic_index == i;
 			if (!check_is_assignable_to_with_score(c, o, e->type, &s, param_is_variadic)) {
 				bool ok = false;
 				if (e->flags & EntityFlag_AutoCast) {
@@ -4808,6 +5019,40 @@ CALL_ARGUMENT_CHECKER(check_named_call_arguments) {
 	}
 
 	return err;
+}
+
+Entity **populate_proc_parameter_list(CheckerContext *c, Type *proc_type, isize *lhs_count_, bool *is_variadic) {
+	Entity **lhs = nullptr;
+	isize lhs_count = -1;
+
+	if (proc_type == nullptr) {
+		return nullptr;
+	}
+
+	GB_ASSERT(is_type_proc(proc_type));
+	TypeProc *pt = &base_type(proc_type)->Proc;
+	*is_variadic = pt->variadic;
+
+	if (!pt->is_polymorphic || pt->is_poly_specialized) {
+		if (pt->params != nullptr) {
+			lhs = pt->params->Tuple.variables.data;
+			lhs_count = pt->params->Tuple.variables.count;
+		}
+	} else {
+		// NOTE(bill): Create 'lhs' list in order to ignore parameters which are polymorphic
+		lhs_count = pt->params->Tuple.variables.count;
+		lhs = gb_alloc_array(heap_allocator(), Entity *, lhs_count);
+		for_array(i, pt->params->Tuple.variables) {
+			Entity *e = pt->params->Tuple.variables[i];
+			if (!is_type_polymorphic(e->type)) {
+				lhs[i] = e;
+			}
+		}
+	}
+
+	if (lhs_count_) *lhs_count_ = lhs_count;
+
+	return lhs;
 }
 
 CallArgumentData check_call_arguments(CheckerContext *c, Operand *operand, Type *proc_type, Ast *call) {
@@ -4838,17 +5083,13 @@ CallArgumentData check_call_arguments(CheckerContext *c, Operand *operand, Type 
 		operands = array_make<Operand>(heap_allocator(), 0, 2*ce->args.count);
 		Entity **lhs = nullptr;
 		isize lhs_count = -1;
+		bool is_variadic = false;
 		if (proc_type != nullptr && is_type_proc(proc_type)) {
-			TypeProc *pt = &base_type(proc_type)->Proc;
-			if (!pt->is_polymorphic || pt->is_poly_specialized) {
-				if (pt->params != nullptr) {
-					lhs = pt->params->Tuple.variables.data;
-					lhs_count = pt->params->Tuple.variables.count;
-				}
-			}
+			lhs = populate_proc_parameter_list(c, proc_type, &lhs_count, &is_variadic);
 		}
-
-		check_unpack_arguments(c, lhs, lhs_count, &operands, ce->args, false);
+		if (operand->mode != Addressing_ProcGroup) {
+			check_unpack_arguments(c, lhs, lhs_count, &operands, ce->args, false, is_variadic);
+		}
 	}
 
 	if (operand->mode == Addressing_ProcGroup) {
@@ -4865,6 +5106,13 @@ CallArgumentData check_call_arguments(CheckerContext *c, Operand *operand, Type 
 
 			Entity *e = procs[0];
 
+			Entity **lhs = nullptr;
+			isize lhs_count = -1;
+			bool is_variadic = false;
+			lhs = populate_proc_parameter_list(c, e->type, &lhs_count, &is_variadic);
+			check_unpack_arguments(c, lhs, lhs_count, &operands, ce->args, false, is_variadic);
+
+
 			CallArgumentData data = {};
 			CallArgumentError err = call_checker(c, call, e->type, e, operands, CallArgumentMode_ShowErrors, &data);
 			Entity *entity_to_use = data.gen_entity != nullptr ? data.gen_entity : e;
@@ -4872,6 +5120,8 @@ CallArgumentData check_call_arguments(CheckerContext *c, Operand *operand, Type 
 
 			return data;
 		}
+
+		check_unpack_arguments(c, nullptr, -1, &operands, ce->args, false, false);
 
 		ValidIndexAndScore *valids         = gb_alloc_array(heap_allocator(), ValidIndexAndScore, procs.count);
 		isize               valid_count    = 0;
@@ -4882,7 +5132,6 @@ CallArgumentData check_call_arguments(CheckerContext *c, Operand *operand, Type 
 
 		for_array(i, procs) {
 			Entity *p = procs[i];
-			check_entity_decl(c, p, nullptr, nullptr);
 			Type *pt = base_type(p->type);
 			if (pt != nullptr && is_type_proc(pt)) {
 				CallArgumentError err = CallArgumentError_None;
@@ -4921,73 +5170,74 @@ CallArgumentData check_call_arguments(CheckerContext *c, Operand *operand, Type 
 
 
 		if (valid_count == 0) {
-			bool all_invalid_type = true;
-			for_array(i, operands) {
-				Operand o = operands[i];
-				if (o.type != t_invalid)  {
-					all_invalid_type = false;
-					break;
-				}
-			}
-			if (!all_invalid_type) {
-				error(operand->expr, "No procedures or ambiguous call for procedure group '%s' that match with the given arguments", expr_name);
-				gb_printf_err("\tGiven argument types: (");
+			begin_error_block();
+			defer (end_error_block());
+
+			error(operand->expr, "No procedures or ambiguous call for procedure group '%s' that match with the given arguments", expr_name);
+			if (operands.count == 0) {
+				error_line("\tNo given arguments\n");
+			} else {
+				error_line("\tGiven argument types: (");
 				for_array(i, operands) {
 					Operand o = operands[i];
-					if (i > 0) gb_printf_err(", ");
+					if (i > 0) error_line(", ");
 					gbString type = type_to_string(o.type);
 					defer (gb_string_free(type));
-					gb_printf_err("%s", type);
+					error_line("%s", type);
 				}
-				gb_printf_err(")\n");
-
-				if (procs.count > 0) {
-					gb_printf_err("Did you mean to use one of the following:\n");
-				}
-				for_array(i, procs) {
-					Entity *proc = procs[i];
-					TokenPos pos = proc->token.pos;
-					Type *t = base_type(proc->type);
-					if (t == t_invalid) continue;
-					GB_ASSERT(t->kind == Type_Proc);
-					gbString pt;
-					defer (gb_string_free(pt));
-					if (t->Proc.node != nullptr) {
-						pt = expr_to_string(t->Proc.node);
-					} else {
-						pt = type_to_string(t);
-					}
-					String prefix = {};
-					String prefix_sep = {};
-					if (proc->pkg) {
-						prefix = proc->pkg->name;
-						prefix_sep = str_lit(".");
-					}
-					String name = proc->token.string;
-
-					char const *sep = "::";
-					if (proc->kind == Entity_Variable) {
-						sep = ":=";
-					}
-					// gb_printf_err("\t%.*s %s %s at %.*s(%td:%td) with score %lld\n", LIT(name), sep, pt, LIT(pos.file), pos.line, pos.column, cast(long long)valids[i].score);
-					gb_printf_err("\t%.*s%.*s%.*s %s %s at %.*s(%td:%td)\n", LIT(prefix), LIT(prefix_sep), LIT(name), sep, pt, LIT(pos.file), pos.line, pos.column);
-				}
-				if (procs.count > 0) {
-					gb_printf_err("\n");
-				}
+				error_line(")\n");
 			}
+
+			if (procs.count > 0) {
+				error_line("Did you mean to use one of the following:\n");
+			}
+			for_array(i, procs) {
+				Entity *proc = procs[i];
+				TokenPos pos = proc->token.pos;
+				Type *t = base_type(proc->type);
+				if (t == t_invalid) continue;
+				GB_ASSERT(t->kind == Type_Proc);
+				gbString pt;
+				defer (gb_string_free(pt));
+				if (t->Proc.node != nullptr) {
+					pt = expr_to_string(t->Proc.node);
+				} else {
+					pt = type_to_string(t);
+				}
+				String prefix = {};
+				String prefix_sep = {};
+				if (proc->pkg) {
+					prefix = proc->pkg->name;
+					prefix_sep = str_lit(".");
+				}
+				String name = proc->token.string;
+
+				char const *sep = "::";
+				if (proc->kind == Entity_Variable) {
+					sep = ":=";
+				}
+				// error_line("\t%.*s %s %s at %.*s(%td:%td) with score %lld\n", LIT(name), sep, pt, LIT(pos.file), pos.line, pos.column, cast(long long)valids[i].score);
+				error_line("\t%.*s%.*s%.*s %s %s at %.*s(%td:%td)\n", LIT(prefix), LIT(prefix_sep), LIT(name), sep, pt, LIT(pos.file), pos.line, pos.column);
+			}
+			if (procs.count > 0) {
+				error_line("\n");
+			}
+
 			result_type = t_invalid;
 		} else if (valid_count > 1) {
+			begin_error_block();
+			defer (end_error_block());
+
 			error(operand->expr, "Ambiguous procedure group call '%s' that match with the given arguments", expr_name);
-			gb_printf_err("\tGiven argument types: (");
+			error_line("\tGiven argument types: (");
 			for_array(i, operands) {
 				Operand o = operands[i];
-				if (i > 0) gb_printf_err(", ");
+				if (i > 0) error_line(", ");
 				gbString type = type_to_string(o.type);
 				defer (gb_string_free(type));
-				gb_printf_err("%s", type);
+				error_line("%s", type);
 			}
-			gb_printf_err(")\n");
+			error_line(")\n");
 
 			for (isize i = 0; i < valid_count; i++) {
 				Entity *proc = procs[valids[i].index];
@@ -5005,8 +5255,8 @@ CallArgumentData check_call_arguments(CheckerContext *c, Operand *operand, Type 
 				if (proc->kind == Entity_Variable) {
 					sep = ":=";
 				}
-				gb_printf_err("\t%.*s %s %s at %.*s(%td:%td)\n", LIT(name), sep, pt, LIT(pos.file), pos.line, pos.column);
-				// gb_printf_err("\t%.*s %s %s at %.*s(%td:%td) %lld\n", LIT(name), sep, pt, LIT(pos.file), pos.line, pos.column, valids[i].score);
+				error_line("\t%.*s %s %s at %.*s(%td:%td)\n", LIT(name), sep, pt, LIT(pos.file), pos.line, pos.column);
+				// error_line("\t%.*s %s %s at %.*s(%td:%td) %lld\n", LIT(name), sep, pt, LIT(pos.file), pos.line, pos.column, valids[i].score);
 			}
 			result_type = t_invalid;
 		} else {
@@ -5101,7 +5351,7 @@ CallArgumentError check_polymorphic_record_type(CheckerContext *c, Operand *oper
 
 	} else {
 		operands = array_make<Operand>(heap_allocator(), 0, 2*ce->args.count);
-		check_unpack_arguments(c, nullptr, -1, &operands, ce->args, false);
+		check_unpack_arguments(c, nullptr, -1, &operands, ce->args, false, false);
 	}
 
 	CallArgumentError err = CallArgumentError_None;
@@ -5290,7 +5540,7 @@ ExprKind check_call_expr(CheckerContext *c, Operand *operand, Ast *call) {
 	    ce->proc->kind == Ast_BasicDirective) {
 		ast_node(bd, BasicDirective, ce->proc);
 		String name = bd->name;
-		if (name == "location" || name == "assert" || name == "defined") {
+		if (name == "location" || name == "assert" || name == "defined" || name == "load") {
 			operand->mode = Addressing_Builtin;
 			operand->builtin_id = BuiltinProc_DIRECTIVE;
 			operand->expr = ce->proc;
@@ -5518,9 +5768,7 @@ void check_set_mode_with_indirection(Operand *o, bool indirection) {
 	}
 }
 
-bool check_set_index_data(Operand *o, Type *type, bool indirection, i64 *max_count) {
-	Type *t = base_type(type_deref(type));
-
+bool check_set_index_data(Operand *o, Type *t, bool indirection, i64 *max_count) {
 	switch (t->kind) {
 	case Type_Basic:
 		if (t->Basic.kind == Basic_string) {
@@ -6201,6 +6449,17 @@ ExprKind check_expr_base_internal(CheckerContext *c, Operand *o, Ast *node, Type
 					}
 
 					check_assignment(c, o, t->BitSet.elem, str_lit("bit_set literal"));
+					if (o->mode == Addressing_Constant) {
+						i64 lower = t->BitSet.lower;
+						i64 upper = t->BitSet.upper;
+						i64 v = exact_value_to_i64(o->value);
+						if (lower <= v && v <= upper) {
+							// okay
+						} else {
+							error(elem, "Bit field value out of bounds, %lld not in the range %lld .. %lld", v, lower, upper);
+							continue;
+						}
+					}
 				}
 			}
 			break;
@@ -6430,34 +6689,58 @@ ExprKind check_expr_base_internal(CheckerContext *c, Operand *o, Ast *node, Type
 		o->expr = node;
 		o->mode = Addressing_Invalid;
 
-		if (type_hint == nullptr) {
+		Type *th = type_hint;
+
+		if (th == nullptr) {
 			gbString str = expr_to_string(node);
 			error(node, "Cannot determine type for implicit selector expression '%s'", str);
 			gb_string_free(str);
 			return Expr_Expr;
 		}
-		o->type = type_hint;
-		if (!is_type_enum(type_hint)) {
-			gbString typ = type_to_string(type_hint);
-			gbString str = expr_to_string(node);
-			error(node, "Invalid type '%s' for implicit selector expression '%s'", typ, str);
-			gb_string_free(str);
-			gb_string_free(typ);
-			return Expr_Expr;
+		o->type = th;
+		Type *enum_type = th;
+
+		if (!is_type_enum(th)) {
+			bool show_error = true;
+			if (is_type_union(th)) {
+				Type *union_type = base_type(th);
+				isize enum_count = 0;
+				Type *et = nullptr;
+				for_array(i, union_type->Union.variants) {
+					Type *vt = union_type->Union.variants[i];
+					if (is_type_enum(vt)) {
+						enum_count += 1;
+						et = vt;
+					}
+				}
+				if (enum_count == 1) {
+					show_error = false;
+					enum_type = et;
+				}
+			}
+
+			if (show_error) {
+				gbString typ = type_to_string(th);
+				gbString str = expr_to_string(node);
+				error(node, "Invalid type '%s' for implicit selector expression '%s'", typ, str);
+				gb_string_free(str);
+				gb_string_free(typ);
+				return Expr_Expr;
+			}
 		}
 		GB_ASSERT(ise->selector->kind == Ast_Ident);
 		String name = ise->selector->Ident.token.string;
 
-		Type *enum_type = base_type(type_hint);
+		enum_type = base_type(enum_type);
 		GB_ASSERT(enum_type->kind == Type_Enum);
 		Entity *e = scope_lookup_current(enum_type->Enum.scope, name);
 		if (e == nullptr) {
-			gbString typ = type_to_string(type_hint);
+			gbString typ = type_to_string(th);
 			error(node, "Undeclared name %.*s for type '%s'", LIT(name), typ);
 			gb_string_free(typ);
 			return Expr_Expr;
 		}
-		GB_ASSERT(are_types_identical(base_type(e->type), base_type(type_hint)));
+		GB_ASSERT(are_types_identical(base_type(e->type), enum_type));
 		GB_ASSERT(e->kind == Entity_Constant);
 		o->value = e->Constant.value;
 		o->mode = Addressing_Constant;

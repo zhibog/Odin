@@ -213,9 +213,14 @@ Context :: struct {
 	assertion_failure_proc: Assertion_Failure_Proc,
 	logger: log.Logger,
 
+	stdin:  os.Handle,
+	stdout: os.Handle,
+	stderr: os.Handle,
+
 	thread_id:  int,
 
 	user_data:  any,
+	user_ptr:   rawptr,
 	user_index: int,
 
 	derived:    any, // May be used for derived data types
@@ -350,6 +355,10 @@ __init_context :: proc "contextless" (c: ^Context) {
 
 	c.logger.procedure = log.nil_logger_proc;
 	c.logger.data = nil;
+
+	c.stdin  = os.stdin;
+	c.stdout = os.stdout;
+	c.stderr = os.stderr;
 }
 
 @builtin
@@ -358,7 +367,7 @@ init_global_temporary_allocator :: proc(data: []byte, backup_allocator := contex
 }
 
 default_assertion_failure_proc :: proc(prefix, message: string, loc: Source_Code_Location) {
-	fd := os.stderr;
+	fd := context.stderr;
 	print_caller_location(fd, loc);
 	os.write_string(fd, " ");
 	os.write_string(fd, prefix);
@@ -403,7 +412,9 @@ unordered_remove :: proc(array: ^$D/[dynamic]$T, index: int, loc := #caller_loca
 @builtin
 ordered_remove :: proc(array: ^$D/[dynamic]$T, index: int, loc := #caller_location) {
 	bounds_check_error_loc(loc, index, len(array));
-	copy(array[index:], array[index+1:]);
+	if index+1 < len(array) {
+		copy(array[index:], array[index+1:]);
+	}
 	pop(array);
 }
 
@@ -651,7 +662,7 @@ card :: proc(s: $S/bit_set[$E; $U]) -> int {
 
 
 @builtin
-assert :: proc "contextless" (condition: bool, message := "", loc := #caller_location) -> bool {
+assert :: proc(condition: bool, message := "", loc := #caller_location) -> bool {
 	if !condition {
 		p := context.assertion_failure_proc;
 		if p == nil {
@@ -663,7 +674,7 @@ assert :: proc "contextless" (condition: bool, message := "", loc := #caller_loc
 }
 
 @builtin
-panic :: proc "contextless" (message: string, loc := #caller_location) -> ! {
+panic :: proc(message: string, loc := #caller_location) -> ! {
 	p := context.assertion_failure_proc;
 	if p == nil {
 		p = default_assertion_failure_proc;
@@ -672,7 +683,7 @@ panic :: proc "contextless" (message: string, loc := #caller_location) -> ! {
 }
 
 @builtin
-unimplemented :: proc "contextless" (message := "", loc := #caller_location) -> ! {
+unimplemented :: proc(message := "", loc := #caller_location) -> ! {
 	p := context.assertion_failure_proc;
 	if p == nil {
 		p = default_assertion_failure_proc;
@@ -681,7 +692,7 @@ unimplemented :: proc "contextless" (message := "", loc := #caller_location) -> 
 }
 
 @builtin
-unreachable :: proc "contextless" (message := "", loc := #caller_location) -> ! {
+unreachable :: proc(message := "", loc := #caller_location) -> ! {
 	p := context.assertion_failure_proc;
 	if p == nil {
 		p = default_assertion_failure_proc;
@@ -881,7 +892,7 @@ __dynamic_map_reserve :: proc(using header: Map_Header, cap: int, loc := #caller
 
 	old_len := len(m.hashes);
 	__slice_resize(&m.hashes, cap, m.entries.allocator, loc);
-	for i in old_len..len(m.hashes)-1 do m.hashes[i] = -1;
+	for i in old_len..<len(m.hashes) do m.hashes[i] = -1;
 
 }
 __dynamic_map_rehash :: proc(using header: Map_Header, new_count: int, loc := #caller_location) #no_bounds_check {
@@ -898,9 +909,9 @@ __dynamic_map_rehash :: proc(using header: Map_Header, new_count: int, loc := #c
 
 	__dynamic_array_reserve(&nm.entries, entry_size, entry_align, m.entries.len, loc);
 	__slice_resize(&nm.hashes, new_count, m.entries.allocator, loc);
-	for i in 0 .. new_count-1 do nm.hashes[i] = -1;
+	for i in 0 ..< new_count do nm.hashes[i] = -1;
 
-	for i in 0 .. m.entries.len-1 {
+	for i in 0 ..< m.entries.len {
 		if len(nm.hashes) == 0 do __dynamic_map_grow(new_header, loc);
 
 		entry_header := __dynamic_map_get_entry(header, i);

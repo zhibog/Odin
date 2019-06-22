@@ -1146,6 +1146,19 @@ Token expect_token_after(AstFile *f, TokenKind kind, char *msg) {
 }
 
 
+bool is_token_range(TokenKind kind) {
+	switch (kind) {
+	case Token_Ellipsis:
+	case Token_RangeHalf:
+		return true;
+	}
+	return false;
+}
+bool is_token_range(Token tok) {
+	return is_token_range(tok.kind);
+}
+
+
 Token expect_operator(AstFile *f) {
 	Token prev = f->curr_token;
 	if ((prev.kind == Token_in || prev.kind == Token_notin) && (f->expr_level >= 0 || f->allow_in_expr)) {
@@ -1153,7 +1166,7 @@ Token expect_operator(AstFile *f) {
 	} else if (!gb_is_between(prev.kind, Token__OperatorBegin+1, Token__OperatorEnd-1)) {
 		syntax_error(f->curr_token, "Expected an operator, got '%.*s'",
 		             LIT(token_strings[prev.kind]));
-	} else if (!f->allow_range && (prev.kind == Token_Ellipsis)) {
+	} else if (!f->allow_range && is_token_range(prev)) {
 		syntax_error(f->curr_token, "Expected an non-range operator, got '%.*s'",
 		             LIT(token_strings[prev.kind]));
 	}
@@ -1223,7 +1236,6 @@ void fix_advance_to_next_stmt(AstFile *f) {
 		case Token_return:
 		case Token_switch:
 		case Token_defer:
-		case Token_asm:
 		case Token_using:
 
 		case Token_break:
@@ -1678,6 +1690,9 @@ Ast *parse_operand(AstFile *f, bool lhs) {
 		} else if (name.string == "location") {
 			Ast *tag = ast_basic_directive(f, token, name.string);
 			return parse_call_expr(f, tag);
+		} else if (name.string == "load") {
+			Ast *tag = ast_basic_directive(f, token, name.string);
+			return parse_call_expr(f, tag);
 		} else if (name.string == "assert") {
 			Ast *tag = ast_basic_directive(f, token, name.string);
 			return parse_call_expr(f, tag);
@@ -1967,7 +1982,7 @@ Ast *parse_operand(AstFile *f, bool lhs) {
 
 		while (allow_token(f, Token_Hash)) {
 			Token tag = expect_token_after(f, Token_Ident, "#");
-			 if (tag.string == "align") {
+			if (tag.string == "align") {
 				if (align) {
 					syntax_error(tag, "Duplicate union tag '#%.*s'", LIT(tag.string));
 				}
@@ -2201,6 +2216,13 @@ Ast *parse_atom_expr(AstFile *f, Ast *operand, bool lhs) {
 			}
 		} break;
 
+		case Token_ArrowRight: {
+			Token token = advance_token(f);
+			syntax_error(token, "Selector expressions use '.' rather than '->'");
+			operand = ast_selector_expr(f, token, operand, parse_ident(f));
+			break;
+		}
+
 		case Token_OpenBracket: {
 			if (lhs) {
 				// TODO(bill): Handle this
@@ -2311,12 +2333,7 @@ bool is_ast_range(Ast *expr) {
 	if (expr->kind != Ast_BinaryExpr) {
 		return false;
 	}
-	TokenKind op = expr->BinaryExpr.op.kind;
-	switch (op) {
-	case Token_Ellipsis:
-		return true;
-	}
-	return false;
+	return is_token_range(expr->BinaryExpr.op.kind);
 }
 
 // NOTE(bill): result == priority
@@ -2325,6 +2342,7 @@ i32 token_precedence(AstFile *f, TokenKind t) {
 	case Token_Question:
 		return 1;
 	case Token_Ellipsis:
+	case Token_RangeHalf:
 		if (!f->allow_range) {
 			return 0;
 		}
@@ -3024,6 +3042,7 @@ Ast *parse_field_list(AstFile *f, isize *name_count_, u32 allowed_flags, TokenKi
 	isize total_name_count = 0;
 	bool allow_ellipsis = allowed_flags&FieldFlag_ellipsis;
 	bool seen_ellipsis = false;
+	bool is_signature = (allowed_flags & FieldFlag_Signature) == FieldFlag_Signature;
 
 	while (f->curr_token.kind != follow &&
 	       f->curr_token.kind != Token_Colon &&
@@ -3064,7 +3083,7 @@ Ast *parse_field_list(AstFile *f, isize *name_count_, u32 allowed_flags, TokenKi
 		if (f->curr_token.kind != Token_Eq) {
 			type = parse_var_type(f, allow_ellipsis, allow_typeid_token);
 			Ast *tt = unparen_expr(type);
-			if (!any_polymorphic_names && tt->kind == Ast_TypeidType && tt->TypeidType.specialization != nullptr) {
+			if (is_signature && !any_polymorphic_names && tt->kind == Ast_TypeidType && tt->TypeidType.specialization != nullptr) {
 				syntax_error(type, "Specialization of typeid is not allowed without polymorphic names");
 			}
 		}
@@ -3121,7 +3140,7 @@ Ast *parse_field_list(AstFile *f, isize *name_count_, u32 allowed_flags, TokenKi
 			if (f->curr_token.kind != Token_Eq) {
 				type = parse_var_type(f, allow_ellipsis, allow_typeid_token);
 				Ast *tt = unparen_expr(type);
-				if (!any_polymorphic_names && tt->kind == Ast_TypeidType && tt->TypeidType.specialization != nullptr) {
+				if (is_signature && !any_polymorphic_names && tt->kind == Ast_TypeidType && tt->TypeidType.specialization != nullptr) {
 					syntax_error(type, "Specialization of typeid is not allowed without polymorphic names");
 				}
 			}
@@ -4191,8 +4210,10 @@ bool is_package_name_reserved(String const &name) {
 }
 
 
-bool determine_path_from_string(Parser *p, Ast *node, String base_dir, String original_string, String *path) {
+bool determine_path_from_string(gbMutex *file_mutex, Ast *node, String base_dir, String original_string, String *path) {
 	GB_ASSERT(path != nullptr);
+
+	// NOTE(bill): if file_mutex == nullptr, this means that the code is used within the semantics stage
 
 	gbAllocator a = heap_allocator();
 	String collection_name = {};
@@ -4205,9 +4226,21 @@ bool determine_path_from_string(Parser *p, Ast *node, String base_dir, String or
 		}
 	}
 
+	bool has_windows_drive = false;
+#if defined(GB_SYSTEM_WINDOWS)
+	if (file_mutex == nullptr) {
+		if (colon_pos == 1 && original_string.len > 2) {
+			if (original_string[2] == '/' || original_string[2] == '\\') {
+				colon_pos = -1;
+				has_windows_drive = true;
+			}
+		}
+	}
+#endif
+
 	String file_str = {};
 	if (colon_pos == 0) {
-		syntax_error(node, "Expected a collection name");
+		error(node, "Expected a collection name");
 		return false;
 	}
 
@@ -4218,8 +4251,15 @@ bool determine_path_from_string(Parser *p, Ast *node, String base_dir, String or
 		file_str = original_string;
 	}
 
-	if (!is_import_path_valid(file_str)) {
-		syntax_error(node, "Invalid import path: '%.*s'", LIT(file_str));
+
+	if (has_windows_drive) {
+		String sub_file_path = substring(file_str, 3, file_str.len);
+		if (!is_import_path_valid(sub_file_path)) {
+			error(node, "Invalid import path: '%.*s'", LIT(file_str));
+			return false;
+		}
+	} else if (!is_import_path_valid(file_str)) {
+		error(node, "Invalid import path: '%.*s'", LIT(file_str));
 		return false;
 	}
 
@@ -4229,8 +4269,8 @@ bool determine_path_from_string(Parser *p, Ast *node, String base_dir, String or
 		return true;
 	}
 
-	gb_mutex_lock(&p->file_decl_mutex);
-	defer (gb_mutex_unlock(&p->file_decl_mutex));
+	if (file_mutex) gb_mutex_lock(file_mutex);
+	defer (if (file_mutex) gb_mutex_unlock(file_mutex));
 
 
 	if (node->kind == Ast_ForeignImportDecl) {
@@ -4240,7 +4280,7 @@ bool determine_path_from_string(Parser *p, Ast *node, String base_dir, String or
 	if (collection_name.len > 0) {
 		if (collection_name == "system") {
 			if (node->kind != Ast_ForeignImportDecl) {
-				syntax_error(node, "The library collection 'system' is restrict for 'foreign_library'");
+				error(node, "The library collection 'system' is restrict for 'foreign_library'");
 				return false;
 			} else {
 				*path = file_str;
@@ -4248,7 +4288,7 @@ bool determine_path_from_string(Parser *p, Ast *node, String base_dir, String or
 			}
 		} else if (!find_library_collection_path(collection_name, &base_dir)) {
 			// NOTE(bill): It's a naughty name
-			syntax_error(node, "Unknown library collection: '%.*s'", LIT(collection_name));
+			error(node, "Unknown library collection: '%.*s'", LIT(collection_name));
 			return false;
 		}
 	} else {
@@ -4267,10 +4307,12 @@ bool determine_path_from_string(Parser *p, Ast *node, String base_dir, String or
 #endif
 	}
 
-
-	String fullpath = string_trim_whitespace(get_fullpath_relative(a, base_dir, file_str));
-	*path = fullpath;
-
+	if (has_windows_drive) {
+		*path = file_str;
+	} else {
+		String fullpath = string_trim_whitespace(get_fullpath_relative(a, base_dir, file_str));
+		*path = fullpath;
+	}
 	return true;
 }
 
@@ -4321,7 +4363,7 @@ void parse_setup_file_decls(Parser *p, AstFile *f, String base_dir, Array<Ast *>
 
 			String original_string = string_trim_whitespace(id->relpath.string);
 			String import_path = {};
-			bool ok = determine_path_from_string(p, node, base_dir, original_string, &import_path);
+			bool ok = determine_path_from_string(&p->file_decl_mutex, node, base_dir, original_string, &import_path);
 			if (!ok) {
 				decls[i] = ast_bad_decl(f, id->relpath, id->relpath);
 				continue;
@@ -4344,7 +4386,7 @@ void parse_setup_file_decls(Parser *p, AstFile *f, String base_dir, Array<Ast *>
 				String fullpath = file_str;
 
 				String foreign_path = {};
-				bool ok = determine_path_from_string(p, node, base_dir, file_str, &foreign_path);
+				bool ok = determine_path_from_string(&p->file_decl_mutex, node, base_dir, file_str, &foreign_path);
 				if (!ok) {
 					decls[i] = ast_bad_decl(f, fl->filepaths[fp_idx], fl->filepaths[fl->filepaths.count-1]);
 					goto end;
@@ -4444,6 +4486,18 @@ bool parse_build_tag(Token token_for_pos, String s) {
 	return true;
 }
 
+String dir_from_path(String path) {
+	String base_dir = path;
+	for (isize i = path.len-1; i >= 0; i--) {
+		if (base_dir[i] == '\\' ||
+		    base_dir[i] == '/') {
+			break;
+		}
+		base_dir.len--;
+	}
+	return base_dir;
+}
+
 bool parse_file(Parser *p, AstFile *f) {
 	if (f->tokens.count == 0) {
 		return true;
@@ -4453,15 +4507,7 @@ bool parse_file(Parser *p, AstFile *f) {
 	}
 
 	String filepath = f->tokenizer.fullpath;
-	String base_dir = filepath;
-	for (isize i = filepath.len-1; i >= 0; i--) {
-		if (base_dir[i] == '\\' ||
-		    base_dir[i] == '/') {
-			break;
-		}
-		base_dir.len--;
-	}
-
+	String base_dir = dir_from_path(filepath);
 	comsume_comment_groups(f, f->prev_token);
 
 	CommentGroup *docs = f->lead_comment;
@@ -4539,6 +4585,7 @@ ParseFileError process_imported_file(Parser *p, ImportedFile imported_file) {
 
 	TokenPos err_pos = {0};
 	ParseFileError err = init_ast_file(file, fi->fullpath, &err_pos);
+	err_pos.file = fi->fullpath;
 
 	if (err != ParseFile_None) {
 		if (err == ParseFile_EmptyFile) {
@@ -4563,7 +4610,7 @@ ParseFileError process_imported_file(Parser *p, ImportedFile imported_file) {
 			error(pos, "Failed to parse file: %.*s; file cannot be found ('%.*s')", LIT(fi->name), LIT(fi->fullpath));
 			break;
 		case ParseFile_InvalidToken:
-			error(pos, "Failed to parse file: %.*s; invalid token found in file at (%td:%td)", LIT(fi->name), err_pos.line, err_pos.column);
+			error(err_pos, "Failed to parse file: %.*s; invalid token found in file", LIT(fi->name));
 			break;
 		case ParseFile_EmptyFile:
 			error(pos, "Failed to parse file: %.*s; file contains no tokens", LIT(fi->name));
@@ -4608,8 +4655,9 @@ GB_THREAD_PROC(parse_worker_file_proc) {
 ParseFileError parse_packages(Parser *p, String init_filename) {
 	GB_ASSERT(init_filename.text[init_filename.len] == 0);
 
-	char *fullpath_str = gb_path_get_full_name(heap_allocator(), cast(char const *)&init_filename[0]);
-	String init_fullpath = string_trim_whitespace(make_string_c(fullpath_str));
+	// char *fullpath_str = gb_path_get_full_name(heap_allocator(), cast(char const *)&init_filename[0]);
+	// String init_fullpath = string_trim_whitespace(make_string_c(fullpath_str));
+	String init_fullpath = path_to_full_path(heap_allocator(), init_filename);
 	if (!path_is_directory(init_fullpath)) {
 		String const ext = str_lit(".odin");
 		if (!string_ends_with(init_fullpath, ext)) {

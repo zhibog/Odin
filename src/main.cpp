@@ -16,6 +16,7 @@
 #include "ir.cpp"
 #include "ir_opt.cpp"
 #include "ir_print.cpp"
+#include "query_data.cpp"
 
 // NOTE(bill): 'name' is used in debugging and profiling modes
 i32 system_exec_command_line_app(char *name, char *fmt, ...) {
@@ -162,6 +163,7 @@ void usage(String argv0) {
 	print_usage_line(1, "build     compile .odin file as executable");
 	print_usage_line(1, "run       compile and run .odin file");
 	print_usage_line(1, "check     parse and type check .odin file");
+	print_usage_line(1, "query     parse, type check, and output a .json file containing information about the program");
 	print_usage_line(1, "docs      generate documentation for a .odin file");
 	print_usage_line(1, "version   print version");
 }
@@ -216,6 +218,10 @@ enum BuildFlagKind {
 	BuildFlag_UseLLD,
 	BuildFlag_Vet,
 	BuildFlag_IgnoreUnknownAttributes,
+
+	BuildFlag_Compact,
+	BuildFlag_GlobalDefinitions,
+	BuildFlag_GoToDefinitions,
 
 #if defined(GB_SYSTEM_WINDOWS)
 	BuildFlag_ResourceFile,
@@ -300,6 +306,10 @@ bool parse_build_flags(Array<String> args) {
 	add_flag(&build_flags, BuildFlag_UseLLD,            str_lit("lld"),             BuildFlagParam_None);
 	add_flag(&build_flags, BuildFlag_Vet,               str_lit("vet"),             BuildFlagParam_None);
 	add_flag(&build_flags, BuildFlag_IgnoreUnknownAttributes, str_lit("ignore-unknown-attributes"), BuildFlagParam_None);
+
+	add_flag(&build_flags, BuildFlag_Compact, str_lit("compact"), BuildFlagParam_None);
+	add_flag(&build_flags, BuildFlag_GlobalDefinitions, str_lit("global-definitions"), BuildFlagParam_None);
+	add_flag(&build_flags, BuildFlag_GoToDefinitions, str_lit("go-to-definitions"), BuildFlagParam_None);
 
 #if defined(GB_SYSTEM_WINDOWS)
 	add_flag(&build_flags, BuildFlag_ResourceFile,   str_lit("resource"), BuildFlagParam_String);
@@ -662,6 +672,38 @@ bool parse_build_flags(Array<String> args) {
 							build_context.ignore_unknown_attributes = true;
 							break;
 
+						case BuildFlag_Compact:
+							if (!build_context.query_data_set_settings.ok) {
+								gb_printf_err("Invalid use of -compact flag, only allowed with 'odin query'\n");
+								bad_flags = true;
+							} else {
+								build_context.query_data_set_settings.compact = true;
+							}
+							break;
+
+						case BuildFlag_GlobalDefinitions:
+							if (!build_context.query_data_set_settings.ok) {
+								gb_printf_err("Invalid use of -global-definitions flag, only allowed with 'odin query'\n");
+								bad_flags = true;
+							} else if (build_context.query_data_set_settings.kind != QueryDataSet_Invalid) {
+								gb_printf_err("Invalid use of -global-definitions flag, a previous flag for 'odin query' was set\n");
+								bad_flags = true;
+							} else {
+								build_context.query_data_set_settings.kind = QueryDataSet_GlobalDefinitions;
+							}
+							break;
+						case BuildFlag_GoToDefinitions:
+							if (!build_context.query_data_set_settings.ok) {
+								gb_printf_err("Invalid use of -go-to-definitions flag, only allowed with 'odin query'\n");
+								bad_flags = true;
+							} else if (build_context.query_data_set_settings.kind != QueryDataSet_Invalid) {
+								gb_printf_err("Invalid use of -global-definitions flag, a previous flag for 'odin query' was set\n");
+								bad_flags = true;
+							} else {
+								build_context.query_data_set_settings.kind = QueryDataSet_GoToDefinitions;
+							}
+							break;
+
 					#if defined(GB_SYSTEM_WINDOWS)
 						case BuildFlag_ResourceFile: {
 							GB_ASSERT(value.kind == ExactValue_String);
@@ -714,6 +756,16 @@ bool parse_build_flags(Array<String> args) {
 		}
 		if (!found) {
 			gb_printf_err("Unknown flag: '%.*s'\n", LIT(name));
+			bad_flags = true;
+		}
+	}
+
+
+	if (build_context.query_data_set_settings.ok) {
+		if (build_context.query_data_set_settings.kind == QueryDataSet_Invalid) {
+			gb_printf_err("'odin query' requires a flag determining the kind of query data set to be returned\n");
+			gb_printf_err("\t-global-definitions : outputs a JSON file of global definitions\n");
+			gb_printf_err("\t-go-to-definitions  : outputs a OGTD binary file of go to definitions for identifiers within an Odin project\n");
 			bad_flags = true;
 		}
 	}
@@ -812,6 +864,9 @@ void remove_temp_files(String output_base) {
 
 #undef EXT_REMOVE
 }
+
+
+
 
 i32 exec_llvm_opt(String output_base) {
 #if defined(GB_SYSTEM_WINDOWS)
@@ -928,6 +983,14 @@ int main(int arg_count, char **arg_ptr) {
 		}
 		build_context.no_output_files = true;
 		init_filename = args[2];
+	} else if (command == "query") {
+		if (args.count < 3) {
+			usage(args[0]);
+			return 1;
+		}
+		build_context.no_output_files = true;
+		build_context.query_data_set_settings.ok = true;
+		init_filename = args[2];
 	} else if (command == "docs") {
 		if (args.count < 3) {
 			usage(args[0]);
@@ -988,21 +1051,27 @@ int main(int arg_count, char **arg_ptr) {
 		// generate_documentation(&parser);
 		return 0;
 	}
-
-
 	timings_start_section(&timings, str_lit("type check"));
 
 	Checker checker = {0};
 
-	init_checker(&checker, &parser);
-	defer (destroy_checker(&checker));
+	bool checked_inited = init_checker(&checker, &parser);
+	defer (if (checked_inited) {
+		destroy_checker(&checker);
+	});
 
-	check_parsed_files(&checker);
+	if (checked_inited) {
+		check_parsed_files(&checker);
+	}
 
-#if 1
+
 	if (build_context.no_output_files) {
-		if (build_context.show_timings) {
-			show_timings(&checker, &timings);
+		if (build_context.query_data_set_settings.ok) {
+			generate_and_print_query_data(&checker, &timings);
+		} else {
+			if (build_context.show_timings) {
+				show_timings(&checker, &timings);
+			}
 		}
 
 		if (global_error_collector.count != 0) {
@@ -1010,6 +1079,10 @@ int main(int arg_count, char **arg_ptr) {
 		}
 
 		return 0;
+	}
+
+	if (!checked_inited) {
+		return 1;
 	}
 
 	irGen ir_gen = {0};
@@ -1296,6 +1369,6 @@ int main(int arg_count, char **arg_ptr) {
 			system_exec_command_line_app("odin run", "\"%.*s\" %.*s", LIT(complete_path), LIT(run_args_string));
 		}
 	#endif
-#endif
+
 	return 0;
 }

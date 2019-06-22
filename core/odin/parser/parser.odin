@@ -1129,7 +1129,7 @@ token_precedence :: proc(p: ^Parser, kind: token.Kind) -> int {
 	switch kind {
 	case token.Question:
 		return 1;
-	case token.Ellipsis:
+	case token.Ellipsis, token.Range_Half:
 		if !p.allow_range {
 			return 0;
 		}
@@ -1528,6 +1528,8 @@ parse_field_list :: proc(p: ^Parser, follow: token.Kind, allowed_flags: ast.Fiel
 			return ok;
 		}
 
+		is_signature := (allowed_flags & ast.Field_Flags_Signature_Params) == ast.Field_Flags_Signature_Params;
+
 		any_polymorphic_names := check_procedure_name_list(p, names);
 		set_flags = check_field_flag_prefixes(p, len(names), allowed_flags, set_flags);
 
@@ -1538,7 +1540,7 @@ parse_field_list :: proc(p: ^Parser, follow: token.Kind, allowed_flags: ast.Fiel
 		if p.curr_tok.kind != token.Eq {
 			type = parse_var_type(p, allowed_flags);
 			tt := ast.unparen_expr(type);
-			if !any_polymorphic_names {
+			if is_signature && !any_polymorphic_names {
 				if ti, ok := tt.derived.(ast.Typeid_Type); ok && ti.specialization != nil {
 					error(p, tt.pos, "specialization of typeid is not allowed without polymorphic names");
 				}
@@ -1723,7 +1725,7 @@ string_to_calling_convention :: proc(s: string) -> ast.Proc_Calling_Convention {
 	return Invalid;
 }
 
-parse_proc_tags :: proc(p: ^Parser) -> (tags: Proc_Tags) {
+parse_proc_tags :: proc(p: ^Parser) -> (tags: ast.Proc_Tags) {
 	for p.curr_tok.kind == token.Hash {
 		tok := expect_token(p, token.Hash);
 		ident := expect_token(p, token.Ident);
@@ -1894,7 +1896,7 @@ parse_operand :: proc(p: ^Parser, lhs: bool) -> ^ast.Expr {
 			bd.tok  = tok;
 			bd.name = name.text;
 			return bd;
-		case "location", "assert", "defined":
+		case "location", "load", "assert", "defined":
 			bd := ast.new(ast.Basic_Directive, tok.pos, end_pos(name));
 			bd.tok  = tok;
 			bd.name = name.text;

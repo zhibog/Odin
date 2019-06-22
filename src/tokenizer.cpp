@@ -32,9 +32,8 @@ TOKEN_KIND(Token__OperatorBegin, ""), \
 	TOKEN_KIND(Token_AndNot,   "&~"), \
 	TOKEN_KIND(Token_Shl,      "<<"), \
 	TOKEN_KIND(Token_Shr,      ">>"), \
-\
-	TOKEN_KIND(Token_CmpAnd, "&&"), \
-	TOKEN_KIND(Token_CmpOr,  "||"), \
+	TOKEN_KIND(Token_CmpAnd,   "&&"), \
+	TOKEN_KIND(Token_CmpOr,    "||"), \
 \
 TOKEN_KIND(Token__AssignOpBegin, ""), \
 	TOKEN_KIND(Token_AddEq,    "+="), \
@@ -77,6 +76,7 @@ TOKEN_KIND(Token__ComparisonEnd, ""), \
 	TOKEN_KIND(Token_Period,        "."),   \
 	TOKEN_KIND(Token_Comma,         ","),   \
 	TOKEN_KIND(Token_Ellipsis,      ".."),  \
+	TOKEN_KIND(Token_RangeHalf,     "..<"), \
 	TOKEN_KIND(Token_BackSlash,     "\\"),  \
 TOKEN_KIND(Token__OperatorEnd, ""), \
 \
@@ -122,9 +122,6 @@ TOKEN_KIND(Token__KeywordBegin, ""), \
 	TOKEN_KIND(Token_type_of,     "type_of"),     \
 	TOKEN_KIND(Token_macro,       "macro"),       \
 	TOKEN_KIND(Token_const,       "const"),       \
-	TOKEN_KIND(Token_asm,         "asm"),         \
-	TOKEN_KIND(Token_yield,       "yield"),       \
-	TOKEN_KIND(Token_await,       "await"),       \
 TOKEN_KIND(Token__KeywordEnd, ""), \
 	TOKEN_KIND(Token_Count, "")
 
@@ -187,13 +184,85 @@ struct ErrorCollector {
 	TokenPos prev;
 	i64     count;
 	i64     warning_count;
+	bool    in_block;
 	gbMutex mutex;
+
+	Array<u8> error_buffer;
+	Array<String> errors;
 };
 
 gb_global ErrorCollector global_error_collector;
 
+#define MAX_ERROR_COLLECTOR_COUNT (36)
+
+
 void init_global_error_collector(void) {
 	gb_mutex_init(&global_error_collector.mutex);
+	array_init(&global_error_collector.errors, heap_allocator());
+	array_init(&global_error_collector.error_buffer, heap_allocator());
+}
+
+
+void begin_error_block(void) {
+	gb_mutex_lock(&global_error_collector.mutex);
+	global_error_collector.in_block = true;
+}
+
+void end_error_block(void) {
+	if (global_error_collector.error_buffer.count > 0) {
+		isize n = global_error_collector.error_buffer.count;
+		u8 *text = gb_alloc_array(heap_allocator(), u8, n+1);
+		gb_memmove(text, global_error_collector.error_buffer.data, n);
+		text[n] = 0;
+		array_add(&global_error_collector.errors, make_string(text, n));
+		global_error_collector.error_buffer.count = 0;
+
+		// gbFile *f = gb_file_get_standard(gbFileStandard_Error);
+		// gb_file_write(f, text, n);
+	}
+
+	global_error_collector.in_block = false;
+	gb_mutex_unlock(&global_error_collector.mutex);
+}
+
+
+#define ERROR_OUT_PROC(name) void name(char *fmt, va_list va)
+typedef ERROR_OUT_PROC(ErrorOutProc);
+
+ERROR_OUT_PROC(default_error_out_va) {
+	gbFile *f = gb_file_get_standard(gbFileStandard_Error);
+
+	char buf[4096] = {};
+	isize len = gb_snprintf_va(buf, gb_size_of(buf), fmt, va);
+	isize n = len-1;
+	if (global_error_collector.in_block) {
+		isize cap = global_error_collector.error_buffer.count + n;
+		array_reserve(&global_error_collector.error_buffer, cap);
+		u8 *data = global_error_collector.error_buffer.data + global_error_collector.error_buffer.count;
+		gb_memmove(data, buf, n);
+		global_error_collector.error_buffer.count += n;
+	} else {
+		gb_mutex_lock(&global_error_collector.mutex);
+		{
+			u8 *text = gb_alloc_array(heap_allocator(), u8, n+1);
+			gb_memmove(text, buf, n);
+			text[n] = 0;
+			array_add(&global_error_collector.errors, make_string(text, n));
+		}
+		gb_mutex_unlock(&global_error_collector.mutex);
+
+	}
+	gb_file_write(f, buf, n);
+}
+
+
+ErrorOutProc *error_out_va = default_error_out_va;
+
+void error_out(char *fmt, ...) {
+	va_list va;
+	va_start(va, fmt);
+	error_out_va(fmt, va);
+	va_end(va);
 }
 
 void warning_va(Token token, char *fmt, va_list va) {
@@ -201,30 +270,29 @@ void warning_va(Token token, char *fmt, va_list va) {
 	global_error_collector.warning_count++;
 	// NOTE(bill): Duplicate error, skip it
 	if (token.pos.line == 0) {
-		gb_printf_err("Error: %s\n", gb_bprintf_va(fmt, va));
+		error_out("Warning: %s\n", gb_bprintf_va(fmt, va));
 	} else if (global_error_collector.prev != token.pos) {
 		global_error_collector.prev = token.pos;
-		gb_printf_err("%.*s(%td:%td) Warning: %s\n",
-		              LIT(token.pos.file), token.pos.line, token.pos.column,
-		              gb_bprintf_va(fmt, va));
+		error_out("%.*s(%td:%td) Warning: %s\n",
+		          LIT(token.pos.file), token.pos.line, token.pos.column,
+		          gb_bprintf_va(fmt, va));
 	}
 
 	gb_mutex_unlock(&global_error_collector.mutex);
 }
 
-#define MAX_ERROR_COLLECTOR_COUNT (36)
 
 void error_va(Token token, char *fmt, va_list va) {
 	gb_mutex_lock(&global_error_collector.mutex);
 	global_error_collector.count++;
 	// NOTE(bill): Duplicate error, skip it
 	if (token.pos.line == 0) {
-		gb_printf_err("Error: %s\n", gb_bprintf_va(fmt, va));
+		error_out("Error: %s\n", gb_bprintf_va(fmt, va));
 	} else if (global_error_collector.prev != token.pos) {
 		global_error_collector.prev = token.pos;
-		gb_printf_err("%.*s(%td:%td) %s\n",
-		              LIT(token.pos.file), token.pos.line, token.pos.column,
-		              gb_bprintf_va(fmt, va));
+		error_out("%.*s(%td:%td) %s\n",
+		          LIT(token.pos.file), token.pos.line, token.pos.column,
+		          gb_bprintf_va(fmt, va));
 	}
 	gb_mutex_unlock(&global_error_collector.mutex);
 	if (global_error_collector.count > MAX_ERROR_COLLECTOR_COUNT) {
@@ -232,17 +300,23 @@ void error_va(Token token, char *fmt, va_list va) {
 	}
 }
 
+void error_line_va(char *fmt, va_list va) {
+	gb_mutex_lock(&global_error_collector.mutex);
+	error_out_va(fmt, va);
+	gb_mutex_unlock(&global_error_collector.mutex);
+}
+
 void error_no_newline_va(Token token, char *fmt, va_list va) {
 	gb_mutex_lock(&global_error_collector.mutex);
 	global_error_collector.count++;
 	// NOTE(bill): Duplicate error, skip it
 	if (token.pos.line == 0) {
-		gb_printf_err("Error: %s", gb_bprintf_va(fmt, va));
+		error_out("Error: %s", gb_bprintf_va(fmt, va));
 	} else if (global_error_collector.prev != token.pos) {
 		global_error_collector.prev = token.pos;
-		gb_printf_err("%.*s(%td:%td) %s",
-		              LIT(token.pos.file), token.pos.line, token.pos.column,
-		              gb_bprintf_va(fmt, va));
+		error_out("%.*s(%td:%td) %s",
+		          LIT(token.pos.file), token.pos.line, token.pos.column,
+		          gb_bprintf_va(fmt, va));
 	}
 	gb_mutex_unlock(&global_error_collector.mutex);
 	if (global_error_collector.count > MAX_ERROR_COLLECTOR_COUNT) {
@@ -257,11 +331,11 @@ void syntax_error_va(Token token, char *fmt, va_list va) {
 	// NOTE(bill): Duplicate error, skip it
 	if (global_error_collector.prev != token.pos) {
 		global_error_collector.prev = token.pos;
-		gb_printf_err("%.*s(%td:%td) Syntax Error: %s\n",
+		error_out("%.*s(%td:%td) Syntax Error: %s\n",
 		              LIT(token.pos.file), token.pos.line, token.pos.column,
 		              gb_bprintf_va(fmt, va));
 	} else if (token.pos.line == 0) {
-		gb_printf_err("Syntax Error: %s\n", gb_bprintf_va(fmt, va));
+		error_out("Syntax Error: %s\n", gb_bprintf_va(fmt, va));
 	}
 
 	gb_mutex_unlock(&global_error_collector.mutex);
@@ -276,11 +350,11 @@ void syntax_warning_va(Token token, char *fmt, va_list va) {
 	// NOTE(bill): Duplicate error, skip it
 	if (global_error_collector.prev != token.pos) {
 		global_error_collector.prev = token.pos;
-		gb_printf_err("%.*s(%td:%td) Syntax Warning: %s\n",
-		              LIT(token.pos.file), token.pos.line, token.pos.column,
-		              gb_bprintf_va(fmt, va));
+		error_out("%.*s(%td:%td) Syntax Warning: %s\n",
+		          LIT(token.pos.file), token.pos.line, token.pos.column,
+		          gb_bprintf_va(fmt, va));
 	} else if (token.pos.line == 0) {
-		gb_printf_err("Warning: %s\n", gb_bprintf_va(fmt, va));
+		error_out("Warning: %s\n", gb_bprintf_va(fmt, va));
 	}
 
 	gb_mutex_unlock(&global_error_collector.mutex);
@@ -308,6 +382,13 @@ void error(TokenPos pos, char *fmt, ...) {
 	Token token = {};
 	token.pos = pos;
 	error_va(token, fmt, va);
+	va_end(va);
+}
+
+void error_line(char *fmt, ...) {
+	va_list va;
+	va_start(va, fmt);
+	error_line_va(fmt, va);
 	va_end(va);
 }
 
@@ -544,6 +625,13 @@ gb_inline void scan_mantissa(Tokenizer *t, i32 base) {
 	}
 }
 
+u8 peek_byte(Tokenizer *t, isize offset=0) {
+	if (t->read_curr+offset < t->end) {
+		return t->read_curr[offset];
+	}
+	return 0;
+}
+
 Token scan_number_to_token(Tokenizer *t, bool seen_decimal_point) {
 	Token token = {};
 	token.kind = Token_Integer;
@@ -637,14 +725,12 @@ Token scan_number_to_token(Tokenizer *t, bool seen_decimal_point) {
 
 fraction:
 	if (t->curr_rune == '.') {
-		// HACK(bill): This may be inefficient
-		TokenizerState state = save_tokenizer_state(t);
-		advance_to_next_rune(t);
-		if (t->curr_rune == '.') {
-			// TODO(bill): Clean up this shit
-			restore_tokenizer_state(t, &state);
+		if (peek_byte(t) == '.') {
+			// NOTE(bill): this is kind of ellipsis
 			goto end;
 		}
+		advance_to_next_rune(t);
+
 		token.kind = Token_Float;
 		scan_mantissa(t, 10);
 	}
@@ -902,9 +988,13 @@ Token tokenizer_get_token(Tokenizer *t) {
 		} break;
 
 		case '.':
-			if (t->curr_rune == '.') { // Could be an ellipsis
+			if (t->curr_rune == '.') {
 				advance_to_next_rune(t);
 				token.kind = Token_Ellipsis;
+				if (t->curr_rune == '<') {
+					advance_to_next_rune(t);
+					token.kind = Token_RangeHalf;
+				}
 			} else if ('0' <= t->curr_rune && t->curr_rune <= '9') {
 				token = scan_number_to_token(t, true);
 			} else {
@@ -927,13 +1017,15 @@ Token tokenizer_get_token(Tokenizer *t) {
 		case '}':  token.kind = Token_CloseBrace;   break;
 		case '\\': token.kind = Token_BackSlash;    break;
 
-		case 0x2260:  token.kind = Token_NotEq; break; // '≠'
-		case 0x2264:  token.kind = Token_LtEq;  break; // '≤'
-		case 0x2265:  token.kind = Token_GtEq;  break; // '≥'
+		case 0x2260: token.kind = Token_NotEq; break; // '≠'
+		case 0x2264: token.kind = Token_LtEq;  break; // '≤'
+		case 0x2265: token.kind = Token_GtEq;  break; // '≥'
+		case 0x2208: token.kind = Token_in;    break; // '∈'
+		case 0x2209: token.kind = Token_notin; break; // '∉'
 
-		case '%': token.kind = token_kind_dub_eq(t, '%', Token_Mod, Token_ModEq, Token_ModMod, Token_ModModEq);      break;
+		case '%': token.kind = token_kind_dub_eq(t, '%', Token_Mod, Token_ModEq, Token_ModMod, Token_ModModEq);  break;
 
-		case '*': token.kind = token_kind_variant2(t, Token_Mul, Token_MulEq);                                        break;
+		case '*': token.kind = token_kind_variant2(t, Token_Mul, Token_MulEq); break;
 		case '=':
 			token.kind = Token_Eq;
 			if (t->curr_rune == '>') {
@@ -944,21 +1036,18 @@ Token tokenizer_get_token(Tokenizer *t) {
 				token.kind = Token_CmpEq;
 			}
 			break;
-		case '~': token.kind = token_kind_variant2(t, Token_Xor, Token_XorEq);                                        break;
-		case '!': token.kind = token_kind_variant2(t, Token_Not, Token_NotEq);                                        break;
-		case '+': token.kind = token_kind_variant2(t, Token_Add, Token_AddEq);                                        break;
+		case '~': token.kind = token_kind_variant2(t, Token_Xor, Token_XorEq);  break;
+		case '!': token.kind = token_kind_variant2(t, Token_Not, Token_NotEq);  break;
+		case '+': token.kind = token_kind_variant2(t, Token_Add, Token_AddEq);  break;
 		case '-':
 			token.kind = Token_Sub;
 			if (t->curr_rune == '=') {
 				advance_to_next_rune(t);
 				token.kind = Token_SubEq;
-			} else if (t->curr_rune == '-') {
+			} else if (t->curr_rune == '-' && peek_byte(t) == '-') {
 				advance_to_next_rune(t);
-				token.kind = Token_Invalid;
-				if (t->curr_rune == '-') {
-					advance_to_next_rune(t);
-					token.kind = Token_Undef;
-				}
+				advance_to_next_rune(t);
+				token.kind = Token_Undef;
 			} else if (t->curr_rune == '>') {
 				advance_to_next_rune(t);
 				token.kind = Token_ArrowRight;

@@ -301,6 +301,7 @@ void add_polymorphic_record_entity(CheckerContext *ctx, Ast *node, Type *named_t
 
 		e = alloc_entity_type_name(s, token, named_type);
 		e->state = EntityState_Resolved;
+		e->file = ctx->file;
 		e->pkg = ctx->pkg;
 		add_entity_use(ctx, node, e);
 	}
@@ -745,6 +746,11 @@ void check_enum_type(CheckerContext *ctx, Type *enum_type, Type *named_type, Ast
 		return;
 	}
 
+	if (is_type_integer_128bit(base_type)) {
+		error(node, "Base type for enumeration cannot be a 128-bit integer");
+		return;
+	}
+
 	// NOTE(bill): Must be up here for the 'check_init_constant' system
 	enum_type->Enum.base_type = base_type;
 	enum_type->Enum.scope = ctx->scope;
@@ -759,6 +765,8 @@ void check_enum_type(CheckerContext *ctx, Type *enum_type, Type *named_type, Ast
 	ExactValue iota = exact_value_i64(-1);
 	ExactValue min_value = exact_value_i64(0);
 	ExactValue max_value = exact_value_i64(0);
+	bool min_value_set = false;
+	bool max_value_set = false;
 
 	scope_reserve(ctx->scope, et->fields.count);
 
@@ -810,11 +818,21 @@ void check_enum_type(CheckerContext *ctx, Type *enum_type, Type *named_type, Ast
 			continue;
 		}
 
-		if (compare_exact_values(Token_Gt, min_value, iota)) {
+		if (min_value_set) {
+			if (compare_exact_values(Token_Gt, min_value, iota)) {
+				min_value = iota;
+			}
+		} else {
 			min_value = iota;
+			min_value_set = true;
 		}
-		if (compare_exact_values(Token_Lt, max_value, iota)) {
+		if (max_value_set) {
+			if (compare_exact_values(Token_Lt, max_value, iota)) {
+				max_value = iota;
+			}
+		} else {
 			max_value = iota;
+			max_value_set = true;
 		}
 
 		Entity *e = alloc_entity_constant(ctx->scope, ident->Ident.token, constant_type, iota);
@@ -930,7 +948,8 @@ void check_bit_set_type(CheckerContext *c, Type *type, Type *named_type, Ast *no
 	ast_node(bs, BitSetType, node);
 	GB_ASSERT(type->kind == Type_BitSet);
 
-	i64 const MAX_BITS = 64;
+	i64 const DEFAULT_BITS = cast(i64)(8*build_context.word_size);
+	i64 const MAX_BITS = 128;
 
 	Ast *base = unparen_expr(bs->elem);
 	if (is_ast_range(base)) {
@@ -1031,8 +1050,18 @@ void check_bit_set_type(CheckerContext *c, Type *type, Type *named_type, Ast *no
 			bits = 8*type_size_of(type->BitSet.underlying);
 		}
 
-		if (upper - lower >= bits) {
-			error(bs->elem, "bit_set range is greater than %lld bits, %lld bits are required", bits, (upper-lower+1));
+		switch (be->op.kind) {
+		case Token_Ellipsis:
+			if (upper - lower >= bits) {
+				error(bs->elem, "bit_set range is greater than %lld bits, %lld bits are required", bits, (upper-lower+1));
+			}
+			break;
+		case Token_RangeHalf:
+			if (upper - lower > bits) {
+				error(bs->elem, "bit_set range is greater than %lld bits, %lld bits are required", bits, (upper-lower));
+			}
+			upper -= 1;
+			break;
 		}
 		type->BitSet.elem  = t;
 		type->BitSet.lower = lower;
@@ -1225,6 +1254,9 @@ Type *determine_type_from_polymorphic(CheckerContext *ctx, Type *poly_type, Oper
 	}
 
 	if (is_polymorphic_type_assignable(ctx, poly_type, operand.type, false, modify_type)) {
+		if (modify_type) {
+			set_procedure_abi_types(ctx, poly_type);
+		}
 		return poly_type;
 	}
 	if (modify_type) {
@@ -1542,6 +1574,13 @@ Type *check_get_params(CheckerContext *ctx, Scope *scope, Ast *_params, bool *is
 						success = false;
 						type = t_invalid;
 					}
+					if (is_type_untyped(default_type(type))) {
+						gbString str = type_to_string(type);
+						error(o.expr, "Cannot determine type from the parameter, got '%s'", str);
+						gb_string_free(str);
+						success = false;
+						type = t_invalid;
+					}
 					bool modify_type = !ctx->no_polymorphic_errors;
 
 					if (specialization != nullptr && !check_type_specialization_to(ctx, specialization, type, false, modify_type)) {
@@ -1570,6 +1609,12 @@ Type *check_get_params(CheckerContext *ctx, Scope *scope, Ast *_params, bool *is
 				if (operands != nullptr && variables.count < operands->count) {
 
 					Operand op = (*operands)[variables.count];
+					if (op.expr == nullptr) {
+						// NOTE(bill): 2019-03-30
+						// This is just to add the error message to determine_type_from_polymorphic which
+						// depends on valid position information
+						op.expr = _params;
+					}
 					if (is_type_polymorphic_type) {
 						type = determine_type_from_polymorphic(ctx, type, op);
 						if (type == t_invalid) {
@@ -1585,6 +1630,13 @@ Type *check_get_params(CheckerContext *ctx, Scope *scope, Ast *_params, bool *is
 						} else {
 							success = false;
 						}
+					}
+					if (is_type_untyped(default_type(type))) {
+						gbString str = type_to_string(type);
+						error(op.expr, "Cannot determine type from the parameter, got '%s'", str);
+						gb_string_free(str);
+						success = false;
+						type = t_invalid;
 					}
 				}
 
@@ -1779,7 +1831,7 @@ Type *check_get_results(CheckerContext *ctx, Scope *scope, Ast *_results) {
 	return tuple;
 }
 
-Type *type_to_abi_compat_param_type(gbAllocator a, Type *original_type) {
+Type *type_to_abi_compat_param_type(gbAllocator a, Type *original_type, ProcCallingConvention cc) {
 	Type *new_type = original_type;
 
 	if (is_type_boolean(original_type)) {
@@ -1790,6 +1842,10 @@ Type *type_to_abi_compat_param_type(gbAllocator a, Type *original_type) {
 		return new_type;
 	}
 
+	if (cc == ProcCC_None) {
+		return new_type;
+	}
+
 	if (build_context.ODIN_ARCH == "386") {
 		return new_type;
 	}
@@ -1797,11 +1853,22 @@ Type *type_to_abi_compat_param_type(gbAllocator a, Type *original_type) {
 	if (is_type_simd_vector(original_type)) {
 		return new_type;
 	}
+	if (build_context.ODIN_ARCH == "amd64") {
+		if (is_type_integer_128bit(original_type)) {
+			if (build_context.ODIN_OS == "windows") {
+				return alloc_type_simd_vector(2, t_u64);
+			} else {
+				return original_type;
+			}
+		}
+	}
 
 	if (build_context.ODIN_OS == "windows") {
 		// NOTE(bill): Changing the passing parameter value type is to match C's ABI
 		// IMPORTANT TODO(bill): This only matches the ABI on MSVC at the moment
 		// SEE: https://msdn.microsoft.com/en-us/library/zthk2dkh.aspx
+
+
 		Type *bt = core_type(original_type);
 		switch (bt->kind) {
 		// Okay to pass by value (usually)
@@ -1894,7 +1961,7 @@ Type *reduce_tuple_to_single_type(Type *original_type) {
 	return original_type;
 }
 
-Type *type_to_abi_compat_result_type(gbAllocator a, Type *original_type) {
+Type *type_to_abi_compat_result_type(gbAllocator a, Type *original_type, ProcCallingConvention cc) {
 	Type *new_type = original_type;
 	if (new_type == nullptr) {
 		return nullptr;
@@ -1908,6 +1975,16 @@ Type *type_to_abi_compat_result_type(gbAllocator a, Type *original_type) {
 	}
 
 	if (build_context.ODIN_OS == "windows") {
+		if (build_context.ODIN_ARCH == "amd64") {
+			if (is_type_integer_128bit(single_type)) {
+				if (cc == ProcCC_None) {
+					return original_type;
+				} else {
+					return alloc_type_simd_vector(2, t_u64);
+				}
+			}
+		}
+
 		Type *bt = core_type(reduce_tuple_to_single_type(original_type));
 		// NOTE(bill): This is just reversed engineered from LLVM IR output
 		switch (bt->kind) {
@@ -1940,6 +2017,13 @@ Type *type_to_abi_compat_result_type(gbAllocator a, Type *original_type) {
 		// their architectures
 	}
 
+	if (is_type_integer_128bit(single_type)) {
+		if (build_context.word_size == 8) {
+			return original_type;
+		}
+	}
+
+
 	if (new_type != original_type) {
 		Type *tuple = alloc_type_tuple();
 		auto variables = array_make<Entity *>(a, 0, 1);
@@ -1948,8 +2032,8 @@ Type *type_to_abi_compat_result_type(gbAllocator a, Type *original_type) {
 		new_type = tuple;
 	}
 
-
-	// return reduce_tuple_to_single_type(new_type);
+	new_type->cached_size = -1;
+	new_type->cached_align = -1;
 	return new_type;
 }
 
@@ -1964,6 +2048,11 @@ bool abi_compat_return_by_pointer(gbAllocator a, ProcCallingConvention cc, Type 
 		return false;
 	}
 
+	if (build_context.word_size == 8) {
+		if (is_type_integer_128bit(single_type)) {
+			return false;
+		}
+	}
 
 	if (build_context.ODIN_OS == "windows") {
 		i64 size = 8*type_size_of(abi_return_type);
@@ -1977,8 +2066,36 @@ bool abi_compat_return_by_pointer(gbAllocator a, ProcCallingConvention cc, Type 
 		default:
 			return true;
 		}
+	} else {
+		if (is_type_integer_128bit(single_type)) {
+			return build_context.word_size < 8;
+		}
 	}
+
+
+
 	return false;
+}
+
+void set_procedure_abi_types(CheckerContext *c, Type *type) {
+	type = base_type(type);
+	if (type->kind != Type_Proc) {
+		return;
+	}
+
+	type->Proc.abi_compat_params = array_make<Type *>(c->allocator, cast(isize)type->Proc.param_count);
+	for (i32 i = 0; i < type->Proc.param_count; i++) {
+		Entity *e = type->Proc.params->Tuple.variables[i];
+		if (e->kind == Entity_Variable) {
+			Type *original_type = e->type;
+			Type *new_type = type_to_abi_compat_param_type(c->allocator, original_type, type->Proc.calling_convention);
+			type->Proc.abi_compat_params[i] = new_type;
+		}
+	}
+
+	// NOTE(bill): The types are the same
+	type->Proc.abi_compat_result_type = type_to_abi_compat_result_type(c->allocator, type->Proc.results, type->Proc.calling_convention);
+	type->Proc.return_by_pointer = abi_compat_return_by_pointer(c->allocator, type->Proc.calling_convention, type->Proc.abi_compat_result_type);
 }
 
 // NOTE(bill): 'operands' is for generating non generic procedure type
@@ -2076,20 +2193,7 @@ bool check_procedure_type(CheckerContext *ctx, Type *type, Ast *proc_type_node, 
 	}
 	type->Proc.is_polymorphic = is_polymorphic;
 
-
-	type->Proc.abi_compat_params = array_make<Type *>(c->allocator, param_count);
-	for (isize i = 0; i < param_count; i++) {
-		Entity *e = type->Proc.params->Tuple.variables[i];
-		if (e->kind == Entity_Variable) {
-			Type *original_type = e->type;
-			Type *new_type = type_to_abi_compat_param_type(c->allocator, original_type);
-			type->Proc.abi_compat_params[i] = new_type;
-		}
-	}
-
-	// NOTE(bill): The types are the same
-	type->Proc.abi_compat_result_type = type_to_abi_compat_result_type(c->allocator, type->Proc.results);
-	type->Proc.return_by_pointer = abi_compat_return_by_pointer(c->allocator, pt->calling_convention, type->Proc.abi_compat_result_type);
+	set_procedure_abi_types(c, type);
 
 	return success;
 }
@@ -2424,7 +2528,7 @@ bool check_type_internal(CheckerContext *ctx, Ast *e, Type **type, Type *named_t
 	case_end;
 
 	case_ast_node(ot, OpaqueType, e);
-		Type *elem = strip_opaque_type(check_type(ctx, ot->type));
+		Type *elem = strip_opaque_type(check_type_expr(ctx, ot->type, nullptr));
 		*type = alloc_type_opaque(elem);
 		set_base_type(named_type, *type);
 		return true;

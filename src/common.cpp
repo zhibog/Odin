@@ -73,16 +73,18 @@ GB_ALLOCATOR_PROC(heap_allocator_proc) {
 		ptr = _aligned_realloc(old_memory, size, alignment);
 		break;
 	#else
-	case gbAllocation_Alloc:
+	case gbAllocation_Alloc: {
+		isize aligned_size = align_formula_isize(size, alignment);
 		// TODO(bill): Make sure this is aligned correctly
-		ptr = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, align_formula_isize(size, alignment));
-		break;
+		ptr = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, aligned_size);
+	} break;
 	case gbAllocation_Free:
 		HeapFree(GetProcessHeap(), 0, old_memory);
 		break;
-	case gbAllocation_Resize:
-		ptr = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, old_memory, align_formula_isize(size, alignment));
-		break;
+	case gbAllocation_Resize: {
+		isize aligned_size = align_formula_isize(size, alignment);
+		ptr = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, old_memory, aligned_size);
+	} break;
 	#endif
 
 #elif defined(GB_SYSTEM_LINUX)
@@ -203,16 +205,22 @@ u64 u64_from_string(String string) {
 	return result;
 }
 
+gb_global char const global_num_to_char_table[] =
+	"0123456789"
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	"abcdefghijklmnopqrstuvwxyz"
+	"@$";
+
 String u64_to_string(u64 v, char *out_buf, isize out_buf_len) {
 	char buf[32] = {0};
 	isize i = gb_size_of(buf);
 
 	u64 b = 10;
 	while (v >= b) {
-		buf[--i] = gb__num_to_char_table[v%b];
+		buf[--i] = global_num_to_char_table[v%b];
 		v /= b;
 	}
-	buf[--i] = gb__num_to_char_table[v%b];
+	buf[--i] = global_num_to_char_table[v%b];
 
 	isize len = gb_min(gb_size_of(buf)-i, out_buf_len);
 	gb_memmove(out_buf, &buf[i], len);
@@ -230,10 +238,10 @@ String i64_to_string(i64 a, char *out_buf, isize out_buf_len) {
 	u64 v = cast(u64)a;
 	u64 b = 10;
 	while (v >= b) {
-		buf[--i] = gb__num_to_char_table[v%b];
+		buf[--i] = global_num_to_char_table[v%b];
 		v /= b;
 	}
-	buf[--i] = gb__num_to_char_table[v%b];
+	buf[--i] = global_num_to_char_table[v%b];
 
 	if (negative) {
 		buf[--i] = '-';
@@ -734,7 +742,15 @@ String path_to_full_path(gbAllocator a, String path) {
 	defer (gb_free(ha, path_c));
 
 	char *fullpath = gb_path_get_full_name(a, path_c);
-	return make_string_c(fullpath);
+	String res = string_trim_whitespace(make_string_c(fullpath));
+#if defined(GB_SYSTEM_WINDOWS)
+	for (isize i = 0; i < res.len; i++) {
+		if (res[i] == '\\') {
+			res[i] = '/';
+		}
+	}
+#endif
+	return res;
 }
 
 

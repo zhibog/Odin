@@ -172,6 +172,9 @@ bool check_is_terminating(Ast *node) {
 	return false;
 }
 
+
+
+
 Type *check_assignment_variable(CheckerContext *ctx, Operand *lhs, Operand *rhs) {
 	if (rhs->mode == Addressing_Invalid) {
 		return nullptr;
@@ -249,39 +252,19 @@ Type *check_assignment_variable(CheckerContext *ctx, Operand *lhs, Operand *rhs)
 	case Addressing_Invalid:
 		return nullptr;
 
-	case Addressing_Variable: {
+	case Addressing_Variable:
 		if (is_type_bit_field_value(lhs->type)) {
-			Type *lt = base_type(lhs->type);
-			i64 lhs_bits = lt->BitFieldValue.bits;
-			if (rhs->mode == Addressing_Constant) {
-				ExactValue v = exact_value_to_integer(rhs->value);
-				if (v.kind == ExactValue_Integer) {
-					BigInt i = v.value_integer;
-					if (!i.neg) {
-						u64 imax_ = ~cast(u64)0ull;
-						if (lhs_bits < 64) {
-							imax_ = (1ull << cast(u64)lhs_bits) - 1ull;
-						}
-
-						BigInt imax = big_int_make_u64(imax_);
-						if (big_int_cmp(&i, &imax) >= 0) {
-							return rhs->type;
-						}
-					}
-				}
-			} else if (is_type_integer(rhs->type)) {
-				// TODO(bill): Any other checks?
-				return rhs->type;
+			Type *res = check_assignment_bit_field(ctx, rhs, lhs->type);
+			if (res == nullptr) {
+				gbString lhs_expr = expr_to_string(lhs->expr);
+				gbString rhs_expr = expr_to_string(rhs->expr);
+				error(rhs->expr, "Cannot assign '%s' to bit field '%s'", rhs_expr, lhs_expr);
+				gb_string_free(rhs_expr);
+				gb_string_free(lhs_expr);
 			}
-			gbString lhs_expr = expr_to_string(lhs->expr);
-			gbString rhs_expr = expr_to_string(rhs->expr);
-			error(rhs->expr, "Cannot assign '%s' to bit field '%s'", rhs_expr, lhs_expr);
-			gb_string_free(rhs_expr);
-			gb_string_free(lhs_expr);
-			return nullptr;
+			return res;
 		}
 		break;
-	}
 
 	case Addressing_MapIndex: {
 		Ast *ln = unparen_expr(lhs->expr);
@@ -684,17 +667,17 @@ void check_switch_stmt(CheckerContext *ctx, Ast *node, u32 mod_flags) {
 			Ast *expr = unparen_expr(cc->list[j]);
 
 			if (is_ast_range(expr)) {
-				ast_node(ie, BinaryExpr, expr);
+				ast_node(be, BinaryExpr, expr);
 				Operand lhs = {};
 				Operand rhs = {};
-				check_expr_with_type_hint(ctx, &lhs, ie->left, x.type);
+				check_expr_with_type_hint(ctx, &lhs, be->left, x.type);
 				if (x.mode == Addressing_Invalid) {
 					continue;
 				}
 				if (lhs.mode == Addressing_Invalid) {
 					continue;
 				}
-				check_expr_with_type_hint(ctx, &rhs, ie->right, x.type);
+				check_expr_with_type_hint(ctx, &rhs, be->right, x.type);
 				if (rhs.mode == Addressing_Invalid) {
 					continue;
 				}
@@ -706,6 +689,13 @@ void check_switch_stmt(CheckerContext *ctx, Ast *node, u32 mod_flags) {
 					continue;
 				}
 
+				TokenKind upper_op = Token_Invalid;
+				switch (be->op.kind) {
+				case Token_Ellipsis:  upper_op = Token_GtEq; break;
+				case Token_RangeHalf: upper_op = Token_Gt;   break;
+				default: GB_PANIC("Invalid range operator"); break;
+				}
+
 
 				Operand a = lhs;
 				Operand b = rhs;
@@ -714,7 +704,7 @@ void check_switch_stmt(CheckerContext *ctx, Ast *node, u32 mod_flags) {
 					continue;
 				}
 
-				check_comparison(ctx, &b, &x, Token_GtEq);
+				check_comparison(ctx, &b, &x, upper_op);
 				if (b.mode == Addressing_Invalid) {
 					continue;
 				}
@@ -727,7 +717,16 @@ void check_switch_stmt(CheckerContext *ctx, Ast *node, u32 mod_flags) {
 				}
 
 				add_constant_switch_case(ctx, &seen, lhs);
-				add_constant_switch_case(ctx, &seen, rhs);
+				if (upper_op == Token_GtEq) {
+					add_constant_switch_case(ctx, &seen, rhs);
+				}
+
+				if (is_type_string(x.type)) {
+					// NOTE(bill): Force dependency for strings here
+					add_package_dependency(ctx, "runtime", "string_le");
+					add_package_dependency(ctx, "runtime", "string_lt");
+				}
+
 			} else {
 				Operand y = {};
 				if (is_type_typeid(x.type)) {
@@ -800,6 +799,9 @@ void check_switch_stmt(CheckerContext *ctx, Ast *node, u32 mod_flags) {
 		}
 
 		if (unhandled.count > 0) {
+			begin_error_block();
+			defer (begin_error_block());
+
 			if (unhandled.count == 1) {
 				error_no_newline(node, "Unhandled switch case: ");
 			} else {
@@ -808,11 +810,11 @@ void check_switch_stmt(CheckerContext *ctx, Ast *node, u32 mod_flags) {
 			for_array(i, unhandled) {
 				Entity *f = unhandled[i];
 				if (i > 0)  {
-					gb_printf_err(", ");
+					error_line(", ");
 				}
-				gb_printf_err("%.*s", LIT(f->token.string));
+				error_line("%.*s", LIT(f->token.string));
 			}
-			gb_printf_err("\n");
+			error_line("\n");
 		}
 	}
 }
@@ -1031,13 +1033,13 @@ void check_type_switch_stmt(CheckerContext *ctx, Ast *node, u32 mod_flags) {
 			for_array(i, unhandled) {
 				Type *t = unhandled[i];
 				if (i > 0)  {
-					gb_printf_err(", ");
+					error_line(", ");
 				}
 				gbString s = type_to_string(t);
-				gb_printf_err("%s", s);
+				error_line("%s", s);
 				gb_string_free(s);
 			}
-			gb_printf_err("\n");
+			error_line("\n");
 		}
 	}
 }
@@ -1247,7 +1249,7 @@ void check_stmt_internal(CheckerContext *ctx, Ast *node, u32 flags) {
 		auto operands = array_make<Operand>(heap_allocator(), 0, 2*rs->results.count);
 		defer (array_free(&operands));
 
-		check_unpack_arguments(ctx, result_entities, result_count, &operands, rs->results, true);
+		check_unpack_arguments(ctx, result_entities, result_count, &operands, rs->results, true, false);
 
 		if (result_count == 0 && rs->results.count > 0) {
 			error(rs->results[0], "No return values expected");
@@ -1368,7 +1370,8 @@ void check_stmt_internal(CheckerContext *ctx, Ast *node, u32 flags) {
 
 				TokenKind op = Token_Lt;
 				switch (ie->op.kind) {
-				case Token_Ellipsis: op = Token_LtEq; break;
+				case Token_Ellipsis:  op = Token_LtEq; break;
+				case Token_RangeHalf: op = Token_Lt; break;
 				default: error(ie->op, "Invalid range operator"); break;
 				}
 				bool ok = compare_exact_values(op, a, b);

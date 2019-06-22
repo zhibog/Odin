@@ -19,6 +19,8 @@ enum BasicKind {
 	Basic_u32,
 	Basic_i64,
 	Basic_u64,
+	Basic_i128,
+	Basic_u128,
 
 	Basic_rune,
 
@@ -47,6 +49,8 @@ enum BasicKind {
 	Basic_u32le,
 	Basic_i64le,
 	Basic_u64le,
+	Basic_i128le,
+	Basic_u128le,
 
 	Basic_i16be,
 	Basic_u16be,
@@ -54,6 +58,8 @@ enum BasicKind {
 	Basic_u32be,
 	Basic_i64be,
 	Basic_u64be,
+	Basic_i128be,
+	Basic_u128be,
 
 	// Untyped types
 	Basic_UntypedBool,
@@ -321,6 +327,9 @@ gb_global Type basic_types[] = {
 	{Type_Basic, {Basic_i64,               BasicFlag_Integer,                          8, STR_LIT("i64")}},
 	{Type_Basic, {Basic_u64,               BasicFlag_Integer | BasicFlag_Unsigned,     8, STR_LIT("u64")}},
 
+	{Type_Basic, {Basic_i128,               BasicFlag_Integer,                        16, STR_LIT("i128")}},
+	{Type_Basic, {Basic_u128,               BasicFlag_Integer | BasicFlag_Unsigned,   16, STR_LIT("u128")}},
+
 	{Type_Basic, {Basic_rune,              BasicFlag_Integer | BasicFlag_Rune,         4, STR_LIT("rune")}},
 
 	// {Type_Basic, {Basic_f16,               BasicFlag_Float,                            2, STR_LIT("f16")}},
@@ -343,19 +352,23 @@ gb_global Type basic_types[] = {
 	{Type_Basic, {Basic_typeid,            0,                                         -1, STR_LIT("typeid")}},
 
 	// Endian
-	{Type_Basic, {Basic_i16le, BasicFlag_Integer |                      BasicFlag_EndianLittle, 2, STR_LIT("i16le")}},
-	{Type_Basic, {Basic_u16le, BasicFlag_Integer | BasicFlag_Unsigned | BasicFlag_EndianLittle, 2, STR_LIT("u16le")}},
-	{Type_Basic, {Basic_i32le, BasicFlag_Integer |                      BasicFlag_EndianLittle, 4, STR_LIT("i32le")}},
-	{Type_Basic, {Basic_u32le, BasicFlag_Integer | BasicFlag_Unsigned | BasicFlag_EndianLittle, 4, STR_LIT("u32le")}},
-	{Type_Basic, {Basic_i64le, BasicFlag_Integer |                      BasicFlag_EndianLittle, 8, STR_LIT("i64le")}},
-	{Type_Basic, {Basic_u64le, BasicFlag_Integer | BasicFlag_Unsigned | BasicFlag_EndianLittle, 8, STR_LIT("u64le")}},
+	{Type_Basic, {Basic_i16le,  BasicFlag_Integer |                      BasicFlag_EndianLittle,  2, STR_LIT("i16le")}},
+	{Type_Basic, {Basic_u16le,  BasicFlag_Integer | BasicFlag_Unsigned | BasicFlag_EndianLittle,  2, STR_LIT("u16le")}},
+	{Type_Basic, {Basic_i32le,  BasicFlag_Integer |                      BasicFlag_EndianLittle,  4, STR_LIT("i32le")}},
+	{Type_Basic, {Basic_u32le,  BasicFlag_Integer | BasicFlag_Unsigned | BasicFlag_EndianLittle,  4, STR_LIT("u32le")}},
+	{Type_Basic, {Basic_i64le,  BasicFlag_Integer |                      BasicFlag_EndianLittle,  8, STR_LIT("i64le")}},
+	{Type_Basic, {Basic_u64le,  BasicFlag_Integer | BasicFlag_Unsigned | BasicFlag_EndianLittle,  8, STR_LIT("u64le")}},
+	{Type_Basic, {Basic_i128le, BasicFlag_Integer                      | BasicFlag_EndianLittle, 16, STR_LIT("i128le")}},
+	{Type_Basic, {Basic_u128le, BasicFlag_Integer | BasicFlag_Unsigned | BasicFlag_EndianLittle, 16, STR_LIT("u128le")}},
 
-	{Type_Basic, {Basic_i16be, BasicFlag_Integer |                      BasicFlag_EndianBig,    2, STR_LIT("i16be")}},
-	{Type_Basic, {Basic_u16be, BasicFlag_Integer | BasicFlag_Unsigned | BasicFlag_EndianBig,    2, STR_LIT("u16be")}},
-	{Type_Basic, {Basic_i32be, BasicFlag_Integer |                      BasicFlag_EndianBig,    4, STR_LIT("i32be")}},
-	{Type_Basic, {Basic_u32be, BasicFlag_Integer | BasicFlag_Unsigned | BasicFlag_EndianBig,    4, STR_LIT("u32be")}},
-	{Type_Basic, {Basic_i64be, BasicFlag_Integer |                      BasicFlag_EndianBig,    8, STR_LIT("i64be")}},
-	{Type_Basic, {Basic_u64be, BasicFlag_Integer | BasicFlag_Unsigned | BasicFlag_EndianBig,    8, STR_LIT("u64be")}},
+	{Type_Basic, {Basic_i16be,  BasicFlag_Integer |                      BasicFlag_EndianBig,     2, STR_LIT("i16be")}},
+	{Type_Basic, {Basic_u16be,  BasicFlag_Integer | BasicFlag_Unsigned | BasicFlag_EndianBig,     2, STR_LIT("u16be")}},
+	{Type_Basic, {Basic_i32be,  BasicFlag_Integer |                      BasicFlag_EndianBig,     4, STR_LIT("i32be")}},
+	{Type_Basic, {Basic_u32be,  BasicFlag_Integer | BasicFlag_Unsigned | BasicFlag_EndianBig,     4, STR_LIT("u32be")}},
+	{Type_Basic, {Basic_i64be,  BasicFlag_Integer |                      BasicFlag_EndianBig,     8, STR_LIT("i64be")}},
+	{Type_Basic, {Basic_u64be,  BasicFlag_Integer | BasicFlag_Unsigned | BasicFlag_EndianBig,     8, STR_LIT("u64be")}},
+	{Type_Basic, {Basic_i128be, BasicFlag_Integer                      | BasicFlag_EndianBig,    16, STR_LIT("i128be")}},
+	{Type_Basic, {Basic_u128be, BasicFlag_Integer | BasicFlag_Unsigned | BasicFlag_EndianBig,    16, STR_LIT("u128be")}},
 
 	// Untyped types
 	{Type_Basic, {Basic_UntypedBool,       BasicFlag_Boolean    | BasicFlag_Untyped,   0, STR_LIT("untyped bool")}},
@@ -384,6 +397,8 @@ gb_global Type *t_i32             = &basic_types[Basic_i32];
 gb_global Type *t_u32             = &basic_types[Basic_u32];
 gb_global Type *t_i64             = &basic_types[Basic_i64];
 gb_global Type *t_u64             = &basic_types[Basic_u64];
+gb_global Type *t_i128            = &basic_types[Basic_i128];
+gb_global Type *t_u128            = &basic_types[Basic_u128];
 
 gb_global Type *t_rune            = &basic_types[Basic_rune];
 
@@ -412,6 +427,8 @@ gb_global Type *t_i32le           = &basic_types[Basic_i32le];
 gb_global Type *t_u32le           = &basic_types[Basic_u32le];
 gb_global Type *t_i64le           = &basic_types[Basic_i64le];
 gb_global Type *t_u64le           = &basic_types[Basic_u64le];
+gb_global Type *t_i128le          = &basic_types[Basic_i128le];
+gb_global Type *t_u128le          = &basic_types[Basic_u128le];
 
 gb_global Type *t_i16be           = &basic_types[Basic_i16be];
 gb_global Type *t_u16be           = &basic_types[Basic_u16be];
@@ -419,6 +436,9 @@ gb_global Type *t_i32be           = &basic_types[Basic_i32be];
 gb_global Type *t_u32be           = &basic_types[Basic_u32be];
 gb_global Type *t_i64be           = &basic_types[Basic_i64be];
 gb_global Type *t_u64be           = &basic_types[Basic_u64be];
+gb_global Type *t_i128be          = &basic_types[Basic_i128be];
+gb_global Type *t_u128be          = &basic_types[Basic_u128be];
+
 
 gb_global Type *t_untyped_bool       = &basic_types[Basic_UntypedBool];
 gb_global Type *t_untyped_integer    = &basic_types[Basic_UntypedInteger];
@@ -796,6 +816,14 @@ bool is_type_unsigned(Type *t) {
 	// t = core_type(t);
 	if (t->kind == Type_Basic) {
 		return (t->Basic.flags & BasicFlag_Unsigned) != 0;
+	}
+	return false;
+}
+bool is_type_integer_128bit(Type *t) {
+	// t = core_type(t);
+	t = base_type(t);
+	if (t->kind == Type_Basic) {
+		return (t->Basic.flags & BasicFlag_Integer) != 0 && t->Basic.size == 16;
 	}
 	return false;
 }
@@ -1210,11 +1238,12 @@ Type *bit_set_to_int(Type *t) {
 
 	i64 sz = type_size_of(t);
 	switch (sz) {
-	case 0: return t_u8;
-	case 1: return t_u8;
-	case 2: return t_u16;
-	case 4: return t_u32;
-	case 8: return t_u64;
+	case 0:  return t_u8;
+	case 1:  return t_u8;
+	case 2:  return t_u16;
+	case 4:  return t_u32;
+	case 8:  return t_u64;
+	case 16: return t_u128;
 	}
 	GB_PANIC("Unknown bit_set size");
 	return nullptr;
@@ -1488,6 +1517,9 @@ bool is_type_comparable(Type *t) {
 		return true;
 
 	case Type_BitSet:
+		return true;
+
+	case Type_BitFieldValue:
 		return true;
 
 	case Type_Opaque:
@@ -2383,10 +2415,11 @@ i64 type_align_of_internal(Type *t, TypePath *path) {
 			return type_align_of(t->BitSet.underlying);
 		}
 		i64 bits = t->BitSet.upper - t->BitSet.lower + 1;
-		if (bits <= 8)  return 1;
-		if (bits <= 16) return 2;
-		if (bits <= 32) return 4;
-		if (bits <= 64) return 8;
+		if (bits <= 8)   return 1;
+		if (bits <= 16)  return 2;
+		if (bits <= 32)  return 4;
+		if (bits <= 64)  return 8;
+		if (bits <= 128) return 16;
 		return 8; // NOTE(bill): Could be an invalid range so limit it for now
 	}
 
@@ -2409,7 +2442,7 @@ i64 type_align_of_internal(Type *t, TypePath *path) {
 	return gb_clamp(next_pow2(type_size_of_internal(t, path)), 1, build_context.word_size);
 }
 
-Array<i64> type_set_offsets_of(Array<Entity *> fields, bool is_packed, bool is_raw_union) {
+Array<i64> type_set_offsets_of(Array<Entity *> const &fields, bool is_packed, bool is_raw_union) {
 	gbAllocator a = heap_allocator();
 	auto offsets = array_make<i64>(a, fields.count);
 	i64 curr_offset = 0;
@@ -2442,6 +2475,7 @@ bool type_set_offsets(Type *t) {
 		if (!t->Struct.are_offsets_set) {
 			t->Struct.are_offsets_being_processed = true;
 			t->Struct.offsets = type_set_offsets_of(t->Struct.fields, t->Struct.is_packed, t->Struct.is_raw_union);
+			GB_ASSERT(t->Struct.offsets.count == t->Struct.fields.count);
 			t->Struct.are_offsets_being_processed = false;
 			t->Struct.are_offsets_set = true;
 			return true;
@@ -2603,7 +2637,14 @@ i64 type_size_of_internal(Type *t, TypePath *path) {
 				type_path_print_illegal_cycle(path, path->path.count-1);
 				return FAILURE_SIZE;
 			}
+			if (t->Struct.are_offsets_set && t->Struct.offsets.count != t->Struct.fields.count) {
+				// TODO(bill, 2019-04-28): Determine exactly why the offsets length is different thatn the field length
+				// Are the the same at some point and then the struct length is increased?
+				// Why is this not handled by the type cycle checker?
+				t->Struct.are_offsets_set = false;
+			}
 			type_set_offsets(t);
+			GB_ASSERT_MSG(t->Struct.offsets.count == t->Struct.fields.count, "%s", type_to_string(t));
 			size = t->Struct.offsets[cast(isize)count-1] + type_size_of_internal(t->Struct.fields[cast(isize)count-1]->type, path);
 			return align_formula(size, align);
 		}
@@ -2626,10 +2667,11 @@ i64 type_size_of_internal(Type *t, TypePath *path) {
 			return type_size_of(t->BitSet.underlying);
 		}
 		i64 bits = t->BitSet.upper - t->BitSet.lower + 1;
-		if (bits <= 8)  return 1;
-		if (bits <= 16) return 2;
-		if (bits <= 32) return 4;
-		if (bits <= 64) return 8;
+		if (bits <= 8)   return 1;
+		if (bits <= 16)  return 2;
+		if (bits <= 32)  return 4;
+		if (bits <= 64)  return 8;
+		if (bits <= 128) return 16;
 		return 8; // NOTE(bill): Could be an invalid range so limit it for now
 	}
 
@@ -2754,7 +2796,13 @@ gbString write_type_to_string(gbString str, Type *type) {
 
 	case Type_Generic:
 		if (type->Generic.name.len == 0) {
-			str = gb_string_appendc(str, "type");
+			if (type->Generic.entity != nullptr) {
+				String name = type->Generic.entity->token.string;
+				str = gb_string_append_rune(str, '$');
+				str = gb_string_append_length(str, name.text, name.len);
+			} else {
+				str = gb_string_appendc(str, "type");
+			}
 		} else {
 			String name = type->Generic.name;
 			str = gb_string_append_rune(str, '$');
@@ -2945,7 +2993,6 @@ gbString write_type_to_string(gbString str, Type *type) {
 			Entity *f = type->BitField.fields[i];
 			GB_ASSERT(f->kind == Entity_Variable);
 			GB_ASSERT(f->type != nullptr && f->type->kind == Type_BitFieldValue);
-			str = gb_string_append_rune(str, '{');
 			if (i > 0) {
 				str = gb_string_appendc(str, ", ");
 			}

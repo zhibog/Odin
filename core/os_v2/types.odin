@@ -16,6 +16,7 @@ Error :: enum {
 	Already_Closed,
 	File_Is_Pipe,
 	EOF,
+	Not_Directory,
 
 	Platform_Specific,
 }
@@ -30,6 +31,8 @@ File_Info :: struct {
 	creation_time:     time.Time,
 	modification_time: time.Time,
 	is_directory:      bool,
+	handle:            Handle,
+	underlying_data:   rawptr,
 }
 
 
@@ -53,3 +56,9 @@ SEEK_END     :: int(2); // seek relative to the end
 
 
 args: []string;
+
+
+file_info_destroy :: proc(fi: ^File_Info) {
+	delete(fi.name);
+	fi.name = "";
+}

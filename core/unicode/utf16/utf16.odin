@@ -79,3 +79,102 @@ encode_string :: proc(d: []u16, s: string) -> int {
 	}
 	return n;
 }
+
+decode :: proc(s: []u16) -> []rune {
+	a := make([]rune, len(s));
+	n := 0;
+	for i := 0; i < len(s); i += 1 {
+		r := s[i];
+		switch {
+		case r < _surr1, _surr3 <= r:
+			a[n] = rune(r);
+		case _surr1 <= r && r < _surr2 && i+1 < len(s) && _surr2 <= s[i+1] && s[i+1] < _surr3:
+			a[n] += decode_surrogate_pair(rune(r), rune(s[i+1]));
+			i += 1;
+		case:
+			a[n] = REPLACEMENT_CHAR;
+		}
+		n += 1;
+	}
+	return a[:n];
+}
+
+
+decode_string :: proc(s: []u16) -> string {
+	// NOTE(bill): This is a copy from package utf8, mainly to reduce the need for utf16 to import utf8
+	encode_rune :: proc(r: rune) -> ([4]u8, int) {
+		buf: [4]u8;
+		i := u32(r);
+		mask :: u8(0x3f);
+		if i <= 1<<7-1 {
+			buf[0] = u8(r);
+			return buf, 1;
+		}
+		if i <= 1<<11-1 {
+			buf[0] = 0xc0 | u8(r>>6);
+			buf[1] = 0x80 | u8(r) & mask;
+			return buf, 2;
+		}
+
+		// Invalid or Surrogate range
+		if i > 0x0010ffff ||
+		   (0xd800 <= i && i <= 0xdfff) {
+			r = 0xfffd;
+		}
+
+		if i <= 1<<16-1 {
+			buf[0] = 0xe0 | u8(r>>12);
+			buf[1] = 0x80 | u8(r>>6) & mask;
+			buf[2] = 0x80 | u8(r)    & mask;
+			return buf, 3;
+		}
+
+		buf[0] = 0xf0 | u8(r>>18);
+		buf[1] = 0x80 | u8(r>>12) & mask;
+		buf[2] = 0x80 | u8(r>>6)  & mask;
+		buf[3] = 0x80 | u8(r)     & mask;
+		return buf, 4;
+	}
+	length := 0;
+	{
+		for i := 0; i < len(s); i += 1 {
+			r := s[i];
+			switch {
+			case r < _surr1, _surr3 <= r:
+				b, l := encode_rune(rune(r));
+				length += l;
+			case _surr1 <= r && r < _surr2 && i+1 < len(s) && _surr2 <= s[i+1] && s[i+1] < _surr3:
+				c := decode_surrogate_pair(rune(r), rune(s[i+1]));
+				i += 1;
+				b, l := encode_rune(c);
+				length += l;
+			case:
+				b, l := encode_rune(rune(r));
+				length += l;
+			}
+		}
+	}
+
+	a := make([]byte, length);
+	n := 0;
+	for i := 0; i < len(s); i += 1 {
+		r := s[i];
+		switch {
+		case r < _surr1, _surr3 <= r:
+			b, l := encode_rune(rune(r));
+			copy(a[n:], b[:l]);
+			n += l;
+		case _surr1 <= r && r < _surr2 && i+1 < len(s) && _surr2 <= s[i+1] && s[i+1] < _surr3:
+			c := decode_surrogate_pair(rune(r), rune(s[i+1]));
+			i += 1;
+			b, l := encode_rune(c);
+			copy(a[n:], b[:l]);
+			n += l;
+		case:
+			b, l := encode_rune(rune(r));
+			copy(a[n:], b[:l]);
+			n += l;
+		}
+	}
+	return string(a[:n]);
+}

@@ -1,5 +1,28 @@
 #include "llvm_backend.hpp"
 
+
+enum : LLVMDWARFTypeEncoding {
+	LLVMDWARFTypeEncoding_Address = 1,
+	LLVMDWARFTypeEncoding_Boolean = 2,
+	LLVMDWARFTypeEncoding_ComplexFloat = 3,
+	LLVMDWARFTypeEncoding_Float = 4,
+	LLVMDWARFTypeEncoding_Signed = 5,
+	LLVMDWARFTypeEncoding_SignedChar = 6,
+	LLVMDWARFTypeEncoding_Unsigned = 7,
+	LLVMDWARFTypeEncoding_UnsignedChar = 8,
+	LLVMDWARFTypeEncoding_ImaginaryFloat = 9,
+	LLVMDWARFTypeEncoding_PackedDecimal = 10,
+	LLVMDWARFTypeEncoding_NumericString = 11,
+	LLVMDWARFTypeEncoding_Edited = 12,
+	LLVMDWARFTypeEncoding_SignedFixed = 13,
+	LLVMDWARFTypeEncoding_UnsignedFixed = 14,
+	LLVMDWARFTypeEncoding_DecimalFloat = 15,
+	LLVMDWARFTypeEncoding_Utf = 16,
+	LLVMDWARFTypeEncoding_LoUser = 128,
+	LLVMDWARFTypeEncoding_HiUser = 255
+};
+
+
 gb_global lbAddr lb_global_type_info_data           = {};
 gb_global lbAddr lb_global_type_info_member_types   = {};
 gb_global lbAddr lb_global_type_info_member_names   = {};
@@ -1475,6 +1498,13 @@ void lb_set_llvm_metadata(lbModule *m, void *key, LLVMMetadataRef value) {
 	}
 }
 
+LLVMMetadataRef lb_get_llvm_file_metadata_from_node(lbModule *m, Ast *node) {
+	if (node == nullptr) {
+		return nullptr;
+	}
+	return lb_get_llvm_metadata(m, node->file);
+}
+
 LLVMMetadataRef lb_get_current_debug_scope(lbProcedure *p) {
 	GB_ASSERT_MSG(p->debug_info != nullptr, "missing debug information for %.*s", LIT(p->name));
 
@@ -1508,29 +1538,29 @@ LLVMMetadataRef lb_debug_type_internal(lbModule *m, Type *type) {
 	switch (type->kind) {
 	case Type_Basic:
 		switch (type->Basic.kind) {
-		case Basic_llvm_bool: return LLVMDIBuilderCreateBasicType(m->debug_builder, "llvm bool", 9,  1, 0, LLVMDIFlagZero);
-		case Basic_bool:      return LLVMDIBuilderCreateBasicType(m->debug_builder, "bool",      4,  8, 0, LLVMDIFlagZero);
-		case Basic_b8:        return LLVMDIBuilderCreateBasicType(m->debug_builder, "b8",        2,  8, 0, LLVMDIFlagZero);
-		case Basic_b16:       return LLVMDIBuilderCreateBasicType(m->debug_builder, "b16",       3, 16, 0, LLVMDIFlagZero);
-		case Basic_b32:       return LLVMDIBuilderCreateBasicType(m->debug_builder, "b32",       3, 32, 0, LLVMDIFlagZero);
-		case Basic_b64:       return LLVMDIBuilderCreateBasicType(m->debug_builder, "b64",       3, 64, 0, LLVMDIFlagZero);
+		case Basic_llvm_bool: return LLVMDIBuilderCreateBasicType(m->debug_builder, "llvm bool", 9,  1, LLVMDWARFTypeEncoding_Boolean, LLVMDIFlagZero);
+		case Basic_bool:      return LLVMDIBuilderCreateBasicType(m->debug_builder, "bool",      4,  8, LLVMDWARFTypeEncoding_Boolean, LLVMDIFlagZero);
+		case Basic_b8:        return LLVMDIBuilderCreateBasicType(m->debug_builder, "b8",        2,  8, LLVMDWARFTypeEncoding_Boolean, LLVMDIFlagZero);
+		case Basic_b16:       return LLVMDIBuilderCreateBasicType(m->debug_builder, "b16",       3, 16, LLVMDWARFTypeEncoding_Boolean, LLVMDIFlagZero);
+		case Basic_b32:       return LLVMDIBuilderCreateBasicType(m->debug_builder, "b32",       3, 32, LLVMDWARFTypeEncoding_Boolean, LLVMDIFlagZero);
+		case Basic_b64:       return LLVMDIBuilderCreateBasicType(m->debug_builder, "b64",       3, 64, LLVMDWARFTypeEncoding_Boolean, LLVMDIFlagZero);
 
-		case Basic_i8:   return LLVMDIBuilderCreateBasicType(m->debug_builder, "i8",   2,   8, 0, LLVMDIFlagZero);
-		case Basic_u8:   return LLVMDIBuilderCreateBasicType(m->debug_builder, "u8",   2,   8, 0, LLVMDIFlagZero);
-		case Basic_i16:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "i16",  3,  16, 0, LLVMDIFlagZero);
-		case Basic_u16:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "u16",  3,  16, 0, LLVMDIFlagZero);
-		case Basic_i32:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "i32",  3,  32, 0, LLVMDIFlagZero);
-		case Basic_u32:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "u32",  3,  32, 0, LLVMDIFlagZero);
-		case Basic_i64:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "i64",  3,  64, 0, LLVMDIFlagZero);
-		case Basic_u64:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "u64",  3,  64, 0, LLVMDIFlagZero);
-		case Basic_i128: return LLVMDIBuilderCreateBasicType(m->debug_builder, "i128", 4, 128, 0, LLVMDIFlagZero);
-		case Basic_u128: return LLVMDIBuilderCreateBasicType(m->debug_builder, "u128", 4, 128, 0, LLVMDIFlagZero);
+		case Basic_i8:   return LLVMDIBuilderCreateBasicType(m->debug_builder, "i8",   2,   8, LLVMDWARFTypeEncoding_Signed, LLVMDIFlagZero);
+		case Basic_u8:   return LLVMDIBuilderCreateBasicType(m->debug_builder, "u8",   2,   8, LLVMDWARFTypeEncoding_Unsigned, LLVMDIFlagZero);
+		case Basic_i16:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "i16",  3,  16, LLVMDWARFTypeEncoding_Signed, LLVMDIFlagZero);
+		case Basic_u16:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "u16",  3,  16, LLVMDWARFTypeEncoding_Unsigned, LLVMDIFlagZero);
+		case Basic_i32:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "i32",  3,  32, LLVMDWARFTypeEncoding_Signed, LLVMDIFlagZero);
+		case Basic_u32:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "u32",  3,  32, LLVMDWARFTypeEncoding_Unsigned, LLVMDIFlagZero);
+		case Basic_i64:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "i64",  3,  64, LLVMDWARFTypeEncoding_Signed, LLVMDIFlagZero);
+		case Basic_u64:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "u64",  3,  64, LLVMDWARFTypeEncoding_Unsigned, LLVMDIFlagZero);
+		case Basic_i128: return LLVMDIBuilderCreateBasicType(m->debug_builder, "i128", 4, 128, LLVMDWARFTypeEncoding_Signed, LLVMDIFlagZero);
+		case Basic_u128: return LLVMDIBuilderCreateBasicType(m->debug_builder, "u128", 4, 128, LLVMDWARFTypeEncoding_Unsigned, LLVMDIFlagZero);
 
-		case Basic_rune: return LLVMDIBuilderCreateBasicType(m->debug_builder, "rune", 4, 32, 0, LLVMDIFlagZero);
+		case Basic_rune: return LLVMDIBuilderCreateBasicType(m->debug_builder, "rune", 4, 32, LLVMDWARFTypeEncoding_Utf, LLVMDIFlagZero);
 
 		// Basic_f16,
-		case Basic_f32: return LLVMDIBuilderCreateBasicType(m->debug_builder, "f32", 3, 32, 0, LLVMDIFlagZero);
-		case Basic_f64: return LLVMDIBuilderCreateBasicType(m->debug_builder, "f64", 3, 64, 0, LLVMDIFlagZero);
+		case Basic_f32: return LLVMDIBuilderCreateBasicType(m->debug_builder, "f32", 3, 32, LLVMDWARFTypeEncoding_Float, LLVMDIFlagZero);
+		case Basic_f64: return LLVMDIBuilderCreateBasicType(m->debug_builder, "f64", 3, 64, LLVMDWARFTypeEncoding_Float, LLVMDIFlagZero);
 
 		// Basic_complex32,
 		case Basic_complex64:
@@ -1559,14 +1589,14 @@ LLVMMetadataRef lb_debug_type_internal(lbModule *m, Type *type) {
 				return LLVMDIBuilderCreateStructType(m->debug_builder, nullptr, "quaternion256", 13, nullptr, 0, 256, 32, LLVMDIFlagZero, nullptr, elements, element_count, 0, nullptr, "", 0);
 			}
 
-		case Basic_int:  return LLVMDIBuilderCreateBasicType(m->debug_builder,    "int",  3, word_bits, 0, LLVMDIFlagZero);
-		case Basic_uint: return LLVMDIBuilderCreateBasicType(m->debug_builder,    "uint", 4, word_bits, 0, LLVMDIFlagZero);
-		case Basic_uintptr: return LLVMDIBuilderCreateBasicType(m->debug_builder, "uintptr", 7, word_bits, 0, LLVMDIFlagZero);
+		case Basic_int:  return LLVMDIBuilderCreateBasicType(m->debug_builder,    "int",  3, word_bits, LLVMDWARFTypeEncoding_Signed, LLVMDIFlagZero);
+		case Basic_uint: return LLVMDIBuilderCreateBasicType(m->debug_builder,    "uint", 4, word_bits, LLVMDWARFTypeEncoding_Unsigned, LLVMDIFlagZero);
+		case Basic_uintptr: return LLVMDIBuilderCreateBasicType(m->debug_builder, "uintptr", 7, word_bits, LLVMDWARFTypeEncoding_Unsigned, LLVMDIFlagZero);
 
 		case Basic_rawptr:
 			{
 				LLVMMetadataRef void_type = LLVMDIBuilderCreateBasicType(m->debug_builder, "void", 4, 8, 0, LLVMDIFlagZero);
-				return LLVMDIBuilderCreatePointerType(m->debug_builder, void_type, word_bits, word_bits, 0, "rawptr", 6);
+				return LLVMDIBuilderCreatePointerType(m->debug_builder, void_type, word_bits, word_bits, LLVMDWARFTypeEncoding_Address, "rawptr", 6);
 			}
 		case Basic_string:
 			{
@@ -1589,27 +1619,27 @@ LLVMMetadataRef lb_debug_type_internal(lbModule *m, Type *type) {
 		case Basic_typeid: return LLVMDIBuilderCreateBasicType(m->debug_builder, "typeid", 6, word_bits, 0, LLVMDIFlagZero);
 
 		// Endian Specific Types
-		case Basic_i16le:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "i16le",  5, 16,  0, LLVMDIFlagLittleEndian);
-		case Basic_u16le:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "u16le",  5, 16,  0, LLVMDIFlagLittleEndian);
-		case Basic_i32le:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "i32le",  5, 32,  0, LLVMDIFlagLittleEndian);
-		case Basic_u32le:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "u32le",  5, 32,  0, LLVMDIFlagLittleEndian);
-		case Basic_i64le:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "i64le",  5, 64,  0, LLVMDIFlagLittleEndian);
-		case Basic_u64le:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "u64le",  5, 64,  0, LLVMDIFlagLittleEndian);
-		case Basic_i128le: return LLVMDIBuilderCreateBasicType(m->debug_builder, "i128le", 6, 128, 0, LLVMDIFlagLittleEndian);
-		case Basic_u128le: return LLVMDIBuilderCreateBasicType(m->debug_builder, "u128le", 6, 128, 0, LLVMDIFlagLittleEndian);
-		case Basic_f32le: return LLVMDIBuilderCreateBasicType(m->debug_builder,  "f32le",  5,  32, 0, LLVMDIFlagLittleEndian);
-		case Basic_f64le: return LLVMDIBuilderCreateBasicType(m->debug_builder,  "f64le",  5,  64, 0, LLVMDIFlagLittleEndian);
+		case Basic_i16le:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "i16le",  5, 16,  LLVMDWARFTypeEncoding_Signed, LLVMDIFlagLittleEndian);
+		case Basic_u16le:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "u16le",  5, 16,  LLVMDWARFTypeEncoding_Unsigned, LLVMDIFlagLittleEndian);
+		case Basic_i32le:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "i32le",  5, 32,  LLVMDWARFTypeEncoding_Signed, LLVMDIFlagLittleEndian);
+		case Basic_u32le:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "u32le",  5, 32,  LLVMDWARFTypeEncoding_Unsigned, LLVMDIFlagLittleEndian);
+		case Basic_i64le:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "i64le",  5, 64,  LLVMDWARFTypeEncoding_Signed, LLVMDIFlagLittleEndian);
+		case Basic_u64le:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "u64le",  5, 64,  LLVMDWARFTypeEncoding_Unsigned, LLVMDIFlagLittleEndian);
+		case Basic_i128le: return LLVMDIBuilderCreateBasicType(m->debug_builder, "i128le", 6, 128, LLVMDWARFTypeEncoding_Signed, LLVMDIFlagLittleEndian);
+		case Basic_u128le: return LLVMDIBuilderCreateBasicType(m->debug_builder, "u128le", 6, 128, LLVMDWARFTypeEncoding_Unsigned, LLVMDIFlagLittleEndian);
+		case Basic_f32le: return LLVMDIBuilderCreateBasicType(m->debug_builder,  "f32le",  5,  32, LLVMDWARFTypeEncoding_Float, LLVMDIFlagLittleEndian);
+		case Basic_f64le: return LLVMDIBuilderCreateBasicType(m->debug_builder,  "f64le",  5,  64, LLVMDWARFTypeEncoding_Float, LLVMDIFlagLittleEndian);
 
-		case Basic_i16be:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "i16be",  5, 16,  0, LLVMDIFlagBigEndian);
-		case Basic_u16be:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "u16be",  5, 16,  0, LLVMDIFlagBigEndian);
-		case Basic_i32be:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "i32be",  5, 32,  0, LLVMDIFlagBigEndian);
-		case Basic_u32be:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "u32be",  5, 32,  0, LLVMDIFlagBigEndian);
-		case Basic_i64be:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "i64be",  5, 64,  0, LLVMDIFlagBigEndian);
-		case Basic_u64be:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "u64be",  5, 64,  0, LLVMDIFlagBigEndian);
-		case Basic_i128be: return LLVMDIBuilderCreateBasicType(m->debug_builder, "i128be", 6, 128, 0, LLVMDIFlagBigEndian);
-		case Basic_u128be: return LLVMDIBuilderCreateBasicType(m->debug_builder, "u128be", 6, 128, 0, LLVMDIFlagBigEndian);
-		case Basic_f32be: return LLVMDIBuilderCreateBasicType(m->debug_builder,  "f32be",  5,  32, 0, LLVMDIFlagLittleEndian);
-		case Basic_f64be: return LLVMDIBuilderCreateBasicType(m->debug_builder,  "f64be",  5,  64, 0, LLVMDIFlagLittleEndian);
+		case Basic_i16be:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "i16be",  5, 16,  LLVMDWARFTypeEncoding_Signed, LLVMDIFlagBigEndian);
+		case Basic_u16be:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "u16be",  5, 16,  LLVMDWARFTypeEncoding_Unsigned, LLVMDIFlagBigEndian);
+		case Basic_i32be:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "i32be",  5, 32,  LLVMDWARFTypeEncoding_Signed, LLVMDIFlagBigEndian);
+		case Basic_u32be:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "u32be",  5, 32,  LLVMDWARFTypeEncoding_Unsigned, LLVMDIFlagBigEndian);
+		case Basic_i64be:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "i64be",  5, 64,  LLVMDWARFTypeEncoding_Signed, LLVMDIFlagBigEndian);
+		case Basic_u64be:  return LLVMDIBuilderCreateBasicType(m->debug_builder, "u64be",  5, 64,  LLVMDWARFTypeEncoding_Unsigned, LLVMDIFlagBigEndian);
+		case Basic_i128be: return LLVMDIBuilderCreateBasicType(m->debug_builder, "i128be", 6, 128, LLVMDWARFTypeEncoding_Signed, LLVMDIFlagBigEndian);
+		case Basic_u128be: return LLVMDIBuilderCreateBasicType(m->debug_builder, "u128be", 6, 128, LLVMDWARFTypeEncoding_Unsigned, LLVMDIFlagBigEndian);
+		case Basic_f32be: return LLVMDIBuilderCreateBasicType(m->debug_builder,  "f32be",  5,  32, LLVMDWARFTypeEncoding_Float, LLVMDIFlagLittleEndian);
+		case Basic_f64be: return LLVMDIBuilderCreateBasicType(m->debug_builder,  "f64be",  5,  64, LLVMDWARFTypeEncoding_Float, LLVMDIFlagLittleEndian);
 
 		// Untyped types
 		case Basic_UntypedBool:       GB_PANIC("Basic_UntypedBool"); break;
@@ -1666,9 +1696,9 @@ LLVMMetadataRef lb_debug_type_internal(lbModule *m, Type *type) {
 	case Type_Struct:
 		{
 			type_set_offsets(type);
-			LLVMMetadataRef parent_scope = nullptr;
-			LLVMMetadataRef scope = nullptr;
-			LLVMMetadataRef file = nullptr;
+			LLVMMetadataRef parent_scope = nullptr; // lb_get_llvm_metadata(m, type->Struct.scope);
+			LLVMMetadataRef scope = parent_scope;
+			LLVMMetadataRef file = lb_get_llvm_file_metadata_from_node(m, type->Struct.node);
 			unsigned line = 0;
 			u64 size_in_bits = 8*cast(u64)type_size_of(type);
 			u32 align_in_bits = 8*cast(u32)type_align_of(type);
@@ -1708,9 +1738,8 @@ LLVMMetadataRef lb_debug_type_internal(lbModule *m, Type *type) {
 
 	case Type_Union:
 		{
-			LLVMMetadataRef parent_scope = nullptr;
-			LLVMMetadataRef scope = nullptr;
-			LLVMMetadataRef file = nullptr;
+			LLVMMetadataRef scope = lb_get_llvm_metadata(m, type->Union.scope);
+			LLVMMetadataRef file = lb_get_llvm_file_metadata_from_node(m, type->Union.node);
 			unsigned line = 0;
 			u64 size_in_bits = 8*cast(u64)type_size_of(type);
 			u32 align_in_bits = 8*cast(u32)type_align_of(type);
@@ -1848,7 +1877,12 @@ LLVMMetadataRef lb_debug_type_internal(lbModule *m, Type *type) {
 				param_index += 1;
 			}
 
-			return LLVMDIBuilderCreateSubroutineType(m->debug_builder, file, parameters, parameter_count, LLVMDIFlagZero);
+			LLVMDIFlags flags = LLVMDIFlagZero;
+			if (type->Proc.diverging) {
+				flags = LLVMDIFlagNoReturn;
+			}
+
+			return LLVMDIBuilderCreateSubroutineType(m->debug_builder, file, parameters, parameter_count, flags);
 		}
 		break;
 	case Type_BitFieldValue:
@@ -1880,7 +1914,7 @@ LLVMMetadataRef lb_debug_type_internal(lbModule *m, Type *type) {
 
 				char i_name[16] = {};
 				gb_snprintf(i_name, gb_size_of(i_name), "i%u", size);
-				LLVMMetadataRef i_type = LLVMDIBuilderCreateBasicType(m->debug_builder, i_name, gb_strlen(i_name), size, 0, LLVMDIFlagZero);
+				LLVMMetadataRef i_type = LLVMDIBuilderCreateBasicType(m->debug_builder, i_name, gb_strlen(i_name), size, LLVMDWARFTypeEncoding_Unsigned, LLVMDIFlagBitField);
 
 				LLVMMetadataRef field = LLVMDIBuilderCreateBitFieldMemberType(m->debug_builder, scope,
 					name_text, name_len,
@@ -1943,18 +1977,26 @@ LLVMMetadataRef lb_debug_type(lbModule *m, Type *type) {
 		unsigned tag = 0;
 		LLVMDIFlags flags = LLVMDIFlagZero;
 
-		LLVMMetadataRef temp_forward_decl = LLVMDIBuilderCreateReplaceableCompositeType(m->debug_builder, tag, name_text, name_len, scope, file, line, 0, size_in_bits, align_in_bits, flags, "", 0);
-		lb_set_llvm_metadata(m, type, temp_forward_decl);
 		Type *bt = base_type(type->Named.base);
 
-		LLVMMetadataRef debug_bt = lb_debug_type(m, bt);
+		if (is_type_struct(type) || is_type_union(type)) {
+			LLVMMetadataRef temp_forward_decl = LLVMDIBuilderCreateReplaceableCompositeType(m->debug_builder, tag, name_text, name_len, scope, file, line, 0, size_in_bits, align_in_bits, flags, "", 0);
+			lb_set_llvm_metadata(m, type, temp_forward_decl);
 
-		LLVMMetadataRef final_decl = LLVMDIBuilderCreateTypedef(m->debug_builder, debug_bt, name_text, name_len, file, line, scope);
+			LLVMMetadataRef debug_bt = lb_debug_type(m, bt);
 
-		LLVMMetadataReplaceAllUsesWith(temp_forward_decl, final_decl);
+			LLVMMetadataRef final_decl = LLVMDIBuilderCreateTypedef(m->debug_builder, debug_bt, name_text, name_len, file, line, scope, align_in_bits);
 
-		lb_set_llvm_metadata(m, type, final_decl);
-		return final_decl;
+			LLVMMetadataReplaceAllUsesWith(temp_forward_decl, final_decl);
+			lb_set_llvm_metadata(m, type, final_decl);
+			return final_decl;
+		} else {
+			LLVMMetadataRef debug_bt = lb_debug_type(m, bt);
+			LLVMMetadataRef final_decl = LLVMDIBuilderCreateTypedef(m->debug_builder, debug_bt, name_text, name_len, file, line, scope, align_in_bits);
+			lb_set_llvm_metadata(m, type, final_decl);
+			return final_decl;
+		}
+
 	}
 
 
@@ -2167,7 +2209,7 @@ lbProcedure *lb_create_procedure(lbModule *m, Entity *entity) {
 
 
 
-	{ // Debug Information
+	if (build_context.ODIN_DEBUG) { // Debug Information
 		unsigned line = cast(unsigned)entity->token.pos.line;
 
 		LLVMMetadataRef scope = nullptr;
@@ -2177,27 +2219,33 @@ lbProcedure *lb_create_procedure(lbModule *m, Entity *entity) {
 		type = lb_debug_type(m, p->type);
 
 		if (entity->file != nullptr) {
-			file = cast(LLVMMetadataRef)entity->file->llvm_metadata;
-			scope = entity->file->llvm_metadata_scope;
+			file = lb_get_llvm_metadata(m, entity->file);
+			scope = file;
 		} else if (entity->identifier != nullptr && entity->identifier->file != nullptr) {
-			file = cast(LLVMMetadataRef)entity->identifier->file->llvm_metadata;
-			scope = entity->identifier->file->llvm_metadata_scope;
+			file = lb_get_llvm_metadata(m, entity->identifier->file);
+			scope = file;
 		} else if (entity->scope != nullptr) {
-			file = cast(LLVMMetadataRef)entity->scope->file->llvm_metadata;
-			scope = entity->scope->file->llvm_metadata_scope;
+			file = lb_get_llvm_metadata(m, entity->scope->file);
+			scope = file;
 		}
 		GB_ASSERT_MSG(file != nullptr, "%.*s", LIT(entity->token.string));
 
+		// LLVMBool is_local_to_unit = !entity->Procedure.is_export;
 		LLVMBool is_local_to_unit = false;
 		LLVMBool is_definition = p->body == nullptr;
 		unsigned scope_line = line;
+		LLVMDIFlags flags = LLVMDIFlagZero;
+		LLVMBool is_optimized = false;
+		if (base_type(p->type)->Proc.diverging) {
+			flags = LLVMDIFlagNoReturn;
+		}
 
 		p->debug_info = LLVMDIBuilderCreateFunction(m->debug_builder, scope,
 			cast(char const *)entity->token.string.text, entity->token.string.len,
 			cast(char const *)p->name.text, p->name.len,
 			file, line, type,
 			is_local_to_unit, is_definition,
-			scope_line, LLVMDIFlagZero, false
+			scope_line, flags, is_optimized
 		);
 		GB_ASSERT(p->debug_info != nullptr);
 		LLVMSetSubprogram(p->value, p->debug_info);
@@ -2563,13 +2611,37 @@ void lb_end_procedure_body(lbProcedure *p) {
 		    }
 		}
 	}
-
 	p->curr_block = nullptr;
 	p->module->state_flags = 0;
 }
 void lb_end_procedure(lbProcedure *p) {
 	LLVMDisposeBuilder(p->builder);
 }
+
+void lb_verify_procedure(lbProcedure *p) {
+	if (build_context.ODIN_DEBUG) {
+		return;
+	}
+	if (LLVMVerifyFunction(p->value, LLVMReturnStatusAction)) {
+		gb_printf_err("LLVM CODE GEN FAILED FOR PROCEDURE: %s\n", "main");
+		LLVMDumpValue(p->value);
+		gb_printf_err("\n\n\n\n");
+
+		if (build_context.keep_temp_files) {
+			String filepath_ll = concatenate_strings(heap_allocator(), p->module->gen->output_base, STR_LIT(".ll"));
+			char *llvm_error = nullptr;
+			if (LLVMPrintModuleToFile(p->module->mod, cast(char const *)filepath_ll.text, &llvm_error)) {
+				gb_printf_err("LLVM Error: %s\n", llvm_error);
+				return;
+			}
+		}
+
+		LLVMVerifyFunction(p->value, LLVMAbortProcessAction);
+	}
+}
+
+
+
 
 void lb_add_edge(lbBlock *from, lbBlock *to) {
 	LLVMValueRef instr = LLVMGetLastInstruction(from->block);
@@ -2958,6 +3030,7 @@ void lb_pop_target_list(lbProcedure *p) {
 	p->target_list = p->target_list->prev;
 }
 
+
 void lb_open_scope(lbProcedure *p, Scope *s) {
 	lbModule *m = p->module;
 	auto curr_meta_data = lb_get_llvm_metadata(m, s);
@@ -2968,7 +3041,7 @@ void lb_open_scope(lbProcedure *p, Scope *s) {
 
 		LLVMMetadataRef file = nullptr;
 		if (s->node->file != nullptr) {
-			file = cast(LLVMMetadataRef)s->node->file->llvm_metadata;
+			file = lb_get_llvm_metadata(m, s->node->file);
 		}
 		LLVMMetadataRef scope = nullptr;
 		if (p->scope_stack.count > 0) {
@@ -11096,7 +11169,7 @@ bool lb_init_generator(lbGenerator *gen, Checker *c) {
 	gen->info = &c->info;
 
 	lb_init_module(&gen->module, c);
-
+	gen->module.gen = gen;
 
 	return true;
 }
@@ -12021,7 +12094,6 @@ void lb_generate_code(lbGenerator *gen) {
 				cast(char const *)filename.text, filename.len,
 				cast(char const *)directory.text, directory.len);
 			lb_set_llvm_metadata(m, f, res);
-			f->llvm_metadata = res;
 		}
 
 		gbString producer = gb_string_make(heap_allocator(), "odin");
@@ -12041,24 +12113,28 @@ void lb_generate_code(lbGenerator *gen) {
 			init_file = m->info->entry_point->identifier->file;
 		}
 
+		LLVMBool split_debug_inlining = false;
+		LLVMBool debug_info_for_profiling = true;
+
 		m->debug_compile_unit = LLVMDIBuilderCreateCompileUnit(m->debug_builder, LLVMDWARFSourceLanguageC99,
-			cast(LLVMMetadataRef)init_file->llvm_metadata,
+			lb_get_llvm_metadata(m, init_file),
 			producer, gb_string_length(producer),
 			is_optimized, "", 0,
 			1, split_name, gb_string_length(split_name),
-			LLVMDWARFEmissionFull, 0, true,
-			true
+			LLVMDWARFEmissionFull, 0, split_debug_inlining,
+			debug_info_for_profiling,
+			"", 0, // sys_root
+			"", 0  // SDK
 		);
 		GB_ASSERT(m->debug_compile_unit != nullptr);
 
-		for_array(i, info->files.entries) {
-			AstFile *f = info->files.entries[i].value;
-			unsigned discriminator = cast(unsigned)f->id;
-			f->llvm_metadata_scope = f->llvm_metadata;
-			// f->llvm_metadata_scope = LLVMDIBuilderCreateLexicalBlockFile(m->debug_builder, m->debug_compile_unit, f->llvm_metadata, discriminator);
-			// f->llvm_metadata_scope = LLVMDILocationGetScope(m->debug_compile_unit);
-			// f->llvm_metadata_scope = m->debug_compile_unit;
-		}
+		// for_array(i, info->files.entries) {
+		// 	AstFile *f = info->files.entries[i].value;
+		// 	unsigned discriminator = cast(unsigned)f->id;
+		// 	// f->llvm_metadata_scope = LLVMDIBuilderCreateLexicalBlockFile(m->debug_builder, m->debug_compile_unit, f->llvm_metadata, discriminator);
+		// 	// f->llvm_metadata_scope = LLVMDILocationGetScope(m->debug_compile_unit);
+		// 	// f->llvm_metadata_scope = m->debug_compile_unit;
+		// }
 	}
 
 	TIME_SECTION("LLVM Global Variables");
@@ -12369,7 +12445,6 @@ void lb_generate_code(lbGenerator *gen) {
 		LLVMAddPromoteMemoryToRegisterPass(dfpm);
 		LLVMAddMergedLoadStoreMotionPass(dfpm);
 		LLVMAddAggressiveInstCombinerPass(dfpm);
-		LLVMAddConstantPropagationPass(dfpm);
 		LLVMAddAggressiveDCEPass(dfpm);
 		LLVMAddMergedLoadStoreMotionPass(dfpm);
 		LLVMAddPromoteMemoryToRegisterPass(dfpm);
@@ -12382,7 +12457,6 @@ void lb_generate_code(lbGenerator *gen) {
 		LLVMAddPromoteMemoryToRegisterPass(dfpm);
 		LLVMAddMergedLoadStoreMotionPass(dfpm);
 		LLVMAddAggressiveInstCombinerPass(dfpm);
-		LLVMAddConstantPropagationPass(dfpm);
 		LLVMAddAggressiveDCEPass(dfpm);
 		LLVMAddMergedLoadStoreMotionPass(dfpm);
 		LLVMAddPromoteMemoryToRegisterPass(dfpm);
@@ -12419,7 +12493,6 @@ void lb_generate_code(lbGenerator *gen) {
 		LLVMAddPromoteMemoryToRegisterPass(default_function_pass_manager_without_memcpy);
 		LLVMAddMergedLoadStoreMotionPass(default_function_pass_manager_without_memcpy);
 		LLVMAddAggressiveInstCombinerPass(default_function_pass_manager_without_memcpy);
-		LLVMAddConstantPropagationPass(default_function_pass_manager_without_memcpy);
 		LLVMAddAggressiveDCEPass(default_function_pass_manager_without_memcpy);
 		LLVMAddMergedLoadStoreMotionPass(default_function_pass_manager_without_memcpy);
 		LLVMAddPromoteMemoryToRegisterPass(default_function_pass_manager_without_memcpy);
@@ -12447,12 +12520,7 @@ void lb_generate_code(lbGenerator *gen) {
 
 		lb_end_procedure_body(p);
 
-		if (LLVMVerifyFunction(p->value, LLVMReturnStatusAction)) {
-			gb_printf_err("LLVM CODE GEN FAILED FOR PROCEDURE: %s\n", "main");
-			LLVMDumpValue(p->value);
-			gb_printf_err("\n\n\n\n");
-			LLVMVerifyFunction(p->value, LLVMAbortProcessAction);
-		}
+		lb_verify_procedure(p);
 
 		LLVMRunFunctionPassManager(default_function_pass_manager, p->value);
 	}
@@ -12515,12 +12583,7 @@ void lb_generate_code(lbGenerator *gen) {
 
 		lb_end_procedure_body(p);
 
-		if (LLVMVerifyFunction(p->value, LLVMReturnStatusAction)) {
-			gb_printf_err("LLVM CODE GEN FAILED FOR PROCEDURE: %s\n", "main");
-			LLVMDumpValue(p->value);
-			gb_printf_err("\n\n\n\n");
-			LLVMVerifyFunction(p->value, LLVMAbortProcessAction);
-		}
+		lb_verify_procedure(p);
 
 		LLVMRunFunctionPassManager(default_function_pass_manager, p->value);
 
@@ -12581,12 +12644,7 @@ void lb_generate_code(lbGenerator *gen) {
 
 		lb_end_procedure_body(p);
 
-		if (LLVMVerifyFunction(p->value, LLVMReturnStatusAction)) {
-			gb_printf_err("LLVM CODE GEN FAILED FOR PROCEDURE: %s\n", "main");
-			LLVMDumpValue(p->value);
-			gb_printf_err("\n\n\n\n");
-			LLVMVerifyFunction(p->value, LLVMAbortProcessAction);
-		}
+		lb_verify_procedure(p);
 
 		LLVMRunFunctionPassManager(default_function_pass_manager, p->value);
 	}
@@ -12620,21 +12678,7 @@ void lb_generate_code(lbGenerator *gen) {
 
 	for_array(i, m->procedures_to_generate) {
 		lbProcedure *p = m->procedures_to_generate[i];
-		if (LLVMVerifyFunction(p->value, LLVMReturnStatusAction)) {
-			gb_printf_err("LLVM CODE GEN FAILED FOR PROCEDURE: %.*s\n", LIT(p->name));
-			LLVMDumpValue(p->value);
-			gb_printf_err("\n\n\n\n");
-
-			if (build_context.keep_temp_files) {
-				TIME_SECTION("LLVM Print Module to File");
-				if (LLVMPrintModuleToFile(mod, cast(char const *)filepath_ll.text, &llvm_error)) {
-					gb_printf_err("LLVM Error: %s\n", llvm_error);
-					return;
-				}
-			}
-
-			LLVMVerifyFunction(p->value, LLVMAbortProcessAction);
-		}
+		lb_verify_procedure(p);
 	}
 
 
@@ -12706,17 +12750,16 @@ void lb_generate_code(lbGenerator *gen) {
 
 
 	LLVMDIBuilderFinalize(m->debug_builder);
-	if (LLVMVerifyModule(mod, LLVMAbortProcessAction, &llvm_error)) {
-		gb_printf_err("LLVM Error: %s\n", llvm_error);
-		return;
-	}
-	llvm_error = nullptr;
 	if (build_context.keep_temp_files) {
 		TIME_SECTION("LLVM Print Module to File");
 		if (LLVMPrintModuleToFile(mod, cast(char const *)filepath_ll.text, &llvm_error)) {
 			gb_printf_err("LLVM Error: %s\n", llvm_error);
 			return;
 		}
+	}
+	if (LLVMVerifyModule(mod, LLVMAbortProcessAction, &llvm_error)) {
+		gb_printf_err("LLVM Error: %s\n", llvm_error);
+		return;
 	}
 
 	TIME_SECTION("LLVM Object Generation");

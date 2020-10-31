@@ -123,19 +123,19 @@ struct Entity {
 		} Constant;
 		struct {
 			Ast *init_expr; // only used for some variables within procedure bodies
-			i32        field_index;
-			i32        field_src_index;
+			i32  field_index;
+			i32  field_src_index;
 
 			ParameterValue param_value;
 			Ast *          param_expr;
 
-			String     thread_local_model;
-			Entity *   foreign_library;
-			Ast *      foreign_library_ident;
-			String     link_name;
-			String     link_prefix;
-			bool       is_foreign;
-			bool       is_export;
+			String  thread_local_model;
+			Entity *foreign_library;
+			Ast *   foreign_library_ident;
+			String  link_name;
+			String  link_prefix;
+			bool    is_foreign;
+			bool    is_export;
 		} Variable;
 		struct {
 			Type * type_parameter_specialization;

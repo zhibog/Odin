@@ -64,6 +64,7 @@ struct lbAddr {
 };
 
 struct lbModule {
+	struct lbGenerator *gen;
 	LLVMModuleRef mod;
 	LLVMContextRef ctx;
 

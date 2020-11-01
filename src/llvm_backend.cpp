@@ -1849,7 +1849,7 @@ LLVMMetadataRef lb_debug_type_internal(lbModule *m, Type *type) {
 
 			unsigned param_index = 0;
 			if (type->Proc.result_count == 0) {
-				parameters[param_index++] = LLVMDIBuilderCreateBasicType(m->debug_builder, "void", 4, 0, 0, LLVMDIFlagZero);
+				parameters[param_index++] = nullptr;
 			} else {
 				parameters[param_index++] = lb_debug_type(m, type->Proc.results);
 			}
@@ -2632,11 +2632,13 @@ void lb_verify_procedure(lbProcedure *p) {
 			char *llvm_error = nullptr;
 			if (LLVMPrintModuleToFile(p->module->mod, cast(char const *)filepath_ll.text, &llvm_error)) {
 				gb_printf_err("LLVM Error: %s\n", llvm_error);
+				gb_exit(1);
 				return;
 			}
 		}
 
-		LLVMVerifyFunction(p->value, LLVMAbortProcessAction);
+		LLVMVerifyFunction(p->value, LLVMPrintMessageAction);
+		gb_exit(1);
 	}
 }
 
@@ -12676,6 +12678,8 @@ void lb_generate_code(lbGenerator *gen) {
 		}
 	}
 
+	LLVMDIBuilderFinalize(m->debug_builder);
+
 	for_array(i, m->procedures_to_generate) {
 		lbProcedure *p = m->procedures_to_generate[i];
 		lb_verify_procedure(p);
@@ -12749,16 +12753,17 @@ void lb_generate_code(lbGenerator *gen) {
 	}
 
 
-	LLVMDIBuilderFinalize(m->debug_builder);
 	if (build_context.keep_temp_files) {
 		TIME_SECTION("LLVM Print Module to File");
 		if (LLVMPrintModuleToFile(mod, cast(char const *)filepath_ll.text, &llvm_error)) {
 			gb_printf_err("LLVM Error: %s\n", llvm_error);
+			gb_exit(1);
 			return;
 		}
 	}
 	if (LLVMVerifyModule(mod, LLVMAbortProcessAction, &llvm_error)) {
 		gb_printf_err("LLVM Error: %s\n", llvm_error);
+		gb_exit(1);
 		return;
 	}
 

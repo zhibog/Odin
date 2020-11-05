@@ -12037,8 +12037,19 @@ void lb_generate_code(lbGenerator *gen) {
 	LLVMInitializeNativeTarget();
 
 
-	LLVMAddModuleFlag(mod, LLVMModuleFlagBehaviorWarning, "CodeView", 8,
-		LLVMDIBuilderCreateConstantValueExpression(m->debug_builder, 1));
+	if (build_context.metrics.os == TargetOs_windows) {
+		LLVMAddModuleFlag(mod, LLVMModuleFlagBehaviorWarning, "CodeView", 8,
+			LLVMDIBuilderCreateConstantValueExpression(m->debug_builder, 1));
+	} else {
+		#ifndef DEBUG_METADATA_VERSION
+		#define DEBUG_METADATA_VERSION 3
+		#endif
+		LLVMAddModuleFlag(mod, LLVMModuleFlagBehaviorWarning, "Debug Info Version", 18,
+			LLVMDIBuilderCreateConstantValueExpression(m->debug_builder, DEBUG_METADATA_VERSION));
+		LLVMAddModuleFlag(mod, LLVMModuleFlagBehaviorWarning, "Dwarf Version", 13,
+			LLVMDIBuilderCreateConstantValueExpression(m->debug_builder, 4));
+	}
+
 
 	char const *target_triple = alloc_cstring(heap_allocator(), build_context.metrics.target_triplet);
 	char const *target_data_layout = alloc_cstring(heap_allocator(), build_context.metrics.target_data_layout);

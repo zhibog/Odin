@@ -3725,11 +3725,11 @@ void lb_build_inline_range_stmt(lbProcedure *p, AstInlineRangeStmt *rs) {
 		TokenKind op = expr->BinaryExpr.op.kind;
 		Ast *start_expr = expr->BinaryExpr.left;
 		Ast *end_expr   = expr->BinaryExpr.right;
-		GB_ASSERT(start_expr->tav.mode == Addressing_Constant);
-		GB_ASSERT(end_expr->tav.mode == Addressing_Constant);
+		GB_ASSERT(addressing_mode_of_expr(start_expr) == Addressing_Constant);
+		GB_ASSERT(addressing_mode_of_expr(end_expr) == Addressing_Constant);
 
-		ExactValue start = start_expr->tav.value;
-		ExactValue end   = end_expr->tav.value;
+		ExactValue start = start_expr->tav->value;
+		ExactValue end   = end_expr->tav->value;
 		if (op == Token_Ellipsis) { // .. [start, end]
 			ExactValue index = exact_value_i64(0);
 			for (ExactValue val = start;
@@ -3779,16 +3779,16 @@ void lb_build_inline_range_stmt(lbProcedure *p, AstInlineRangeStmt *rs) {
 		if (val0_type) val0_addr = lb_build_addr(p, rs->val0);
 		if (val1_type) val1_addr = lb_build_addr(p, rs->val1);
 
-		GB_ASSERT(expr->tav.mode == Addressing_Constant);
+		GB_ASSERT(addressing_mode_of_expr(expr) == Addressing_Constant);
 
-		Type *t = base_type(expr->tav.type);
+		Type *t = base_type(expr->tav->type);
 
 
 		switch (t->kind) {
 		case Type_Basic:
 			GB_ASSERT(is_type_string(t));
 			{
-				ExactValue value = expr->tav.value;
+				ExactValue value = expr->tav->value;
 				GB_ASSERT(value.kind == ExactValue_String);
 				String str = value.value_string;
 				Rune codepoint = 0;
@@ -3916,9 +3916,9 @@ void lb_build_switch_stmt(lbProcedure *p, AstSwitchStmt *ss) {
 				lbValue cond_rhs = lb_emit_comp(p, op, tag, rhs);
 				cond = lb_emit_arith(p, Token_And, cond_lhs, cond_rhs, t_bool);
 			} else {
-				if (expr->tav.mode == Addressing_Type) {
+				if (addressing_mode_of_expr(expr) == Addressing_Type) {
 					GB_ASSERT(is_type_typeid(tag.type));
-					lbValue e = lb_typeid(p->module, expr->tav.type);
+					lbValue e = lb_typeid(p->module, expr->tav->type);
 					e = lb_emit_conv(p, e, tag.type);
 					cond = lb_emit_comp(p, Token_CmpEq, tag, e);
 				} else {
@@ -4251,11 +4251,12 @@ void lb_build_stmt(lbProcedure *p, Ast *node) {
 				if (vd->values.count > 0) {
 					GB_ASSERT(vd->names.count == vd->values.count);
 					Ast *ast_value = vd->values[i];
-					GB_ASSERT(ast_value->tav.mode == Addressing_Constant ||
-					          ast_value->tav.mode == Addressing_Invalid);
+					auto tav = type_and_value_of_expr(ast_value);
+					GB_ASSERT(tav.mode == Addressing_Constant ||
+					          tav.mode == Addressing_Invalid);
 
 					bool allow_local = false;
-					value = lb_const_value(p->module, ast_value->tav.type, ast_value->tav.value, allow_local);
+					value = lb_const_value(p->module, tav.type, tav.value, allow_local);
 				}
 
 				Ast *ident = vd->names[i];
@@ -4419,7 +4420,7 @@ void lb_build_stmt(lbProcedure *p, Ast *node) {
 			i32 op = cast(i32)as->op.kind;
 			op += Token_Add - Token_AddEq; // Convert += to +
 			if (op == Token_CmpAnd || op == Token_CmpOr) {
-				Type *type = as->lhs[0]->tav.type;
+				Type *type = as->lhs[0]->tav->type;
 				lbValue new_value = lb_emit_logical_binary_expr(p, cast(TokenKind)op, as->lhs[0], as->rhs[0], type);
 
 				lbAddr lhs = lb_build_addr(p, as->lhs[0]);
@@ -5290,8 +5291,8 @@ lbValue lb_const_value(lbModule *m, Type *type, ExactValue value, bool allow_loc
 						ast_node(fv, FieldValue, elem);
 						if (is_ast_range(fv->field)) {
 							ast_node(ie, BinaryExpr, fv->field);
-							TypeAndValue lo_tav = ie->left->tav;
-							TypeAndValue hi_tav = ie->right->tav;
+							TypeAndValue lo_tav = *ie->left->tav;
+							TypeAndValue hi_tav = *ie->right->tav;
 							GB_ASSERT(lo_tav.mode == Addressing_Constant);
 							GB_ASSERT(hi_tav.mode == Addressing_Constant);
 
@@ -5302,7 +5303,7 @@ lbValue lb_const_value(lbModule *m, Type *type, ExactValue value, bool allow_loc
 								hi += 1;
 							}
 							if (lo == i) {
-								TypeAndValue tav = fv->value->tav;
+								TypeAndValue tav = *fv->value->tav;
 								LLVMValueRef val = lb_const_value(m, elem_type, tav.value, allow_local).value;
 								for (i64 k = lo; k < hi; k++) {
 									values[value_index++] = val;
@@ -5313,11 +5314,11 @@ lbValue lb_const_value(lbModule *m, Type *type, ExactValue value, bool allow_loc
 								break;
 							}
 						} else {
-							TypeAndValue index_tav = fv->field->tav;
+							TypeAndValue index_tav = *fv->field->tav;
 							GB_ASSERT(index_tav.mode == Addressing_Constant);
 							i64 index = exact_value_to_i64(index_tav.value);
 							if (index == i) {
-								TypeAndValue tav = fv->value->tav;
+								TypeAndValue tav = *fv->value->tav;
 								LLVMValueRef val = lb_const_value(m, elem_type, tav.value, allow_local).value;
 								values[value_index++] = val;
 								found = true;
@@ -5339,7 +5340,7 @@ lbValue lb_const_value(lbModule *m, Type *type, ExactValue value, bool allow_loc
 				LLVMValueRef *values = gb_alloc_array(temporary_allocator(), LLVMValueRef, type->Array.count);
 
 				for (isize i = 0; i < elem_count; i++) {
-					TypeAndValue tav = cl->elems[i]->tav;
+					TypeAndValue tav = *cl->elems[i]->tav;
 					GB_ASSERT(tav.mode != Addressing_Invalid);
 					values[i] = lb_const_value(m, elem_type, tav.value, allow_local).value;
 				}
@@ -5374,8 +5375,8 @@ lbValue lb_const_value(lbModule *m, Type *type, ExactValue value, bool allow_loc
 						ast_node(fv, FieldValue, elem);
 						if (is_ast_range(fv->field)) {
 							ast_node(ie, BinaryExpr, fv->field);
-							TypeAndValue lo_tav = ie->left->tav;
-							TypeAndValue hi_tav = ie->right->tav;
+							TypeAndValue lo_tav = *ie->left->tav;
+							TypeAndValue hi_tav = *ie->right->tav;
 							GB_ASSERT(lo_tav.mode == Addressing_Constant);
 							GB_ASSERT(hi_tav.mode == Addressing_Constant);
 
@@ -5386,7 +5387,7 @@ lbValue lb_const_value(lbModule *m, Type *type, ExactValue value, bool allow_loc
 								hi += 1;
 							}
 							if (lo == i) {
-								TypeAndValue tav = fv->value->tav;
+								TypeAndValue tav = *fv->value->tav;
 								LLVMValueRef val = lb_const_value(m, elem_type, tav.value, allow_local).value;
 								for (i64 k = lo; k < hi; k++) {
 									values[value_index++] = val;
@@ -5397,11 +5398,11 @@ lbValue lb_const_value(lbModule *m, Type *type, ExactValue value, bool allow_loc
 								break;
 							}
 						} else {
-							TypeAndValue index_tav = fv->field->tav;
+							TypeAndValue index_tav = *fv->field->tav;
 							GB_ASSERT(index_tav.mode == Addressing_Constant);
 							i64 index = exact_value_to_i64(index_tav.value);
 							if (index == i) {
-								TypeAndValue tav = fv->value->tav;
+								TypeAndValue tav = *fv->value->tav;
 								LLVMValueRef val = lb_const_value(m, elem_type, tav.value, allow_local).value;
 								values[value_index++] = val;
 								found = true;
@@ -5423,7 +5424,7 @@ lbValue lb_const_value(lbModule *m, Type *type, ExactValue value, bool allow_loc
 				LLVMValueRef *values = gb_alloc_array(temporary_allocator(), LLVMValueRef, type->EnumeratedArray.count);
 
 				for (isize i = 0; i < elem_count; i++) {
-					TypeAndValue tav = cl->elems[i]->tav;
+					TypeAndValue tav = *cl->elems[i]->tav;
 					GB_ASSERT(tav.mode != Addressing_Invalid);
 					values[i] = lb_const_value(m, elem_type, tav.value, allow_local).value;
 				}
@@ -5448,7 +5449,7 @@ lbValue lb_const_value(lbModule *m, Type *type, ExactValue value, bool allow_loc
 			LLVMValueRef *values = gb_alloc_array(temporary_allocator(), LLVMValueRef, total_elem_count);
 
 			for (isize i = 0; i < elem_count; i++) {
-				TypeAndValue tav = cl->elems[i]->tav;
+				TypeAndValue tav = *cl->elems[i]->tav;
 				GB_ASSERT(tav.mode != Addressing_Invalid);
 				values[i] = lb_const_value(m, elem_type, tav.value, allow_local).value;
 			}
@@ -5481,7 +5482,7 @@ lbValue lb_const_value(lbModule *m, Type *type, ExactValue value, bool allow_loc
 						ast_node(fv, FieldValue, cl->elems[i]);
 						String name = fv->field->Ident.token.string;
 
-						TypeAndValue tav = fv->value->tav;
+						TypeAndValue tav = *fv->value->tav;
 						GB_ASSERT(tav.mode != Addressing_Invalid);
 
 						Selection sel = lookup_field(type, name, false);
@@ -5494,7 +5495,7 @@ lbValue lb_const_value(lbModule *m, Type *type, ExactValue value, bool allow_loc
 				} else {
 					for_array(i, cl->elems) {
 						Entity *f = type->Struct.fields[i];
-						TypeAndValue tav = cl->elems[i]->tav;
+						TypeAndValue tav = *cl->elems[i]->tav;
 						ExactValue val = {};
 						if (tav.mode != Addressing_Invalid) {
 							val = tav.value;
@@ -5536,7 +5537,7 @@ lbValue lb_const_value(lbModule *m, Type *type, ExactValue value, bool allow_loc
 				Ast *e = cl->elems[i];
 				GB_ASSERT(e->kind != Ast_FieldValue);
 
-				TypeAndValue tav = e->tav;
+				TypeAndValue tav = *e->tav;
 				if (tav.mode != Addressing_Constant) {
 					continue;
 				}
@@ -6079,11 +6080,11 @@ lbValue lb_build_binary_expr(lbProcedure *p, Ast *expr) {
 			lbValue left = {};
 			lbValue right = {};
 
-			if (be->left->tav.mode == Addressing_Type) {
-				left = lb_typeid(p->module, be->left->tav.type);
+			if (be->left->tav->mode == Addressing_Type) {
+				left = lb_typeid(p->module, be->left->tav->type);
 			}
-			if (be->right->tav.mode == Addressing_Type) {
-				right = lb_typeid(p->module, be->right->tav.type);
+			if (be->right->tav->mode == Addressing_Type) {
+				right = lb_typeid(p->module, be->right->tav->type);
 			}
 			if (left.value == nullptr)  left  = lb_build_expr(p, be->left);
 			if (right.value == nullptr) right = lb_build_expr(p, be->right);
@@ -8434,7 +8435,7 @@ lbValue lb_build_builtin_proc(lbProcedure *p, Ast *expr, TypeAndValue const &tv,
 	case BuiltinProc_atomic_cxchgweak_failacq:
 	case BuiltinProc_atomic_cxchgweak_acq_failrelaxed:
 	case BuiltinProc_atomic_cxchgweak_acqrel_failrelaxed: {
-		Type *type = expr->tav.type;
+		Type *type = expr->tav->type;
 
 		lbValue address = lb_build_expr(p, ce->args[0]);
 		Type *elem = type_deref(address.type);
@@ -8562,8 +8563,8 @@ lbValue lb_build_call_expr(lbProcedure *p, Ast *expr) {
 	// NOTE(bill): Regular call
 	lbValue value = {};
 	Ast *proc_expr = unparen_expr(ce->proc);
-	if (proc_expr->tav.mode == Addressing_Constant) {
-		ExactValue v = proc_expr->tav.value;
+	if (proc_expr->tav->mode == Addressing_Constant) {
+		ExactValue v = proc_expr->tav->value;
 		switch (v.kind) {
 		case ExactValue_Integer:
 			{
@@ -8572,7 +8573,7 @@ lbValue lb_build_call_expr(lbProcedure *p, Ast *expr) {
 				x.value = LLVMConstInt(lb_type(m, t_uintptr), u, false);
 				x.type = t_uintptr;
 				x = lb_emit_conv(p, x, t_rawptr);
-				value = lb_emit_conv(p, x, proc_expr->tav.type);
+				value = lb_emit_conv(p, x, proc_expr->tav->type);
 				break;
 			}
 		case ExactValue_Pointer:
@@ -8582,7 +8583,7 @@ lbValue lb_build_call_expr(lbProcedure *p, Ast *expr) {
 				x.value = LLVMConstInt(lb_type(m, t_uintptr), u, false);
 				x.type = t_uintptr;
 				x = lb_emit_conv(p, x, t_rawptr);
-				value = lb_emit_conv(p, x, proc_expr->tav.type);
+				value = lb_emit_conv(p, x, proc_expr->tav->type);
 				break;
 			}
 		}
@@ -10376,7 +10377,7 @@ lbAddr lb_build_addr(lbProcedure *p, Ast *expr) {
 			return lb_addr_soa_variable(val, index, ie->index);
 		}
 
-		if (ie->expr->tav.mode == Addressing_SoaVariable) {
+		if (ie->expr->tav->mode == Addressing_SoaVariable) {
 			// SOA Structures for slices/dynamic arrays
 			GB_ASSERT(is_type_pointer(type_of_expr(ie->expr)));
 
@@ -10893,8 +10894,8 @@ lbAddr lb_build_addr(lbProcedure *p, Ast *expr) {
 						}
 						if (is_ast_range(fv->field)) {
 							ast_node(ie, BinaryExpr, fv->field);
-							TypeAndValue lo_tav = ie->left->tav;
-							TypeAndValue hi_tav = ie->right->tav;
+							TypeAndValue lo_tav = *ie->left->tav;
+							TypeAndValue hi_tav = *ie->right->tav;
 							GB_ASSERT(lo_tav.mode == Addressing_Constant);
 							GB_ASSERT(hi_tav.mode == Addressing_Constant);
 
@@ -10916,8 +10917,8 @@ lbAddr lb_build_addr(lbProcedure *p, Ast *expr) {
 
 						} else {
 							auto tav = fv->field->tav;
-							GB_ASSERT(tav.mode == Addressing_Constant);
-							i64 index = exact_value_to_i64(tav.value);
+							GB_ASSERT(tav->mode == Addressing_Constant);
+							i64 index = exact_value_to_i64(tav->value);
 
 							lbValue value = lb_build_expr(p, fv->value);
 							lbCompoundLitElemTempData data = {};
@@ -10992,8 +10993,8 @@ lbAddr lb_build_addr(lbProcedure *p, Ast *expr) {
 						}
 						if (is_ast_range(fv->field)) {
 							ast_node(ie, BinaryExpr, fv->field);
-							TypeAndValue lo_tav = ie->left->tav;
-							TypeAndValue hi_tav = ie->right->tav;
+							TypeAndValue lo_tav = *ie->left->tav;
+							TypeAndValue hi_tav = *ie->right->tav;
 							GB_ASSERT(lo_tav.mode == Addressing_Constant);
 							GB_ASSERT(hi_tav.mode == Addressing_Constant);
 
@@ -11015,8 +11016,8 @@ lbAddr lb_build_addr(lbProcedure *p, Ast *expr) {
 
 						} else {
 							auto tav = fv->field->tav;
-							GB_ASSERT(tav.mode == Addressing_Constant);
-							i64 index = exact_value_to_i64(tav.value);
+							GB_ASSERT(tav->mode == Addressing_Constant);
+							i64 index = exact_value_to_i64(tav->value);
 
 							lbValue value = lb_build_expr(p, fv->value);
 							lbCompoundLitElemTempData data = {};
@@ -11101,8 +11102,8 @@ lbAddr lb_build_addr(lbProcedure *p, Ast *expr) {
 
 						if (is_ast_range(fv->field)) {
 							ast_node(ie, BinaryExpr, fv->field);
-							TypeAndValue lo_tav = ie->left->tav;
-							TypeAndValue hi_tav = ie->right->tav;
+							TypeAndValue lo_tav = *ie->left->tav;
+							TypeAndValue hi_tav = *ie->right->tav;
 							GB_ASSERT(lo_tav.mode == Addressing_Constant);
 							GB_ASSERT(hi_tav.mode == Addressing_Constant);
 
@@ -11123,8 +11124,8 @@ lbAddr lb_build_addr(lbProcedure *p, Ast *expr) {
 							}
 
 						} else {
-							GB_ASSERT(fv->field->tav.mode == Addressing_Constant);
-							i64 index = exact_value_to_i64(fv->field->tav.value);
+							GB_ASSERT(fv->field->tav->mode == Addressing_Constant);
+							i64 index = exact_value_to_i64(fv->field->tav->value);
 
 							lbValue field_expr = lb_build_expr(p, fv->value);
 							GB_ASSERT(!is_type_tuple(field_expr.type));
@@ -11205,8 +11206,8 @@ lbAddr lb_build_addr(lbProcedure *p, Ast *expr) {
 					ast_node(fv, FieldValue, elem);
 					if (is_ast_range(fv->field)) {
 						ast_node(ie, BinaryExpr, fv->field);
-						TypeAndValue lo_tav = ie->left->tav;
-						TypeAndValue hi_tav = ie->right->tav;
+						TypeAndValue lo_tav = *ie->left->tav;
+						TypeAndValue hi_tav = *ie->right->tav;
 						GB_ASSERT(lo_tav.mode == Addressing_Constant);
 						GB_ASSERT(hi_tav.mode == Addressing_Constant);
 
@@ -11224,9 +11225,9 @@ lbAddr lb_build_addr(lbProcedure *p, Ast *expr) {
 							lb_emit_store(p, ep, value);
 						}
 					} else {
-						GB_ASSERT(fv->field->tav.mode == Addressing_Constant);
+						GB_ASSERT(fv->field->tav->mode == Addressing_Constant);
 
-						i64 field_index = exact_value_to_i64(fv->field->tav.value);
+						i64 field_index = exact_value_to_i64(fv->field->tav->value);
 
 						lbValue ev = lb_build_expr(p, fv->value);
 						lbValue value = lb_emit_conv(p, ev, et);

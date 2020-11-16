@@ -31,6 +31,11 @@ struct TypeAndValue {
 	ExactValue     value;
 };
 
+TypeAndValue *alloc_type_and_value(void) {
+	return gb_alloc_item(permanent_allocator(), TypeAndValue);
+}
+
+
 
 enum ParseFileError {
 	ParseFile_None,
@@ -217,14 +222,16 @@ enum ProcCallingConvention {
 	ProcCC_ForeignBlockDefault = -1,
 };
 
-enum StateFlag {
+enum StateFlag : u16 {
 	StateFlag_bounds_check    = 1<<0,
 	StateFlag_no_bounds_check = 1<<1,
 
 	StateFlag_no_deferred = 1<<5,
+
+	StateFlag_BeenHandled = 1<<14
 };
 
-enum ViralStateFlag {
+enum ViralStateFlag : u16 {
 	ViralStateFlag_ContainsDeferredProcedure = 1<<0,
 };
 
@@ -608,7 +615,7 @@ AST_KIND(_TypeBegin, "", bool) \
 	}) \
 AST_KIND(_TypeEnd,  "", bool)
 
-enum AstKind {
+enum AstKind : u32 {
 	Ast_Invalid,
 #define AST_KIND(_kind_name_, ...) GB_JOIN2(Ast_, _kind_name_),
 	AST_KINDS
@@ -638,22 +645,20 @@ isize const ast_variant_sizes[] = {
 
 struct AstCommonStuff {
 	AstKind      kind;
-	u32          state_flags;
-	u32          viral_state_flags;
-	bool         been_handled;
+	u16          state_flags;
+	u16          viral_state_flags;
 	AstFile *    file;
 	Scope *      scope;
-	TypeAndValue tav;
+	TypeAndValue *tav; // NOTE(bill): This is a pointer because not every variant will require it
 };
 
 struct Ast {
 	AstKind      kind;
-	u32          state_flags;
-	u32          viral_state_flags;
-	bool         been_handled;
+	u16          state_flags;
+	u16          viral_state_flags;
 	AstFile *    file;
 	Scope *      scope;
-	TypeAndValue tav;
+	TypeAndValue *tav; // NOTE(bill): This is a pointer because not every variant will require it
 
 	// IMPORTANT NOTE(bill): This must be at the end since the AST is allocated to be size of the variant
 	union {

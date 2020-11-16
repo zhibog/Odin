@@ -1384,6 +1384,23 @@ void show_timings(Checker *c, Timings *t) {
 			gb_printf("us/bytes     - %.3f\n", 1.0e6*total_time/cast(f64)total_file_size);
 			gb_printf("\n");
 		}
+		if (false) {
+			gb_printf("Total Ast Node allocation count\n");
+			isize total_memory_used = 0;
+			for (i32 i = 1; i < Ast_COUNT; i++) {
+				if (ast_strings[i].len != 0) {
+					isize size = ast_node_size(cast(AstKind)i);
+					isize full_size = size*ast_node_alloc_usage[i].value;
+					gb_printf("\t\"%.*s\" %u %td %td %010td\n", LIT(ast_strings[i]), ast_node_alloc_usage[i], ast_variant_sizes[i], size, full_size);
+					total_memory_used += full_size;
+				}
+			}
+			gb_printf("Total memory used for nodes: %td B\n", total_memory_used);
+			gb_printf("Total memory used for files: %td B\n", total_file_size);
+			gb_printf("Node to File Ratio: %.3f\n", cast(f64)total_memory_used/cast(f64)total_file_size);
+			gb_printf("gb_size_of(AstCommonStuff): %td\n", gb_size_of(AstCommonStuff));
+			gb_printf("gb_size_of(ExactValue): %td\n", gb_size_of(ExactValue));
+		}
 	}
 }
 

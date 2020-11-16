@@ -111,13 +111,18 @@ Token ast_token(Ast *node) {
 
 isize ast_node_size(AstKind kind) {
 	return align_formula_isize(gb_size_of(AstCommonStuff) + ast_variant_sizes[kind], gb_align_of(void *));
-
 }
+
+gb_global gbAtomic32 ast_node_alloc_usage[Ast_COUNT] = {};
+
+
 // NOTE(bill): And this below is why is I/we need a new language! Discriminated unions are a pain in C/C++
 Ast *alloc_ast_node(AstFile *f, AstKind kind) {
 	gbAllocator a = ast_allocator(f);
 
 	isize size = ast_node_size(kind);
+
+	gb_atomic32_fetch_add(ast_node_alloc_usage+kind, 1);
 
 	Ast *node = cast(Ast *)gb_alloc(a, size);
 	node->kind = kind;

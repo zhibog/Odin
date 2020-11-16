@@ -921,14 +921,21 @@ void destroy_checker(Checker *c) {
 
 TypeAndValue type_and_value_of_expr(Ast *expr) {
 	TypeAndValue tav = {};
-	if (expr != nullptr) {
-		tav = expr->tav;
+	if (expr && expr->tav) {
+		tav = *expr->tav;
 	}
 	return tav;
 }
 
+AddressingMode addressing_mode_of_expr(Ast *expr) {
+	if (expr && expr->tav) {
+		return expr->tav->mode;
+	}
+	return Addressing_Invalid;
+}
+
 Type *type_of_expr(Ast *expr) {
-	TypeAndValue tav = expr->tav;
+	TypeAndValue tav = type_and_value_of_expr(expr);
 	if (tav.mode != Addressing_Invalid) {
 		return tav.type;
 	}
@@ -1061,14 +1068,15 @@ void add_type_and_value(CheckerInfo *i, Ast *expr, AddressingMode mode, Type *ty
 	Ast *prev_expr = nullptr;
 	for (;;) {
 		if (prev_expr != expr) {
-			expr->tav.mode = mode;
-			expr->tav.type = type;
+			expr->tav = alloc_type_and_value();
+			expr->tav->mode = mode;
+			expr->tav->type = type;
 			if (mode == Addressing_Constant || mode == Addressing_Invalid) {
-				expr->tav.value = value;
+				expr->tav->value = value;
 			} else if (mode == Addressing_Value && is_type_typeid(type)) {
-				expr->tav.value = value;
+				expr->tav->value = value;
 			} else if (mode == Addressing_Value && is_type_proc(type)) {
-				expr->tav.value = value;
+				expr->tav->value = value;
 			}
 
 			prev_expr = expr;
@@ -3012,8 +3020,8 @@ void check_builtin_attributes(CheckerContext *ctx, Entity *e, Array<Ast *> *attr
 }
 
 void check_collect_value_decl(CheckerContext *c, Ast *decl) {
-	if (decl->been_handled) return;
-	decl->been_handled = true;
+	if (decl->state_flags & StateFlag_BeenHandled) return;
+	decl->state_flags |= StateFlag_BeenHandled;
 
 	ast_node(vd, ValueDecl, decl);
 
@@ -3231,8 +3239,8 @@ void check_collect_value_decl(CheckerContext *c, Ast *decl) {
 }
 
 void check_add_foreign_block_decl(CheckerContext *ctx, Ast *decl) {
-	if (decl->been_handled) return;
-	decl->been_handled = true;
+	if (decl->state_flags & StateFlag_BeenHandled) return;
+	decl->state_flags |= StateFlag_BeenHandled;
 
 	ast_node(fb, ForeignBlockDecl, decl);
 	Ast *foreign_library = fb->foreign_library;
@@ -3616,8 +3624,8 @@ Array<ImportPathItem> find_import_path(Checker *c, AstPackage *start, AstPackage
 }
 #endif
 void check_add_import_decl(CheckerContext *ctx, Ast *decl) {
-	if (decl->been_handled) return;
-	decl->been_handled = true;
+	if (decl->state_flags & StateFlag_BeenHandled) return;
+	decl->state_flags |= StateFlag_BeenHandled;
 
 	ast_node(id, ImportDecl, decl);
 	Token token = id->relpath;
@@ -3731,8 +3739,8 @@ DECL_ATTRIBUTE_PROC(foreign_import_decl_attribute) {
 }
 
 void check_add_foreign_import_decl(CheckerContext *ctx, Ast *decl) {
-	if (decl->been_handled) return;
-	decl->been_handled = true;
+	if (decl->state_flags & StateFlag_BeenHandled) return;
+	decl->state_flags |= StateFlag_BeenHandled;
 
 	ast_node(fl, ForeignImportDecl, decl);
 

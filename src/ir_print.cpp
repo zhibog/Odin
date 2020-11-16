@@ -995,8 +995,8 @@ void ir_print_exact_value(irFileBuffer *f, irModule *m, ExactValue value, Type *
 						ast_node(fv, FieldValue, elem);
 						if (is_ast_range(fv->field)) {
 							ast_node(ie, BinaryExpr, fv->field);
-							TypeAndValue lo_tav = ie->left->tav;
-							TypeAndValue hi_tav = ie->right->tav;
+							TypeAndValue lo_tav = *ie->left->tav;
+							TypeAndValue hi_tav = *ie->right->tav;
 							GB_ASSERT(lo_tav.mode == Addressing_Constant);
 							GB_ASSERT(hi_tav.mode == Addressing_Constant);
 
@@ -1007,7 +1007,7 @@ void ir_print_exact_value(irFileBuffer *f, irModule *m, ExactValue value, Type *
 								hi += 1;
 							}
 							if (lo == i) {
-								TypeAndValue tav = fv->value->tav;
+								TypeAndValue tav = type_and_value_of_expr(fv->value);
 								if (tav.mode != Addressing_Constant) {
 									break;
 								}
@@ -1022,11 +1022,11 @@ void ir_print_exact_value(irFileBuffer *f, irModule *m, ExactValue value, Type *
 								break;
 							}
 						} else {
-							TypeAndValue index_tav = fv->field->tav;
+							TypeAndValue index_tav = *fv->field->tav;
 							GB_ASSERT(index_tav.mode == Addressing_Constant);
 							i64 index = exact_value_to_i64(index_tav.value);
 							if (index == i) {
-								TypeAndValue tav = fv->value->tav;
+								TypeAndValue tav = type_and_value_of_expr(fv->value);
 								if (tav.mode != Addressing_Constant) {
 									break;
 								}
@@ -1051,7 +1051,7 @@ void ir_print_exact_value(irFileBuffer *f, irModule *m, ExactValue value, Type *
 
 				for (isize i = 0; i < elem_count; i++) {
 					if (i > 0) ir_write_str_lit(f, ", ");
-					TypeAndValue tav = cl->elems[i]->tav;
+					TypeAndValue tav = *cl->elems[i]->tav;
 					GB_ASSERT(tav.mode != Addressing_Invalid);
 					ir_print_compound_element(f, m, tav.value, elem_type);
 				}
@@ -1088,8 +1088,8 @@ void ir_print_exact_value(irFileBuffer *f, irModule *m, ExactValue value, Type *
 						ast_node(fv, FieldValue, elem);
 						if (is_ast_range(fv->field)) {
 							ast_node(ie, BinaryExpr, fv->field);
-							TypeAndValue lo_tav = ie->left->tav;
-							TypeAndValue hi_tav = ie->right->tav;
+							TypeAndValue lo_tav = *ie->left->tav;
+							TypeAndValue hi_tav = *ie->right->tav;
 							GB_ASSERT(lo_tav.mode == Addressing_Constant);
 							GB_ASSERT(hi_tav.mode == Addressing_Constant);
 
@@ -1100,7 +1100,7 @@ void ir_print_exact_value(irFileBuffer *f, irModule *m, ExactValue value, Type *
 								hi += 1;
 							}
 							if (lo == i) {
-								TypeAndValue tav = fv->value->tav;
+								TypeAndValue tav = type_and_value_of_expr(fv->value);
 								if (tav.mode != Addressing_Constant) {
 									break;
 								}
@@ -1115,11 +1115,11 @@ void ir_print_exact_value(irFileBuffer *f, irModule *m, ExactValue value, Type *
 								break;
 							}
 						} else {
-							TypeAndValue index_tav = fv->field->tav;
+							TypeAndValue index_tav = type_and_value_of_expr(fv->field);
 							GB_ASSERT(index_tav.mode == Addressing_Constant);
 							i64 index = exact_value_to_i64(index_tav.value);
 							if (index == i) {
-								TypeAndValue tav = fv->value->tav;
+								TypeAndValue tav = type_and_value_of_expr(fv->value);
 								if (tav.mode != Addressing_Constant) {
 									break;
 								}
@@ -1144,7 +1144,7 @@ void ir_print_exact_value(irFileBuffer *f, irModule *m, ExactValue value, Type *
 
 				for (isize i = 0; i < elem_count; i++) {
 					if (i > 0) ir_write_str_lit(f, ", ");
-					TypeAndValue tav = cl->elems[i]->tav;
+					TypeAndValue tav = *cl->elems[i]->tav;
 					GB_ASSERT(tav.mode != Addressing_Invalid);
 					ir_print_compound_element(f, m, tav.value, elem_type);
 				}
@@ -1170,7 +1170,7 @@ void ir_print_exact_value(irFileBuffer *f, irModule *m, ExactValue value, Type *
 
 			for (isize i = 0; i < elem_count; i++) {
 				if (i > 0) ir_write_str_lit(f, ", ");
-				TypeAndValue tav = cl->elems[i]->tav;
+				TypeAndValue tav = *cl->elems[i]->tav;
 				GB_ASSERT(tav.mode != Addressing_Invalid);
 				ir_print_compound_element(f, m, tav.value, elem_type);
 			}
@@ -1204,7 +1204,7 @@ void ir_print_exact_value(irFileBuffer *f, irModule *m, ExactValue value, Type *
 						ast_node(fv, FieldValue, cl->elems[i]);
 						String name = fv->field->Ident.token.string;
 
-						TypeAndValue tav = fv->value->tav;
+						TypeAndValue tav = *fv->value->tav;
 						GB_ASSERT(tav.mode != Addressing_Invalid);
 
 						Selection sel = lookup_field(type, name, false);
@@ -1216,7 +1216,7 @@ void ir_print_exact_value(irFileBuffer *f, irModule *m, ExactValue value, Type *
 				} else {
 					for_array(i, cl->elems) {
 						Entity *f = type->Struct.fields[i];
-						TypeAndValue tav = cl->elems[i]->tav;
+						TypeAndValue tav = type_and_value_of_expr(cl->elems[i]);
 						ExactValue val = {};
 						if (tav.mode != Addressing_Invalid) {
 							val = tav.value;
@@ -1266,7 +1266,7 @@ void ir_print_exact_value(irFileBuffer *f, irModule *m, ExactValue value, Type *
 				Ast *e = cl->elems[i];
 				GB_ASSERT(e->kind != Ast_FieldValue);
 
-				TypeAndValue tav = e->tav;
+				TypeAndValue tav = type_and_value_of_expr(e);
 				if (tav.mode != Addressing_Constant) {
 					continue;
 				}

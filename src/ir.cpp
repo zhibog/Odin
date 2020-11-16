@@ -7447,7 +7447,7 @@ irValue *ir_build_builtin_proc(irProcedure *proc, Ast *expr, TypeAndValue tv, Bu
 	case BuiltinProc_atomic_cxchgweak_failacq:
 	case BuiltinProc_atomic_cxchgweak_acq_failrelaxed:
 	case BuiltinProc_atomic_cxchgweak_acqrel_failrelaxed: {
-		Type *type = expr->tav.type;
+		Type *type = expr->tav->type;
 
 		irValue *address = ir_build_expr(proc, ce->args[0]);
 		Type *elem = type_deref(ir_type(address));
@@ -7554,15 +7554,15 @@ irValue *ir_build_call_expr(irProcedure *proc, Ast *expr) {
 	// NOTE(bill): Regular call
 	irValue *value = nullptr;
 	Ast *proc_expr = unparen_expr(ce->proc);
-	if (proc_expr->tav.mode == Addressing_Constant) {
-		ExactValue v = proc_expr->tav.value;
+	if (proc_expr->tav->mode == Addressing_Constant) {
+		ExactValue v = proc_expr->tav->value;
 		switch (v.kind) {
 		case ExactValue_Integer:
 			{
 				u64 u = big_int_to_u64(&v.value_integer);
 				irValue *x = ir_const_uintptr(u);
 				x = ir_emit_conv(proc, x, t_rawptr);
-				value = ir_emit_conv(proc, x, proc_expr->tav.type);
+				value = ir_emit_conv(proc, x, proc_expr->tav->type);
 				break;
 			}
 		case ExactValue_Pointer:
@@ -7570,7 +7570,7 @@ irValue *ir_build_call_expr(irProcedure *proc, Ast *expr) {
 				u64 u = cast(u64)v.value_pointer;
 				irValue *x = ir_const_uintptr(u);
 				x = ir_emit_conv(proc, x, t_rawptr);
-				value = ir_emit_conv(proc, x, proc_expr->tav.type);
+				value = ir_emit_conv(proc, x, proc_expr->tav->type);
 				break;
 			}
 		}
@@ -8568,7 +8568,7 @@ irAddr ir_build_addr(irProcedure *proc, Ast *expr) {
 			return ir_addr_soa_variable(val, index, ie->index);
 		}
 
-		if (ie->expr->tav.mode == Addressing_SoaVariable) {
+		if (ie->expr->tav->mode == Addressing_SoaVariable) {
 			// SOA Structures for slices/dynamic arrays
 			GB_ASSERT(is_type_pointer(type_of_expr(ie->expr)));
 
@@ -9036,8 +9036,8 @@ irAddr ir_build_addr(irProcedure *proc, Ast *expr) {
 						}
 						if (is_ast_range(fv->field)) {
 							ast_node(ie, BinaryExpr, fv->field);
-							TypeAndValue lo_tav = ie->left->tav;
-							TypeAndValue hi_tav = ie->right->tav;
+							TypeAndValue lo_tav = *ie->left->tav;
+							TypeAndValue hi_tav = *ie->right->tav;
 							GB_ASSERT(lo_tav.mode == Addressing_Constant);
 							GB_ASSERT(hi_tav.mode == Addressing_Constant);
 
@@ -9058,7 +9058,7 @@ irAddr ir_build_addr(irProcedure *proc, Ast *expr) {
 							}
 
 						} else {
-							auto tav = fv->field->tav;
+							auto tav = *fv->field->tav;
 							GB_ASSERT(tav.mode == Addressing_Constant);
 							i64 index = exact_value_to_i64(tav.value);
 
@@ -9134,8 +9134,8 @@ irAddr ir_build_addr(irProcedure *proc, Ast *expr) {
 						}
 						if (is_ast_range(fv->field)) {
 							ast_node(ie, BinaryExpr, fv->field);
-							TypeAndValue lo_tav = ie->left->tav;
-							TypeAndValue hi_tav = ie->right->tav;
+							TypeAndValue lo_tav = *ie->left->tav;
+							TypeAndValue hi_tav = *ie->right->tav;
 							GB_ASSERT(lo_tav.mode == Addressing_Constant);
 							GB_ASSERT(hi_tav.mode == Addressing_Constant);
 
@@ -9156,7 +9156,7 @@ irAddr ir_build_addr(irProcedure *proc, Ast *expr) {
 							}
 
 						} else {
-							auto tav = fv->field->tav;
+							auto tav = *fv->field->tav;
 							GB_ASSERT(tav.mode == Addressing_Constant);
 							i64 index = exact_value_to_i64(tav.value);
 
@@ -9243,8 +9243,8 @@ irAddr ir_build_addr(irProcedure *proc, Ast *expr) {
 
 						if (is_ast_range(fv->field)) {
 							ast_node(ie, BinaryExpr, fv->field);
-							TypeAndValue lo_tav = ie->left->tav;
-							TypeAndValue hi_tav = ie->right->tav;
+							TypeAndValue lo_tav = *ie->left->tav;
+							TypeAndValue hi_tav = *ie->right->tav;
 							GB_ASSERT(lo_tav.mode == Addressing_Constant);
 							GB_ASSERT(hi_tav.mode == Addressing_Constant);
 
@@ -9265,8 +9265,8 @@ irAddr ir_build_addr(irProcedure *proc, Ast *expr) {
 							}
 
 						} else {
-							GB_ASSERT(fv->field->tav.mode == Addressing_Constant);
-							i64 index = exact_value_to_i64(fv->field->tav.value);
+							GB_ASSERT(fv->field->tav->mode == Addressing_Constant);
+							i64 index = exact_value_to_i64(fv->field->tav->value);
 
 							irValue *field_expr = ir_build_expr(proc, fv->value);
 							GB_ASSERT(!is_type_tuple(ir_type(field_expr)));
@@ -9337,8 +9337,8 @@ irAddr ir_build_addr(irProcedure *proc, Ast *expr) {
 					ast_node(fv, FieldValue, elem);
 					if (is_ast_range(fv->field)) {
 						ast_node(ie, BinaryExpr, fv->field);
-						TypeAndValue lo_tav = ie->left->tav;
-						TypeAndValue hi_tav = ie->right->tav;
+						TypeAndValue lo_tav = *ie->left->tav;
+						TypeAndValue hi_tav = *ie->right->tav;
 						GB_ASSERT(lo_tav.mode == Addressing_Constant);
 						GB_ASSERT(hi_tav.mode == Addressing_Constant);
 
@@ -9356,9 +9356,9 @@ irAddr ir_build_addr(irProcedure *proc, Ast *expr) {
 							ir_emit_store(proc, ep, value);
 						}
 					} else {
-						GB_ASSERT(fv->field->tav.mode == Addressing_Constant);
+						GB_ASSERT(fv->field->tav->mode == Addressing_Constant);
 
-						i64 field_index = exact_value_to_i64(fv->field->tav.value);
+						i64 field_index = exact_value_to_i64(fv->field->tav->value);
 
 						irValue *ev = ir_build_expr(proc, fv->value);
 						irValue *value = ir_emit_conv(proc, ev, et);
@@ -10162,10 +10162,11 @@ void ir_build_stmt_internal(irProcedure *proc, Ast *node) {
 					if (vd->values.count > 0) {
 						GB_ASSERT(vd->names.count == vd->values.count);
 						Ast *ast_value = vd->values[i];
-						GB_ASSERT(ast_value->tav.mode == Addressing_Constant ||
-						          ast_value->tav.mode == Addressing_Invalid);
+						TypeAndValue tav = type_and_value_of_expr(ast_value);
+						GB_ASSERT(tav.mode == Addressing_Constant ||
+						          tav.mode == Addressing_Invalid);
 
-						value = ir_add_module_constant(m, ast_value->tav.type, ast_value->tav.value);
+						value = ir_add_module_constant(m, tav.type, tav.value);
 					}
 
 					Ast *ident = vd->names[i];
@@ -10315,7 +10316,7 @@ void ir_build_stmt_internal(irProcedure *proc, Ast *node) {
 			i32 op = cast(i32)as->op.kind;
 			op += Token_Add - Token_AddEq; // Convert += to +
 			if (op == Token_CmpAnd || op == Token_CmpOr) {
-				Type *type = as->lhs[0]->tav.type;
+				Type *type = as->lhs[0]->tav->type;
 				irValue *new_value = ir_emit_logical_binary_expr(proc, cast(TokenKind)op, as->lhs[0], as->rhs[0], type);
 
 				irAddr lhs = ir_build_addr(proc, as->lhs[0]);
@@ -10734,11 +10735,11 @@ void ir_build_stmt_internal(irProcedure *proc, Ast *node) {
 			TokenKind op = expr->BinaryExpr.op.kind;
 			Ast *start_expr = expr->BinaryExpr.left;
 			Ast *end_expr   = expr->BinaryExpr.right;
-			GB_ASSERT(start_expr->tav.mode == Addressing_Constant);
-			GB_ASSERT(end_expr->tav.mode == Addressing_Constant);
+			GB_ASSERT(start_expr->tav->mode == Addressing_Constant);
+			GB_ASSERT(end_expr->tav->mode == Addressing_Constant);
 
-			ExactValue start = start_expr->tav.value;
-			ExactValue end   = end_expr->tav.value;
+			ExactValue start = start_expr->tav->value;
+			ExactValue end   = end_expr->tav->value;
 			if (op == Token_Ellipsis) { // .. [start, end]
 				ExactValue index = exact_value_i64(0);
 				for (ExactValue val = start;
@@ -10799,16 +10800,16 @@ void ir_build_stmt_internal(irProcedure *proc, Ast *node) {
 			if (val0_type) val0_addr = ir_build_addr(proc, rs->val0);
 			if (val1_type) val1_addr = ir_build_addr(proc, rs->val1);
 
-			GB_ASSERT(expr->tav.mode == Addressing_Constant);
+			GB_ASSERT(expr->tav->mode == Addressing_Constant);
 
-			Type *t = base_type(expr->tav.type);
+			Type *t = base_type(expr->tav->type);
 
 
 			switch (t->kind) {
 			case Type_Basic:
 				GB_ASSERT(is_type_string(t));
 				{
-					ExactValue value = expr->tav.value;
+					ExactValue value = expr->tav->value;
 					GB_ASSERT(value.kind == ExactValue_String);
 					String str = value.value_string;
 					Rune codepoint = 0;
@@ -10958,9 +10959,9 @@ void ir_build_stmt_internal(irProcedure *proc, Ast *node) {
 					irValue *cond_rhs = ir_emit_comp(proc, op, tag, rhs);
 					cond = ir_emit_arith(proc, Token_And, cond_lhs, cond_rhs, t_bool);
 				} else {
-					if (expr->tav.mode == Addressing_Type) {
+					if (expr->tav->mode == Addressing_Type) {
 						GB_ASSERT(is_type_typeid(ir_type(tag)));
-						irValue *e = ir_typeid(proc->module, expr->tav.type);
+						irValue *e = ir_typeid(proc->module, expr->tav->type);
 						e = ir_emit_conv(proc, e, ir_type(tag));
 						cond = ir_emit_comp(proc, Token_CmpEq, tag, e);
 					} else {

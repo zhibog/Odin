@@ -3271,8 +3271,9 @@ bool check_type_internal(CheckerContext *ctx, Ast *e, Type **type, Type *named_t
 	case_end;
 
 	case_ast_node(tt, TypeidType, e);
-		e->tav.mode = Addressing_Type;
-		e->tav.type = t_typeid;
+		e->tav = alloc_type_and_value();
+		e->tav->mode = Addressing_Type;
+		e->tav->type = t_typeid;
 		*type = t_typeid;
 		set_base_type(named_type, *type);
 		return true;

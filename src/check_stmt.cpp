@@ -347,7 +347,7 @@ Type *check_assignment_variable(CheckerContext *ctx, Operand *lhs, Operand *rhs)
 		Ast *ln = unparen_expr(lhs->expr);
 		if (ln->kind == Ast_IndexExpr) {
 			Ast *x = ln->IndexExpr.expr;
-			TypeAndValue tav = x->tav;
+			TypeAndValue tav = type_and_value_of_expr(x);
 			GB_ASSERT(tav.mode != Addressing_Invalid);
 			if (tav.mode != Addressing_Variable) {
 				if (!is_type_pointer(tav.type)) {
@@ -2191,7 +2191,7 @@ void check_stmt_internal(CheckerContext *ctx, Ast *node, u32 flags) {
 							error(e->token, "A static variable declaration with a default value must be constant");
 						} else {
 							Ast *value = vd->values[i];
-							if (value->tav.mode != Addressing_Constant) {
+							if (addressing_mode_of_expr(value) != Addressing_Constant) {
 								error(e->token, "A static variable declaration with a default value must be constant");
 							}
 						}

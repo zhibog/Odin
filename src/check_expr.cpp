@@ -1675,7 +1675,7 @@ bool check_is_not_addressable(CheckerContext *c, Operand *o) {
 			return true;
 		}
 		ast_node(ta, TypeAssertion, expr);
-		TypeAndValue tv = ta->expr->tav;
+		TypeAndValue tv = *ta->expr->tav;
 		if (is_type_pointer(tv.type)) {
 			return false;
 		}
@@ -3231,7 +3231,7 @@ ExactValue get_constant_field_single(CheckerContext *c, ExactValue value, i32 in
 		}
 
 		if (cl->elems[0]->kind == Ast_FieldValue) {
-			if (is_type_struct(node->tav.type)) {
+			if (is_type_struct(node->tav->type)) {
 				for_array(i, cl->elems) {
 					Ast *elem = cl->elems[i];
 					if (elem->kind != Ast_FieldValue) {
@@ -3239,14 +3239,14 @@ ExactValue get_constant_field_single(CheckerContext *c, ExactValue value, i32 in
 					}
 					ast_node(fv, FieldValue, elem);
 					String name = fv->field->Ident.token.string;
-					Selection sub_sel = lookup_field(node->tav.type, name, false);
+					Selection sub_sel = lookup_field(node->tav->type, name, false);
 					defer (array_free(&sub_sel.index));
 					if (sub_sel.index[0] == index) {
-						value = fv->value->tav.value;
+						value = fv->value->tav->value;
 						break;
 					}
 				}
-			} else if (is_type_array(node->tav.type) || is_type_enumerated_array(node->tav.type)) {
+			} else if (is_type_array(node->tav->type) || is_type_enumerated_array(node->tav->type)) {
 				for_array(i, cl->elems) {
 					Ast *elem = cl->elems[i];
 					if (elem->kind != Ast_FieldValue) {
@@ -3255,8 +3255,8 @@ ExactValue get_constant_field_single(CheckerContext *c, ExactValue value, i32 in
 					ast_node(fv, FieldValue, elem);
 					if (is_ast_range(fv->field)) {
 						ast_node(ie, BinaryExpr, fv->field);
-						TypeAndValue lo_tav = ie->left->tav;
-						TypeAndValue hi_tav = ie->right->tav;
+						TypeAndValue lo_tav = *ie->left->tav;
+						TypeAndValue hi_tav = *ie->right->tav;
 						GB_ASSERT(lo_tav.mode == Addressing_Constant);
 						GB_ASSERT(hi_tav.mode == Addressing_Constant);
 
@@ -3266,42 +3266,42 @@ ExactValue get_constant_field_single(CheckerContext *c, ExactValue value, i32 in
 
 						i64 corrected_index = index;
 
-						if (is_type_enumerated_array(node->tav.type)) {
-							Type *bt = base_type(node->tav.type);
+						if (is_type_enumerated_array(node->tav->type)) {
+							Type *bt = base_type(node->tav->type);
 							GB_ASSERT(bt->kind == Type_EnumeratedArray);
 							corrected_index = index + exact_value_to_i64(bt->EnumeratedArray.min_value);
 						}
 						if (op == Token_Ellipsis) {
 							if (lo <= corrected_index && corrected_index <= hi) {
-								TypeAndValue tav = fv->value->tav;
+								TypeAndValue *tav = fv->value->tav;
 								if (success_) *success_ = true;
 								if (finish_) *finish_ = false;
-								return tav.value;
+								return tav->value;
 							}
 						} else {
 							if (lo <= corrected_index && corrected_index < hi) {
-								TypeAndValue tav = fv->value->tav;
+								TypeAndValue *tav = fv->value->tav;
 								if (success_) *success_ = true;
 								if (finish_) *finish_ = false;
-								return tav.value;
+								return tav->value;
 							}
 						}
 					} else {
-						TypeAndValue index_tav = fv->field->tav;
-						GB_ASSERT(index_tav.mode == Addressing_Constant);
-						ExactValue index_value = index_tav.value;
-						if (is_type_enumerated_array(node->tav.type)) {
-							Type *bt = base_type(node->tav.type);
+						TypeAndValue *index_tav = fv->field->tav;
+						GB_ASSERT(index_tav->mode == Addressing_Constant);
+						ExactValue index_value = index_tav->value;
+						if (is_type_enumerated_array(node->tav->type)) {
+							Type *bt = base_type(node->tav->type);
 							GB_ASSERT(bt->kind == Type_EnumeratedArray);
 							index_value = exact_value_sub(index_value, bt->EnumeratedArray.min_value);
 						}
 
 						i64 field_index = exact_value_to_i64(index_value);
 						if (index == field_index) {
-							TypeAndValue tav = fv->value->tav;
+							TypeAndValue *tav = fv->value->tav;
 							if (success_) *success_ = true;
 							if (finish_) *finish_ = false;
-							return tav.value;;
+							return tav->value;;
 						}
 					}
 
@@ -3320,16 +3320,16 @@ ExactValue get_constant_field_single(CheckerContext *c, ExactValue value, i32 in
 				return value;
 			}
 
-			TypeAndValue tav = cl->elems[index]->tav;
-			if (tav.mode == Addressing_Constant) {
+			TypeAndValue *tav = cl->elems[index]->tav;
+			if (tav->mode == Addressing_Constant) {
 				if (success_) *success_ = true;
 				if (finish_) *finish_ = false;
-				return tav.value;
+				return tav->value;
 			} else {
-				GB_ASSERT(is_type_untyped_nil(tav.type));
+				GB_ASSERT(is_type_untyped_nil(tav->type));
 				if (success_) *success_ = true;
 				if (finish_) *finish_ = false;
-				return tav.value;
+				return tav->value;
 			}
 		}
 
@@ -9214,7 +9214,7 @@ ExprKind check_expr_base_internal(CheckerContext *c, Operand *o, Ast *node, Type
 					Entity *field = nullptr;
 					Ast *elem = cl->elems[index];
 					GB_ASSERT(elem->kind != Ast_FieldValue);
-					TypeAndValue tav = elem->tav;
+					TypeAndValue tav = type_and_value_of_expr(elem);
 					ExactValue i = exact_value_to_integer(tav.value);
 					if (i.kind != ExactValue_Integer) {
 						continue;
@@ -9552,9 +9552,9 @@ ExprKind check_expr_base_internal(CheckerContext *c, Operand *o, Ast *node, Type
 		}
 
 		Operand y = {};
-		y.mode = first_arg->tav.mode;
-		y.type = first_arg->tav.type;
-		y.value = first_arg->tav.value;
+		y.mode  = first_arg->tav->mode;
+		y.type  = first_arg->tav->type;
+		y.value = first_arg->tav->value;
 		if (check_is_assignable_to(c, &y, first_type)) {
 			// Do nothing, it's valid
 		} else {

@@ -3349,10 +3349,12 @@ void lb_open_scope(lbProcedure *p, Scope *s) {
 			scope = lb_get_llvm_metadata(m, p);
 		}
 
-		LLVMMetadataRef res = LLVMDIBuilderCreateLexicalBlock(m->debug_builder, scope,
-			file, line, column
-		);
-		lb_set_llvm_metadata(m, s, res);
+		if (build_context.ODIN_DEBUG) {
+			LLVMMetadataRef res = LLVMDIBuilderCreateLexicalBlock(m->debug_builder, scope,
+				file, line, column
+			);
+			lb_set_llvm_metadata(m, s, res);
+		}
 	}
 	p->scope_index += 1;
 	array_add(&p->scope_stack, s);
@@ -11582,7 +11584,9 @@ void lb_init_module(lbModule *m, Checker *c) {
 
 	m->ctx = LLVMGetGlobalContext();
 	m->mod = LLVMModuleCreateWithNameInContext("odin_module", m->ctx);
-	m->debug_builder = LLVMCreateDIBuilder(m->mod);
+	if (build_context.ODIN_DEBUG) {
+		m->debug_builder = LLVMCreateDIBuilder(m->mod);
+	}
 
 	m->state_flags = 0;
 	m->state_flags |= StateFlag_bounds_check;
@@ -12508,19 +12512,20 @@ void lb_generate_code(lbGenerator *gen) {
 	LLVMInitializeNativeTarget();
 
 
-	if (build_context.metrics.os == TargetOs_windows) {
-		LLVMAddModuleFlag(mod, LLVMModuleFlagBehaviorWarning, "CodeView", 8,
-			LLVMDIBuilderCreateConstantValueExpression(m->debug_builder, 1));
-	} else {
-		#ifndef DEBUG_METADATA_VERSION
-		#define DEBUG_METADATA_VERSION 3
-		#endif
-		LLVMAddModuleFlag(mod, LLVMModuleFlagBehaviorWarning, "Debug Info Version", 18,
-			LLVMDIBuilderCreateConstantValueExpression(m->debug_builder, DEBUG_METADATA_VERSION));
-		LLVMAddModuleFlag(mod, LLVMModuleFlagBehaviorWarning, "Dwarf Version", 13,
-			LLVMDIBuilderCreateConstantValueExpression(m->debug_builder, 4));
+	if (build_context.ODIN_DEBUG) {
+		if (build_context.metrics.os == TargetOs_windows) {
+			LLVMAddModuleFlag(mod, LLVMModuleFlagBehaviorWarning, "CodeView", 8,
+				LLVMDIBuilderCreateConstantValueExpression(m->debug_builder, 1));
+		} else {
+			#ifndef DEBUG_METADATA_VERSION
+			#define DEBUG_METADATA_VERSION 3
+			#endif
+			LLVMAddModuleFlag(mod, LLVMModuleFlagBehaviorWarning, "Debug Info Version", 18,
+				LLVMDIBuilderCreateConstantValueExpression(m->debug_builder, DEBUG_METADATA_VERSION));
+			LLVMAddModuleFlag(mod, LLVMModuleFlagBehaviorWarning, "Dwarf Version", 13,
+				LLVMDIBuilderCreateConstantValueExpression(m->debug_builder, 4));
+		}
 	}
-
 
 	char const *target_triple = alloc_cstring(permanent_allocator(), build_context.metrics.target_triplet);
 	char const *target_data_layout = alloc_cstring(permanent_allocator(), build_context.metrics.target_data_layout);
@@ -12569,7 +12574,7 @@ void lb_generate_code(lbGenerator *gen) {
 
 	LLVMSetModuleDataLayout(mod, LLVMCreateTargetDataLayout(target_machine));
 
-	{ // Debug Info
+	if (build_context.ODIN_DEBUG) { // Debug Info
 		for_array(i, info->files.entries) {
 			AstFile *f = info->files.entries[i].value;
 			String fullpath = f->fullpath;
@@ -13002,7 +13007,8 @@ void lb_generate_code(lbGenerator *gen) {
 
 		lb_end_procedure_body(p);
 
-		lb_verify_procedure(p);
+		// TODO(bill): Is this okay to ignore?
+		// lb_verify_procedure(p);
 
 		LLVMRunFunctionPassManager(default_function_pass_manager, p->value);
 	}
@@ -13065,7 +13071,8 @@ void lb_generate_code(lbGenerator *gen) {
 
 		lb_end_procedure_body(p);
 
-		lb_verify_procedure(p);
+		// TODO(bill): Is this okay to ignore?
+		// lb_verify_procedure(p);
 
 		LLVMRunFunctionPassManager(default_function_pass_manager, p->value);
 
@@ -13136,7 +13143,8 @@ void lb_generate_code(lbGenerator *gen) {
 
 		lb_end_procedure_body(p);
 
-		lb_verify_procedure(p);
+		// TODO(bill): Is this okay to ignore?
+		// lb_verify_procedure(p);
 
 		LLVMRunFunctionPassManager(default_function_pass_manager, p->value);
 	}
@@ -13169,7 +13177,9 @@ void lb_generate_code(lbGenerator *gen) {
 		}
 	}
 
-	LLVMDIBuilderFinalize(m->debug_builder);
+	if (m->debug_builder) {
+		LLVMDIBuilderFinalize(m->debug_builder);
+	}
 
 	for_array(i, m->procedures_to_generate) {
 		lbProcedure *p = m->procedures_to_generate[i];
@@ -13243,7 +13253,7 @@ void lb_generate_code(lbGenerator *gen) {
 
 
 	// LLVMDIBuilderFinalize(m->debug_builder);
-	if (LLVMVerifyModule(mod, LLVMAbortProcessAction, &llvm_error)) {
+	if (LLVMVerifyModule(mod, LLVMReturnStatusAction, &llvm_error)) {
 		gb_printf_err("LLVM Error: %s\n", llvm_error);
 		gb_exit(1);
 		return;
@@ -13258,12 +13268,6 @@ void lb_generate_code(lbGenerator *gen) {
 			return;
 		}
 	}
-	if (LLVMVerifyModule(mod, LLVMAbortProcessAction, &llvm_error)) {
-		gb_printf_err("LLVM Error: %s\n", llvm_error);
-		gb_exit(1);
-		return;
-	}
-
 	TIME_SECTION("LLVM Object Generation");
 
 	if (LLVMTargetMachineEmitToFile(target_machine, mod, cast(char *)filepath_obj.text, code_gen_file_type, &llvm_error)) {

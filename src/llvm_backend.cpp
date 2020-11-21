@@ -1567,12 +1567,16 @@ LLVMMetadataRef lb_debug_type_internal(lbModule *m, Type *type) {
 			{
 				unsigned element_count = 0;
 				LLVMMetadataRef elements[2] = {};
+				elements[0] = lb_debug_type(m, t_f32);
+				elements[1] = lb_debug_type(m, t_f32);
 				return LLVMDIBuilderCreateStructType(m->debug_builder, nullptr, "complex64", 9, nullptr, 0, 64, 32, LLVMDIFlagZero, nullptr, elements, element_count, 0, nullptr, "", 0);
 			}
 		case Basic_complex128:
 			{
 				unsigned element_count = 0;
 				LLVMMetadataRef elements[2] = {};
+				elements[0] = lb_debug_type(m, t_f64);
+				elements[1] = lb_debug_type(m, t_f64);
 				return LLVMDIBuilderCreateStructType(m->debug_builder, nullptr, "complex128", 10, nullptr, 0, 128, 64, LLVMDIFlagZero, nullptr, elements, element_count, 0, nullptr, "", 0);
 			}
 
@@ -1580,12 +1584,20 @@ LLVMMetadataRef lb_debug_type_internal(lbModule *m, Type *type) {
 			{
 				unsigned element_count = 0;
 				LLVMMetadataRef elements[4] = {};
+				elements[0] = lb_debug_type(m, t_f32);
+				elements[1] = lb_debug_type(m, t_f32);
+				elements[2] = lb_debug_type(m, t_f32);
+				elements[3] = lb_debug_type(m, t_f32);
 				return LLVMDIBuilderCreateStructType(m->debug_builder, nullptr, "quaternion128", 13, nullptr, 0, 128, 32, LLVMDIFlagZero, nullptr, elements, element_count, 0, nullptr, "", 0);
 			}
 		case Basic_quaternion256:
 			{
 				unsigned element_count = 0;
 				LLVMMetadataRef elements[4] = {};
+				elements[0] = lb_debug_type(m, t_f64);
+				elements[1] = lb_debug_type(m, t_f64);
+				elements[2] = lb_debug_type(m, t_f64);
+				elements[3] = lb_debug_type(m, t_f64);
 				return LLVMDIBuilderCreateStructType(m->debug_builder, nullptr, "quaternion256", 13, nullptr, 0, 256, 32, LLVMDIFlagZero, nullptr, elements, element_count, 0, nullptr, "", 0);
 			}
 
@@ -1602,6 +1614,8 @@ LLVMMetadataRef lb_debug_type_internal(lbModule *m, Type *type) {
 			{
 				unsigned element_count = 0;
 				LLVMMetadataRef elements[2] = {};
+				elements[0] = lb_debug_type(m, t_u8_ptr);
+				elements[1] = lb_debug_type(m, t_int);
 				return LLVMDIBuilderCreateStructType(m->debug_builder, nullptr, "string", 6, nullptr, 0, 2*word_bits, word_bits, LLVMDIFlagZero, nullptr, elements, element_count, 0, nullptr, "", 0);
 			}
 		case Basic_cstring:
@@ -1613,6 +1627,8 @@ LLVMMetadataRef lb_debug_type_internal(lbModule *m, Type *type) {
 			{
 				unsigned element_count = 0;
 				LLVMMetadataRef elements[2] = {};
+				elements[0] = lb_debug_type(m, t_rawptr);
+				elements[1] = lb_debug_type(m, t_typeid);
 				return LLVMDIBuilderCreateStructType(m->debug_builder, nullptr, "any", 3, nullptr, 0, 2*word_bits, word_bits, LLVMDIFlagZero, nullptr, elements, element_count, 0, nullptr, "", 0);
 			}
 
@@ -1659,7 +1675,6 @@ LLVMMetadataRef lb_debug_type_internal(lbModule *m, Type *type) {
 
 	case Type_Pointer:
 		return LLVMDIBuilderCreatePointerType(m->debug_builder, lb_debug_type(m, type->Pointer.elem), word_bits, word_bits, 0, nullptr, 0);
-		// return LLVMPointerType(lb_type(m, type_deref(type)), 0);
 
 	case Type_Opaque:
 		return lb_debug_type(m, type->Opaque.elem);
@@ -1676,8 +1691,8 @@ LLVMMetadataRef lb_debug_type_internal(lbModule *m, Type *type) {
 		{
 			unsigned element_count = 0;
 			LLVMMetadataRef elements[2] = {};
-			// elements[0] = LLVMDIBuilderCreatePointerType(m->debug_builder, lb_debug_type(m, type->Slice.elem), word_bits, word_bits, 0, nullptr, 0);
-			// elements[1] = lb_debug_type(m, t_int);
+			elements[0] = LLVMDIBuilderCreatePointerType(m->debug_builder, lb_debug_type(m, type->Slice.elem), word_bits, word_bits, 0, nullptr, 0);
+			elements[1] = lb_debug_type(m, t_int);
 			return LLVMDIBuilderCreateStructType(m->debug_builder, nullptr, "", 0, nullptr, 0, 2*word_bits, word_bits, LLVMDIFlagZero, nullptr, elements, element_count, 0, nullptr, "", 0);
 		}
 		break;
@@ -1686,6 +1701,10 @@ LLVMMetadataRef lb_debug_type_internal(lbModule *m, Type *type) {
 		{
 			unsigned element_count = 0;
 			LLVMMetadataRef elements[4] = {};
+			elements[0] = LLVMDIBuilderCreatePointerType(m->debug_builder, lb_debug_type(m, type->DynamicArray.elem), word_bits, word_bits, 0, nullptr, 0);
+			elements[1] = lb_debug_type(m, t_int);
+			elements[2] = lb_debug_type(m, t_int);
+			elements[3] = lb_debug_type(m, t_allocator);
 			return LLVMDIBuilderCreateStructType(m->debug_builder, nullptr, "", 0, nullptr, 0, 5*word_bits, word_bits, LLVMDIFlagZero, nullptr, elements, element_count, 0, nullptr, "", 0);
 		}
 		break;
@@ -1941,6 +1960,19 @@ LLVMMetadataRef lb_debug_type_internal(lbModule *m, Type *type) {
 			GB_PANIC("TODO x86_mmx debug info");
 		}
 		return LLVMDIBuilderCreateVectorType(m->debug_builder, cast(unsigned)type->SimdVector.count, 8*cast(unsigned)type_align_of(type), lb_debug_type(m, type->SimdVector.elem), nullptr, 0);
+
+	case Type_RelativePointer:
+		return lb_debug_type(m, type->RelativePointer.base_integer);
+
+	case Type_RelativeSlice:
+		{
+			unsigned element_count = 0;
+			LLVMMetadataRef elements[2] = {};
+			LLVMMetadataRef idx_type = lb_debug_type(m, type->RelativeSlice.base_integer);
+			elements[0] = idx_type;
+			elements[1] = idx_type;
+			return LLVMDIBuilderCreateStructType(m->debug_builder, nullptr, "", 0, nullptr, 0, 2*word_bits, word_bits, LLVMDIFlagZero, nullptr, elements, element_count, 0, nullptr, "", 0);
+		}
 	}
 
 	GB_PANIC("Invalid type %s", type_to_string(type));

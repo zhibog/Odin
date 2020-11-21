@@ -76,7 +76,6 @@ void ir_write_u64(irFileBuffer *f, u64 i) {
 }
 void ir_write_big_int(irFileBuffer *f, BigInt const &x, Type *type, bool swap_endian) {
 	if (x.len == 2) {
-		gbAllocator a = heap_allocator(); // TODO(bill): Change this allocator
 		u64 words[2] = {};
 		BigInt y = x;
 		if (swap_endian) {
@@ -88,9 +87,8 @@ void ir_write_big_int(irFileBuffer *f, BigInt const &x, Type *type, bool swap_en
 			y.d.words = words;
 		}
 
-		String s = big_int_to_string(a, &y, 10);
+		String s = big_int_to_string(temporary_allocator(), &y, 10);
 		ir_write_string(f, s);
-		gb_free(a, s.text);
 	} else {
 		i64 i = 0;
 		if (x.neg) {
@@ -296,7 +294,7 @@ void ir_print_alignment_prefix_hack(irFileBuffer *f, i64 alignment) {
 
 
 void ir_print_proc_results(irFileBuffer *f, irModule *m, Type *t) {
-	set_procedure_abi_types(heap_allocator(), t);
+	set_procedure_abi_types(t);
 
 	GB_ASSERT(is_type_proc(t));
 	t = base_type(t);
@@ -325,7 +323,7 @@ void ir_print_proc_results(irFileBuffer *f, irModule *m, Type *t) {
 
 
 void ir_print_proc_type_without_pointer(irFileBuffer *f, irModule *m, Type *t) {
-	set_procedure_abi_types(heap_allocator(), t);
+	set_procedure_abi_types(t);
 
 	i64 word_bits = 8*build_context.word_size;
 	t = base_type(t);
@@ -736,6 +734,28 @@ void ir_print_exact_value(irFileBuffer *f, irModule *m, ExactValue value, Type *
 	if (is_type_array(type) && value.kind == ExactValue_String && !is_type_u8(core_array_type(type))) {
 		i64 count  = type->Array.count;
 		Type *elem = type->Array.elem;
+
+		if (is_type_rune_array(type)) {
+			Rune rune;
+			isize offset = 0;
+			isize width = 1;
+			String s = value.value_string;
+			ir_write_byte(f, '[');
+			for (i64 i = 0; i < count && offset < s.len; i++) {
+				width = gb_utf8_decode(s.text+offset, s.len-offset, &rune);
+				if (i > 0) ir_write_str_lit(f, ", ");
+				ir_print_type(f, m, elem);
+				ir_write_byte(f, ' ');
+				ir_print_exact_value(f, m, exact_value_i64(rune), elem);
+				offset += width;
+			}
+			GB_ASSERT(offset == s.len);
+
+			ir_write_byte(f, ']');
+			return;
+		}
+
+
 		ir_write_byte(f, '[');
 
 		for (i64 i = 0; i < count; i++) {
@@ -747,7 +767,7 @@ void ir_print_exact_value(irFileBuffer *f, irModule *m, ExactValue value, Type *
 
 		ir_write_byte(f, ']');
 		return;
-	} else if (is_type_array(type) &&
+	}  else if (is_type_array(type) &&
 	    value.kind != ExactValue_Invalid &&
 	    value.kind != ExactValue_String &&
 	    value.kind != ExactValue_Compound) {
@@ -798,7 +818,11 @@ void ir_print_exact_value(irFileBuffer *f, irModule *m, ExactValue value, Type *
 			GB_ASSERT(is_type_array(type));
 			ir_write_str_lit(f, "c\"");
 			ir_print_escape_string(f, str, false, false);
-			ir_write_str_lit(f, "\\00\"");
+			if (type->Array.count == str.len) {
+				ir_write_str_lit(f, "\"");
+			} else {
+				ir_write_str_lit(f, "\\00\"");
+			}
 		} else if (is_type_cstring(t)) {
 			// HACK NOTE(bill): This is a hack but it works because strings are created at the very end
 			// of the .ll file
@@ -812,7 +836,7 @@ void ir_print_exact_value(irFileBuffer *f, irModule *m, ExactValue value, Type *
 			ir_write_str_lit(f, ", ");
 			ir_print_type(f, m, t_i32);
 			ir_write_str_lit(f, " 0, i32 0)");
-		}else {
+		} else {
 			// HACK NOTE(bill): This is a hack but it works because strings are created at the very end
 			// of the .ll file
 			irValue *str_array = ir_add_global_string_array(m, str);
@@ -2189,7 +2213,7 @@ void ir_print_instr(irFileBuffer *f, irModule *m, irValue *value) {
 		irInstrCall *call = &instr->Call;
 		Type *proc_type = base_type(ir_type(call->value));
 		GB_ASSERT(is_type_proc(proc_type));
-		set_procedure_abi_types(heap_allocator(), proc_type);
+		set_procedure_abi_types(proc_type);
 
 		bool is_c_vararg = proc_type->Proc.c_vararg;
 		Type *result_type = call->type;
@@ -2396,7 +2420,7 @@ void ir_print_instr(irFileBuffer *f, irModule *m, irValue *value) {
 
 
 void ir_print_proc(irFileBuffer *f, irModule *m, irProcedure *proc) {
-	set_procedure_abi_types(heap_allocator(), proc->type);
+	set_procedure_abi_types(proc->type);
 
 	if (proc->body == nullptr) {
 		ir_write_str_lit(f, "declare ");

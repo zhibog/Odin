@@ -776,6 +776,8 @@ fmt_rune :: proc(fi: ^Info, r: rune, verb: rune) {
 	switch verb {
 	case 'c', 'r', 'v':
 		strings.write_rune(fi.buf, r);
+	case 'q':
+		strings.write_quoted_rune(fi.buf, r);
 	case:
 		fmt_int(fi, u64(r), false, 32, verb);
 	}
@@ -1597,13 +1599,18 @@ fmt_value :: proc(fi: ^Info, v: any, verb: rune) {
 		}
 
 	case runtime.Type_Info_Array:
-		strings.write_byte(fi.buf, '[');
-		defer strings.write_byte(fi.buf, ']');
-		for i in 0..<info.count {
-			if i > 0 { strings.write_string(fi.buf, ", "); }
+		if (verb == 's' || verb == 'q') && reflect.is_byte(info.elem) {
+			s := strings.string_from_ptr((^byte)(v.data), info.count);
+			fmt_string(fi, s, verb);
+		} else {
+			strings.write_byte(fi.buf, '[');
+			defer strings.write_byte(fi.buf, ']');
+			for i in 0..<info.count {
+				if i > 0 { strings.write_string(fi.buf, ", "); }
 
-			data := uintptr(v.data) + uintptr(i*info.elem_size);
-			fmt_arg(fi, any{rawptr(data), info.elem.id}, verb);
+				data := uintptr(v.data) + uintptr(i*info.elem_size);
+				fmt_arg(fi, any{rawptr(data), info.elem.id}, verb);
+			}
 		}
 
 	case runtime.Type_Info_Enumerated_Array:
@@ -1626,13 +1633,15 @@ fmt_value :: proc(fi: ^Info, v: any, verb: rune) {
 		}
 
 	case runtime.Type_Info_Dynamic_Array:
-		if verb == 'p' {
-			slice := cast(^mem.Raw_Dynamic_Array)v.data;
-			fmt_pointer(fi, slice.data, 'p');
+		array := cast(^mem.Raw_Dynamic_Array)v.data;
+		if (verb == 's' || verb == 'q') && reflect.is_byte(info.elem) {
+			s := strings.string_from_ptr((^byte)(array.data), array.len);
+			fmt_string(fi, s, verb);
+		} else if verb == 'p' {
+			fmt_pointer(fi, array.data, 'p');
 		} else {
 			strings.write_byte(fi.buf, '[');
 			defer strings.write_byte(fi.buf, ']');
-			array := cast(^mem.Raw_Dynamic_Array)v.data;
 			for i in 0..<array.len {
 				if i > 0 { strings.write_string(fi.buf, ", "); }
 
@@ -1656,13 +1665,15 @@ fmt_value :: proc(fi: ^Info, v: any, verb: rune) {
 
 
 	case runtime.Type_Info_Slice:
-		if verb == 'p' {
-			slice := cast(^mem.Raw_Slice)v.data;
+		slice := cast(^mem.Raw_Slice)v.data;
+		if (verb == 's' || verb == 'q') && reflect.is_byte(info.elem) {
+			s := strings.string_from_ptr((^byte)(slice.data), slice.len);
+			fmt_string(fi, s, verb);
+		} else if verb == 'p' {
 			fmt_pointer(fi, slice.data, 'p');
 		} else {
 			strings.write_byte(fi.buf, '[');
 			defer strings.write_byte(fi.buf, ']');
-			slice := cast(^mem.Raw_Slice)v.data;
 			for i in 0..<slice.len {
 				if i > 0 { strings.write_string(fi.buf, ", "); }
 

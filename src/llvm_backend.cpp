@@ -2350,7 +2350,7 @@ lbProcedure *lb_create_procedure(lbModule *m, Entity *entity) {
 
 
 
-	if (build_context.ODIN_DEBUG) { // Debug Information
+	if (build_context.ODIN_DEBUG && p->body != nullptr) { // Debug Information
 		unsigned line = cast(unsigned)entity->token.pos.line;
 
 		LLVMMetadataRef scope = nullptr;
@@ -11601,6 +11601,7 @@ void lb_init_module(lbModule *m, Checker *c) {
 	m->mod = LLVMModuleCreateWithNameInContext("odin_module", m->ctx);
 	if (build_context.ODIN_DEBUG) {
 		m->debug_builder = LLVMCreateDIBuilder(m->mod);
+		// m->debug_builder = LLVMCreateDIBuilderDisallowUnresolved(m->mod);
 	}
 
 	m->state_flags = 0;
@@ -13006,6 +13007,7 @@ void lb_generate_code(lbGenerator *gen) {
 
 	lbProcedure *startup_type_info = nullptr;
 	lbProcedure *startup_runtime = nullptr;
+	lbProcedure *startup_main = nullptr;
 	{ // Startup Type Info
 		Type *params  = alloc_type_tuple();
 		Type *results = alloc_type_tuple();
@@ -13024,8 +13026,6 @@ void lb_generate_code(lbGenerator *gen) {
 
 		// TODO(bill): Is this okay to ignore?
 		// lb_verify_procedure(p);
-
-		LLVMRunFunctionPassManager(default_function_pass_manager, p->value);
 	}
 	{ // Startup Runtime
 		Type *params  = alloc_type_tuple();
@@ -13088,27 +13088,6 @@ void lb_generate_code(lbGenerator *gen) {
 
 		// TODO(bill): Is this okay to ignore?
 		// lb_verify_procedure(p);
-
-		LLVMRunFunctionPassManager(default_function_pass_manager, p->value);
-
-		/*{
-			LLVMValueRef last_instr = LLVMGetLastInstruction(p->decl_block->block);
-			for (LLVMValueRef instr = LLVMGetFirstInstruction(p->decl_block->block);
-			     instr != last_instr;
-			     instr = LLVMGetNextInstruction(instr)) {
-				if (LLVMIsAAllocaInst(instr)) {
-					LLVMTypeRef type = LLVMGetAllocatedType(instr);
-					LLVMValueRef sz_val = LLVMSizeOf(type);
-					GB_ASSERT(LLVMIsConstant(sz_val));
-					gb_printf_err(">> 0x%p\n", sz_val);
-					LLVMTypeRef sz_type = LLVMTypeOf(sz_val);
-					gb_printf_err(">> %s\n", LLVMPrintTypeToString(sz_type));
-					unsigned long long sz = LLVMConstIntGetZExtValue(sz_val);
-					// long long sz = LLVMConstIntGetSExtValue(sz_val);
-					gb_printf_err(">> %ll\n", sz);
-				}
-			}
-		}*/
 	}
 
 	if (!(build_context.build_mode == BuildMode_DynamicLibrary && !has_dll_main)) {
@@ -13136,6 +13115,7 @@ void lb_generate_code(lbGenerator *gen) {
 
 		lbProcedure *p = lb_create_dummy_procedure(m, name, proc_type);
 		p->is_startup = true;
+		startup_main = p;
 
 		lb_begin_procedure_body(p);
 
@@ -13160,8 +13140,6 @@ void lb_generate_code(lbGenerator *gen) {
 
 		// TODO(bill): Is this okay to ignore?
 		// lb_verify_procedure(p);
-
-		LLVMRunFunctionPassManager(default_function_pass_manager, p->value);
 	}
 
 
@@ -13202,9 +13180,19 @@ void lb_generate_code(lbGenerator *gen) {
 	}
 
 
-
-
 	TIME_SECTION("LLVM Function Pass");
+
+	{
+		if (startup_type_info) {
+			LLVMRunFunctionPassManager(default_function_pass_manager, startup_type_info->value);
+		}
+		if (startup_runtime) {
+			LLVMRunFunctionPassManager(default_function_pass_manager, startup_runtime->value);
+		}
+		if (startup_main) {
+			LLVMRunFunctionPassManager(default_function_pass_manager, startup_main->value);
+		}
+	}
 
 	for_array(i, m->procedures_to_generate) {
 		lbProcedure *p = m->procedures_to_generate[i];

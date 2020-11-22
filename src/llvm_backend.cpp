@@ -2373,24 +2373,30 @@ lbProcedure *lb_create_procedure(lbModule *m, Entity *entity) {
 
 		// LLVMBool is_local_to_unit = !entity->Procedure.is_export;
 		LLVMBool is_local_to_unit = false;
-		LLVMBool is_definition = p->body == nullptr;
+		LLVMBool is_definition = true; // p->body != nullptr;
 		unsigned scope_line = line;
-		LLVMDIFlags flags = LLVMDIFlagZero;
+		u32 flags = LLVMDIFlagZero;
 		LLVMBool is_optimized = false;
 		if (base_type(p->type)->Proc.diverging) {
-			flags = LLVMDIFlagNoReturn;
+			flags |= LLVMDIFlagNoReturn;
+		}
+		if (p->body == nullptr) {
+			flags |= LLVMDIFlagPrototyped;
+			is_optimized = false;
 		}
 
-		p->debug_info = LLVMDIBuilderCreateFunction(m->debug_builder, scope,
-			cast(char const *)entity->token.string.text, entity->token.string.len,
-			cast(char const *)p->name.text, p->name.len,
-			file, line, type,
-			is_local_to_unit, is_definition,
-			scope_line, flags, is_optimized
-		);
-		GB_ASSERT(p->debug_info != nullptr);
-		LLVMSetSubprogram(p->value, p->debug_info);
-		lb_set_llvm_metadata(m, p, p->debug_info);
+		{
+			p->debug_info = LLVMDIBuilderCreateFunction(m->debug_builder, scope,
+				cast(char const *)entity->token.string.text, entity->token.string.len,
+				cast(char const *)p->name.text, p->name.len,
+				file, line, type,
+				is_local_to_unit, is_definition,
+				scope_line, cast(LLVMDIFlags)flags, is_optimized
+			);
+			GB_ASSERT(p->debug_info != nullptr);
+			LLVMSetSubprogram(p->value, p->debug_info);
+			lb_set_llvm_metadata(m, p, p->debug_info);
+		}
 	}
 
 	return p;
@@ -2914,6 +2920,15 @@ void lb_end_procedure(lbProcedure *p) {
 	LLVMDisposeBuilder(p->builder);
 }
 
+void lb_dump_llvm_error(char const *llvm_error) {
+	gb_printf_err("LLVM Error:\n");
+	isize n = gb_strlen(llvm_error);
+	gb_file_write(gb_file_get_standard(gbFileStandard_Error), llvm_error, n);
+	gb_printf_err("\n");
+	gb_exit(1);
+	return;
+}
+
 void lb_verify_procedure(lbProcedure *p) {
 	if (build_context.ODIN_DEBUG) {
 		return;
@@ -2927,8 +2942,7 @@ void lb_verify_procedure(lbProcedure *p) {
 			String filepath_ll = concatenate_strings(permanent_allocator(), p->module->gen->output_base, STR_LIT(".ll"));
 			char *llvm_error = nullptr;
 			if (LLVMPrintModuleToFile(p->module->mod, cast(char const *)filepath_ll.text, &llvm_error)) {
-				gb_printf_err("LLVM Error: %s\n", llvm_error);
-				gb_exit(1);
+				lb_dump_llvm_error(llvm_error);
 				return;
 			}
 		}
@@ -3333,6 +3347,7 @@ void lb_open_scope(lbProcedure *p, Scope *s) {
 	lbModule *m = p->module;
 	auto curr_meta_data = lb_get_llvm_metadata(m, s);
 	if (s != nullptr && s->node != nullptr && curr_meta_data == nullptr) {
+	#if 1
 		Token token = ast_token(s->node);
 		unsigned line = cast(unsigned)token.pos.line;
 		unsigned column = cast(unsigned)token.pos.column;
@@ -3355,6 +3370,7 @@ void lb_open_scope(lbProcedure *p, Scope *s) {
 			);
 			lb_set_llvm_metadata(m, s, res);
 		}
+	#endif
 	}
 	p->scope_index += 1;
 	array_add(&p->scope_stack, s);
@@ -4340,16 +4356,17 @@ void lb_build_stmt(lbProcedure *p, Ast *node) {
 #if 1
 	LLVMMetadataRef prev_loc = nullptr;
 	defer (if (prev_loc != nullptr) {
-		LLVMSetCurrentDebugLocation2(p->builder, prev_loc);
+		// TODO(bill): Does this need to be reset?
+		// LLVMSetCurrentDebugLocation2(p->builder, prev_loc);
 	});
 	if (p->debug_info != nullptr) {
 		prev_loc = LLVMGetCurrentDebugLocation2(p->builder);
 		Token tok = ast_token(node);
-		unsigned line = 0;
+		unsigned prev_line = 0;
 		if (prev_loc != nullptr) {
-			line = LLVMDILocationGetLine(prev_loc);
+			prev_line = LLVMDILocationGetLine(prev_loc);
 		}
-		if (tok.pos.line != line) {
+		if (tok.pos.line != prev_line) {
 			LLVMSetCurrentDebugLocation2(p->builder, lb_debug_location_from_token_pos(p, tok.pos));
 		} else {
 			prev_loc = nullptr;
@@ -7513,30 +7530,28 @@ lbValue lb_emit_call_internal(lbProcedure *p, lbValue value, lbValue return_ptr,
 		LLVMBasicBlockRef curr_block = LLVMGetInsertBlock(p->builder);
 		GB_ASSERT(curr_block != p->decl_block->block);
 
+	LLVMTypeRef ft = nullptr;
+	LLVMValueRef fn = nullptr;
 	if (USE_LLVM_ABI) {
-
 		LLVMTypeRef ftp = lb_type(p->module, value.type);
-		LLVMTypeRef ft = LLVMGetElementType(ftp);
-		LLVMValueRef fn = value.value;
+		ft = LLVMGetElementType(ftp);
+		fn = value.value;
 		if (!lb_is_type_kind(LLVMTypeOf(value.value), LLVMFunctionTypeKind)) {
 			fn = LLVMBuildPointerCast(p->builder, fn, ftp, "");
 		}
 		LLVMTypeRef fnp = LLVMGetElementType(LLVMTypeOf(fn));
 		GB_ASSERT_MSG(lb_is_type_kind(fnp, LLVMFunctionTypeKind), "%s", LLVMPrintTypeToString(fnp));
-
-		LLVMValueRef ret = LLVMBuildCall2(p->builder, ft, fn, args, arg_count, "");;
-		lbValue res = {};
-		res.value = ret;
-		res.type = abi_rt;
-		return res;
 	} else {
-
-		LLVMValueRef ret = LLVMBuildCall2(p->builder, LLVMGetElementType(lb_type(p->module, value.type)), value.value, args, arg_count, "");;
-		lbValue res = {};
-		res.value = ret;
-		res.type = abi_rt;
-		return res;
+		ft = LLVMGetElementType(lb_type(p->module, value.type));
+		fn = value.value;
 	}
+
+	LLVMValueRef ret = LLVMBuildCall2(p->builder, ft, fn, args, arg_count, "");;
+	lbValue res = {};
+	res.value = ret;
+	res.type = abi_rt;
+
+	return res;
 }
 
 lbValue lb_emit_runtime_call(lbProcedure *p, char const *c_name, Array<lbValue> const &args) {
@@ -13188,6 +13203,7 @@ void lb_generate_code(lbGenerator *gen) {
 
 
 
+
 	TIME_SECTION("LLVM Function Pass");
 
 	for_array(i, m->procedures_to_generate) {
@@ -13251,28 +13267,24 @@ void lb_generate_code(lbGenerator *gen) {
 		}
 	}
 
+	if (build_context.keep_temp_files) {
+		TIME_SECTION("LLVM Print Module to File");
+		if (LLVMPrintModuleToFile(mod, cast(char const *)filepath_ll.text, &llvm_error)) {
+			lb_dump_llvm_error(llvm_error);
+			return;
+		}
+	}
 
-	// LLVMDIBuilderFinalize(m->debug_builder);
 	if (LLVMVerifyModule(mod, LLVMReturnStatusAction, &llvm_error)) {
-		gb_printf_err("LLVM Error: %s\n", llvm_error);
-		gb_exit(1);
+		lb_dump_llvm_error(llvm_error);
 		return;
 	}
 	llvm_error = nullptr;
 
-	if (build_context.keep_temp_files) {
-		TIME_SECTION("LLVM Print Module to File");
-		if (LLVMPrintModuleToFile(mod, cast(char const *)filepath_ll.text, &llvm_error)) {
-			gb_printf_err("LLVM Error: %s\n", llvm_error);
-			gb_exit(1);
-			return;
-		}
-	}
 	TIME_SECTION("LLVM Object Generation");
 
 	if (LLVMTargetMachineEmitToFile(target_machine, mod, cast(char *)filepath_obj.text, code_gen_file_type, &llvm_error)) {
-		gb_printf_err("LLVM Error: %s\n", llvm_error);
-		gb_exit(1);
+		lb_dump_llvm_error(llvm_error);
 		return;
 	}
 

@@ -2373,9 +2373,9 @@ lbProcedure *lb_create_procedure(lbModule *m, Entity *entity) {
 
 		// LLVMBool is_local_to_unit = !entity->Procedure.is_export;
 		LLVMBool is_local_to_unit = false;
-		LLVMBool is_definition = true; // p->body != nullptr;
+		LLVMBool is_definition = p->body != nullptr;
 		unsigned scope_line = line;
-		u32 flags = LLVMDIFlagZero;
+		u32 flags = LLVMDIFlagStaticMember;
 		LLVMBool is_optimized = false;
 		if (base_type(p->type)->Proc.diverging) {
 			flags |= LLVMDIFlagNoReturn;

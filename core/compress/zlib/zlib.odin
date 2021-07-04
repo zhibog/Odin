@@ -473,10 +473,7 @@ inflate_from_context :: proc(using ctx: ^compress.Context_Memory_Input, raw := f
 	}
 
 	// Parse ZLIB stream without header.
-	err = inflate_raw(z=ctx, expected_output_size=expected_output_size);
-	if err != nil {
-		return err;
-	}
+	try inflate_raw(z=ctx, expected_output_size=expected_output_size);
 
 	if !raw {
 		compress.discard_to_next_byte_lsb(ctx);
@@ -524,24 +521,13 @@ inflate_raw :: proc(z: ^$C, expected_output_size := -1, allocator := context.all
 	z.num_bits    = 0;
 	z.code_buffer = 0;
 
-	z_repeat:      ^Huffman_Table;
-	z_offset:      ^Huffman_Table;
-	codelength_ht: ^Huffman_Table;
-
-	z_repeat, err = allocate_huffman_table(allocator=context.allocator);
-	if err != nil {
-		return err;
-	}
-	z_offset, err = allocate_huffman_table(allocator=context.allocator);
-	if err != nil {
-		return err;
-	}
-	codelength_ht, err = allocate_huffman_table(allocator=context.allocator);
-	if err != nil {
-		return err;
-	}
+	z_repeat := try allocate_huffman_table(allocator=context.allocator);
 	defer free(z_repeat);
+
+	z_offset := try allocate_huffman_table(allocator=context.allocator);
 	defer free(z_offset);
+
+	codelength_ht := try allocate_huffman_table(allocator=context.allocator);
 	defer free(codelength_ht);
 
 	final := u32(0);
@@ -586,14 +572,8 @@ inflate_raw :: proc(z: ^$C, expected_output_size := -1, allocator := context.all
 			// log.debugf("Err: %v | Final: %v | Type: %v\n", err, final, type);
 			if type == 1 {
 				// Use fixed code lengths.
-				err = build_huffman(z_repeat, Z_FIXED_LENGTH[:]);
-				if err != nil {
-					return err;
-				}
-				err = build_huffman(z_offset, Z_FIXED_DIST[:]);
-				if err != nil {
-					return err;
-				}
+				try build_huffman(z_repeat, Z_FIXED_LENGTH[:]);
+				try build_huffman(z_offset, Z_FIXED_DIST[:]);
 			} else {
 				lencodes: [286+32+137]u8;
 				codelength_sizes: [19]u8;
@@ -611,19 +591,13 @@ inflate_raw :: proc(z: ^$C, expected_output_size := -1, allocator := context.all
 					s := compress.read_bits_lsb(z, 3);
 					codelength_sizes[Z_LENGTH_DEZIGZAG[i]] = u8(s);
 				}
-				err = build_huffman(codelength_ht, codelength_sizes[:]);
-				if err != nil {
-					return err;
-				}
+				try build_huffman(codelength_ht, codelength_sizes[:]);
 
 				n = 0;
 				c: u16;
 
 				for n < ntot {
-					c, err = decode_huffman(z, codelength_ht);
-					if err != nil {
-						return err;
-					}
+					c = try decode_huffman(z, codelength_ht);
 
 					if c < 0 || c >= 19 {
 						return E_Deflate.Huffman_Bad_Code_Lengths;
@@ -664,21 +638,10 @@ inflate_raw :: proc(z: ^$C, expected_output_size := -1, allocator := context.all
 					return E_Deflate.Huffman_Bad_Code_Lengths;
 				}
 
-				err = build_huffman(z_repeat, lencodes[:hlit]);
-				if err != nil {
-					return err;
-				}
-
-				err = build_huffman(z_offset, lencodes[hlit:ntot]);
-				if err != nil {
-					return err;
-				}
+				try build_huffman(z_repeat, lencodes[:hlit]);
+				try build_huffman(z_offset, lencodes[hlit:ntot]);
 			}
-			err = parse_huffman_block(z, z_repeat, z_offset);
-			// log.debugf("Err: %v | Final: %v | Type: %v\n", err, final, type);
-			if err != nil {
-				return err;
-			}
+			try parse_huffman_block(z, z_repeat, z_offset);
 		}
 		if final == 1 {
 			break;

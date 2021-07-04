@@ -106,12 +106,11 @@ make_soa_aligned :: proc($T: typeid/#soa[]$E, length: int, alignment: int, alloc
 	}
 	assert(allocator.procedure != nil);
 
-	new_bytes: []byte;
-	new_bytes, err = allocator.procedure(
+	new_bytes := try allocator.procedure(
 		allocator.data, .Alloc, total_size, max_align,
 		nil, 0, loc,
 	);
-	if new_bytes == nil || err != nil {
+	if new_bytes == nil {
 		return;
 	}
 	new_data := raw_data(new_bytes);
@@ -171,27 +170,26 @@ make_soa :: proc{
 
 
 @builtin
-resize_soa :: proc(array: ^$T/#soa[dynamic]$E, length: int, loc := #caller_location) -> bool {
+resize_soa :: proc(array: ^$T/#soa[dynamic]$E, length: int, loc := #caller_location) -> Allocator_Error {
 	if array == nil {
-		return false;
+		return .Out_Of_Memory;
 	}
-	if !reserve_soa(array, length, loc) {
-		return false;
-	}
+	try reserve_soa(array, length, loc);
+
 	footer := raw_soa_footer(array);
 	footer.len = length;
-	return true;
+	return .None;
 }
 
 @builtin
-reserve_soa :: proc(array: ^$T/#soa[dynamic]$E, capacity: int, loc := #caller_location) -> bool {
+reserve_soa :: proc(array: ^$T/#soa[dynamic]$E, capacity: int, loc := #caller_location) -> Allocator_Error {
 	if array == nil {
-		return false;
+		return .Out_Of_Memory;
 	}
 
 	old_cap := cap(array);
 	if capacity <= old_cap {
-		return true;
+		return .None;
 	}
 
 	if array.allocator.procedure == nil {
@@ -202,7 +200,7 @@ reserve_soa :: proc(array: ^$T/#soa[dynamic]$E, capacity: int, loc := #caller_lo
 	footer := raw_soa_footer(array);
 	if size_of(E) == 0 {
 		footer.cap = capacity;
-		return true;
+		return .None;
 	}
 
 	ti := type_info_of(typeid_of(T));
@@ -228,12 +226,12 @@ reserve_soa :: proc(array: ^$T/#soa[dynamic]$E, capacity: int, loc := #caller_lo
 
 	old_data := (^rawptr)(array)^;
 
-	new_bytes, err := array.allocator.procedure(
+	new_bytes := try array.allocator.procedure(
 		array.allocator.data, .Alloc, new_size, max_align,
 		nil, old_size, loc,
 	);
-	if new_bytes == nil || err != nil {
-		return false;
+	if new_bytes == nil {
+		return .Out_Of_Memory;
 	}
 	new_data := raw_data(new_bytes);
 
@@ -264,20 +262,20 @@ reserve_soa :: proc(array: ^$T/#soa[dynamic]$E, capacity: int, loc := #caller_lo
 		old_data, old_size, loc,
 	);
 
-	return true;
+	return .None;
 }
 
 @builtin
-append_soa_elem :: proc(array: ^$T/#soa[dynamic]$E, arg: E, loc := #caller_location) {
+append_soa_elem :: proc(array: ^$T/#soa[dynamic]$E, arg: E, loc := #caller_location) -> Allocator_Error {
 	if array == nil {
-		return;
+		return .Out_Of_Memory;
 	}
 
 	arg_len := 1;
 
 	if cap(array) <= len(array)+arg_len {
 		cap := 2 * cap(array) + max(8, arg_len);
-		_ = reserve_soa(array, cap, loc);
+		try reserve_soa(array, cap, loc);
 	}
 	arg_len = min(cap(array)-len(array), arg_len);
 
@@ -313,22 +311,23 @@ append_soa_elem :: proc(array: ^$T/#soa[dynamic]$E, arg: E, loc := #caller_locat
 		}
 	}
 	footer.len += arg_len;
+	return .None;
 }
 
 @builtin
-append_soa_elems :: proc(array: ^$T/#soa[dynamic]$E, args: ..E, loc := #caller_location) {
+append_soa_elems :: proc(array: ^$T/#soa[dynamic]$E, args: ..E, loc := #caller_location) -> Allocator_Error {
 	if array == nil {
-		return;
+		return .Out_Of_Memory;
 	}
 
 	arg_len := len(args);
 	if arg_len == 0 {
-		return;
+		return .None;
 	}
 
 	if cap(array) <= len(array)+arg_len {
 		cap := 2 * cap(array) + max(8, arg_len);
-		_ = reserve_soa(array, cap, loc);
+		try reserve_soa(array, cap, loc);
 	}
 	arg_len = min(cap(array)-len(array), arg_len);
 
@@ -367,6 +366,7 @@ append_soa_elems :: proc(array: ^$T/#soa[dynamic]$E, args: ..E, loc := #caller_l
 	}
 
 	footer.len += arg_len;
+	return .None;
 }
 
 

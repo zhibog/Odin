@@ -38,7 +38,7 @@ default_temp_allocator_destroy :: proc(s: ^Default_Temp_Allocator) {
 }
 
 @(private)
-default_temp_allocator_alloc :: proc(s: ^Default_Temp_Allocator, size, alignment: int, loc := #caller_location) -> ([]byte, Allocator_Error) {
+default_temp_allocator_alloc :: proc(s: ^Default_Temp_Allocator, size, alignment: int, loc := #caller_location) -> (data: []byte, err: Allocator_Error) {
 	size := size;
 	size = align_forward_int(size, alignment);
 
@@ -70,10 +70,8 @@ default_temp_allocator_alloc :: proc(s: ^Default_Temp_Allocator, size, alignment
 		s.backup_allocator = a;
 	}
 
-	data, err := mem_alloc_bytes(size, alignment, a, loc);
-	if err != nil {
-		return data, err;
-	}
+	data = try mem_alloc_bytes(size, alignment, a, loc);
+
 	if s.leaked_allocations == nil {
 		s.leaked_allocations = make([dynamic][]byte, a);
 	}
@@ -86,7 +84,7 @@ default_temp_allocator_alloc :: proc(s: ^Default_Temp_Allocator, size, alignment
 		}
 	}
 
-	return data, .None;
+	return;
 }
 
 @(private)

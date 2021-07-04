@@ -4,25 +4,22 @@ package os2
 import "core:time"
 import win32 "core:sys/windows"
 
-_fstat :: proc(fd: Handle, allocator := context.allocator) -> (File_Info, Maybe(Path_Error)) {
+_fstat :: proc(fd: Handle, allocator := context.allocator) -> (fi: File_Info, err: Maybe(Path_Error)) {
 	if fd == 0 {
-		return {}, Path_Error{err = .Invalid_Argument};
+		err = Path_Error{err = .Invalid_Argument};
+		return;
 	}
 	context.allocator = allocator;
 
-	path, err := _cleanpath_from_handle(fd);
-	if err != nil {
-		return {}, err;
-	}
+	path := try _cleanpath_from_handle(fd);
 
 	h := win32.HANDLE(fd);
 	switch win32.GetFileType(h) {
 	case win32.FILE_TYPE_PIPE, win32.FILE_TYPE_CHAR:
-		fi: File_Info;
 		fi.fullpath = path;
 		fi.name = basename(path);
 		fi.mode |= file_type_mode(h);
-		return fi, nil;
+		return;
 	}
 
 	return _file_info_from_get_file_information_by_handle(path, h);

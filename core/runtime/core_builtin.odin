@@ -291,14 +291,14 @@ delete_key :: proc(m: ^$T/map[$K]$V, key: K) -> (deleted_key: K, deleted_value: 
 
 
 @builtin
-append_elem :: proc(array: ^$T/[dynamic]$E, arg: E, loc := #caller_location)  {
+append_elem :: proc(array: ^$T/[dynamic]$E, arg: E, loc := #caller_location) -> Allocator_Error {
 	if array == nil {
-		return;
+		return .Out_Of_Memory;
 	}
 
 	if cap(array) < len(array)+1 {
 		cap := 2 * cap(array) + max(8, 1);
-		_ = reserve(array, cap, loc);
+		try reserve(array, cap, loc);
 	}
 	if cap(array)-len(array) > 0 {
 		a := (^Raw_Dynamic_Array)(array);
@@ -309,23 +309,24 @@ append_elem :: proc(array: ^$T/[dynamic]$E, arg: E, loc := #caller_location)  {
 		}
 		a.len += 1;
 	}
+	return .None;
 }
 
 @builtin
-append_elems :: proc(array: ^$T/[dynamic]$E, args: ..E, loc := #caller_location)  {
+append_elems :: proc(array: ^$T/[dynamic]$E, args: ..E, loc := #caller_location) -> Allocator_Error {
 	if array == nil {
-		return;
+		return .Out_Of_Memory;
 	}
 
 	arg_len := len(args);
 	if arg_len <= 0 {
-		return;
+		return .None;
 	}
 
 
 	if cap(array) < len(array)+arg_len {
 		cap := 2 * cap(array) + max(8, arg_len);
-		_ = reserve(array, cap, loc);
+		try reserve(array, cap, loc);
 	}
 	arg_len = min(cap(array)-len(array), arg_len);
 	if arg_len > 0 {
@@ -337,22 +338,24 @@ append_elems :: proc(array: ^$T/[dynamic]$E, args: ..E, loc := #caller_location)
 		}
 		a.len += arg_len;
 	}
+	return .None;
 }
 
 // The append_string built-in procedure appends a string to the end of a [dynamic]u8 like type
 @builtin
-append_elem_string :: proc(array: ^$T/[dynamic]$E/u8, arg: $A/string, loc := #caller_location) {
+append_elem_string :: proc(array: ^$T/[dynamic]$E/u8, arg: $A/string, loc := #caller_location) -> Allocator_Error {
 	args := transmute([]E)arg;
-	append_elems(array=array, args=args, loc=loc);
+	return append_elems(array=array, args=args, loc=loc);
 }
 
 
 // The append_string built-in procedure appends multiple strings to the end of a [dynamic]u8 like type
 @builtin
-append_string :: proc(array: ^$T/[dynamic]$E/u8, args: ..string, loc := #caller_location) {
+append_string :: proc(array: ^$T/[dynamic]$E/u8, args: ..string, loc := #caller_location) -> Allocator_Error {
 	for arg in args {
-		append(array = array, args = transmute([]E)(arg), loc = loc);
+		try append(array = array, args = transmute([]E)(arg), loc = loc);
 	}
+	return .None;
 }
 
 // The append built-in procedure appends elements to the end of a dynamic array
@@ -360,74 +363,73 @@ append_string :: proc(array: ^$T/[dynamic]$E/u8, args: ..string, loc := #caller_
 
 
 @builtin
-append_nothing :: proc(array: ^$T/[dynamic]$E, loc := #caller_location) {
+append_nothing :: proc(array: ^$T/[dynamic]$E, loc := #caller_location) -> Allocator_Error {
 	if array == nil {
-		return;
+		return .Out_Of_Memory;
 	}
-	resize(array, len(array)+1);
+	return resize(array, len(array)+1);
 }
 
 
 @builtin
-insert_at_elem :: proc(array: ^$T/[dynamic]$E, index: int, arg: E, loc := #caller_location) -> (ok: bool) #no_bounds_check {
+insert_at_elem :: proc(array: ^$T/[dynamic]$E, index: int, arg: E, loc := #caller_location) -> Allocator_Error #no_bounds_check {
 	if array == nil {
-		return;
+		return .Out_Of_Memory;
 	}
 	n := len(array);
 	m :: 1;
-	resize(array, n+m, loc);
+	try resize(array, n+m, loc);
 	if n+m <= len(array) {
 		when size_of(E) != 0 {
 			copy(array[index+m:], array[index:]);
 			array[index] = arg;
 		}
-		ok = true;
+		return .None;
 	}
-	return;
+	return .Out_Of_Memory;
 }
 
 @builtin
-insert_at_elems :: proc(array: ^$T/[dynamic]$E, index: int, args: ..E, loc := #caller_location) -> (ok: bool) #no_bounds_check {
+insert_at_elems :: proc(array: ^$T/[dynamic]$E, index: int, args: ..E, loc := #caller_location) -> Allocator_Error #no_bounds_check {
 	if array == nil {
-		return;
+		return .Out_Of_Memory;
 	}
 	if len(args) == 0 {
-		ok = true;
-		return;
+		return .None;
 	}
 
 	n := len(array);
 	m := len(args);
-	resize(array, n+m, loc);
+	try resize(array, n+m, loc);
 	if n+m <= len(array) {
 		when size_of(E) != 0 {
 			copy(array[index+m:], array[index:]);
 			copy(array[index:], args);
 		}
-		ok = true;
+		return .None;
 	}
-	return;
+	return .Out_Of_Memory;
+
 }
 
 @builtin
-insert_at_elem_string :: proc(array: ^$T/[dynamic]$E/u8, index: int, arg: string, loc := #caller_location) -> (ok: bool) #no_bounds_check {
+insert_at_elem_string :: proc(array: ^$T/[dynamic]$E/u8, index: int, arg: string, loc := #caller_location) -> Allocator_Error #no_bounds_check {
 	if array == nil {
-		return;
+		return .Out_Of_Memory;
 	}
 	if len(args) == 0 {
-		ok = true;
-		return;
+		return .None;
 	}
 
 	n := len(array);
 	m := len(args);
-	resize(array, n+m, loc);
+	try resize(array, n+m, loc);
 	if n+m <= len(array) {
 		copy(array[index+m:], array[index:]);
 		copy(array[index:], args);
-		ok = true;
+		return .None;
 	}
-	return;
+	return .Out_Of_Memory;
 }
 
 @builtin insert_at :: proc{insert_at_elem, insert_at_elems, insert_at_elem_string};
@@ -443,14 +445,14 @@ clear_dynamic_array :: proc "contextless" (array: ^$T/[dynamic]$E) {
 }
 
 @builtin
-reserve_dynamic_array :: proc(array: ^$T/[dynamic]$E, capacity: int, loc := #caller_location) -> bool {
+reserve_dynamic_array :: proc(array: ^$T/[dynamic]$E, capacity: int, loc := #caller_location) -> Allocator_Error {
 	if array == nil {
-		return false;
+		return .Out_Of_Memory;
 	}
 	a := (^Raw_Dynamic_Array)(array);
 
 	if capacity <= a.cap {
-		return true;
+		return .None;
 	}
 
 	if a.allocator.procedure == nil {
@@ -462,29 +464,25 @@ reserve_dynamic_array :: proc(array: ^$T/[dynamic]$E, capacity: int, loc := #cal
 	new_size  := capacity * size_of(E);
 	allocator := a.allocator;
 
-	new_data, err := allocator.procedure(
+	new_data := try allocator.procedure(
 		allocator.data, .Resize, new_size, align_of(E),
 		a.data, old_size, loc,
 	);
-	if new_data == nil || err != nil {
-		return false;
-	}
-
 	a.data = raw_data(new_data);
 	a.cap = capacity;
-	return true;
+	return .None;
 }
 
 @builtin
-resize_dynamic_array :: proc(array: ^$T/[dynamic]$E, length: int, loc := #caller_location) -> bool {
+resize_dynamic_array :: proc(array: ^$T/[dynamic]$E, length: int, loc := #caller_location) -> Allocator_Error {
 	if array == nil {
-		return false;
+		return .Out_Of_Memory;
 	}
 	a := (^Raw_Dynamic_Array)(array);
 
 	if length <= a.cap {
 		a.len = max(length, 0);
-		return true;
+		return .None;
 	}
 
 	if a.allocator.procedure == nil {
@@ -496,18 +494,15 @@ resize_dynamic_array :: proc(array: ^$T/[dynamic]$E, length: int, loc := #caller
 	new_size  := length * size_of(E);
 	allocator := a.allocator;
 
-	new_data, err := allocator.procedure(
+	new_data := try allocator.procedure(
 		allocator.data, .Resize, new_size, align_of(E),
 		a.data, old_size, loc,
 	);
-	if new_data == nil || err != nil {
-		return false;
-	}
 
 	a.data = raw_data(new_data);
 	a.len = length;
 	a.cap = length;
-	return true;
+	return .None;
 }
 
 

@@ -132,10 +132,7 @@ write :: proc(w: ^Writer, record: []string) -> io.Error {
 // write_all writes multiple CSV records to w using write, and then flushes (if necessary).
 write_all :: proc(w: ^Writer, records: [][]string) -> io.Error {
 	for record in records {
-		err := write(w, record);
-		if err != nil {
-			return err;
-		}
+		try write(w, record);
 	}
 	return writer_flush(w);
 }

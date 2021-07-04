@@ -128,9 +128,8 @@ writer_write_byte :: proc(b: ^Writer, c: byte) -> io.Error {
 // writer_write_rune writes a single unicode code point, and returns the number of bytes written with any error
 writer_write_rune :: proc(b: ^Writer, r: rune) -> (size: int, err: io.Error) {
 	if r < utf8.RUNE_SELF {
-		err = writer_write_byte(b, byte(r));
-		size = 0 if err != nil else 1;
-		return;
+		try writer_write_byte(b, byte(r));
+		return 1, nil;
 	}
 	if b.err != nil {
 		return 0, b.err;

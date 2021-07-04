@@ -133,14 +133,10 @@ match_chunk :: proc(chunk, s: string) -> (rest: string, ok: bool, err: Match_Err
 					break;
 				}
 				lo, hi: rune;
-				if lo, chunk, err = get_escape(chunk); err != .None {
-					return;
-				}
+				lo, chunk = try get_escape(chunk);
 				hi = lo;
 				if chunk[0] == '-' {
-					if hi, chunk, err = get_escape(chunk[1:]); err != .None {
-						return;
-					}
+					hi, chunk = try get_escape(chunk[1:]);
 				}
 
 				if lo <= r && r <= hi {
@@ -242,20 +238,13 @@ glob :: proc(pattern: string, allocator := context.allocator) -> (matches: []str
 		return m[:], e;
 	}
 
-	m: []string;
-	m, err = glob(dir);
-	if err != .None {
-		return;
-	}
+	m := try glob(dir);
 	dmatches := make([dynamic]string, 0, 0, allocator);
-	for d in m {
-		dmatches, err = _glob(d, file, &dmatches);
-		if err != .None {
-			break;
-		}
-	}
-	if len(dmatches) > 0 {
+	defer if len(dmatches) > 0 {
 		matches = dmatches[:];
+	}
+	for d in m {
+		dmatches = try _glob(d, file, &dmatches);
 	}
 	return;
 }
@@ -298,10 +287,7 @@ _glob :: proc(dir, pattern: string, matches: ^[dynamic]string) -> (m: [dynamic]s
 
 	for fi in fis {
 		n := fi.name;
-		matched, err := match(pattern, n);
-		if err != nil {
-			return m, err;
-		}
+		matched := try match(pattern, n);
 		if matched {
 			append(&m, join(dir, n));
 		}

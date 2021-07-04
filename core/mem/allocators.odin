@@ -137,7 +137,7 @@ scratch_allocator_destroy :: proc(s: ^Scratch_Allocator) {
 
 scratch_allocator_proc :: proc(allocator_data: rawptr, mode: Allocator_Mode,
                                size, alignment: int,
-                               old_memory: rawptr, old_size: int, loc := #caller_location) -> ([]byte, Allocator_Error) {
+                               old_memory: rawptr, old_size: int, loc := #caller_location) -> (data: []byte, err: Allocator_Error) {
 
 	s := (^Scratch_Allocator)(allocator_data);
 
@@ -184,14 +184,11 @@ scratch_allocator_proc :: proc(allocator_data: rawptr, mode: Allocator_Mode,
 			s.backup_allocator = a;
 		}
 
-		ptr, err := alloc_bytes(size, alignment, a, loc);
-		if err != nil {
-			return ptr, err;
-		}
+		data = try alloc_bytes(size, alignment, a, loc);
 		if s.leaked_allocations == nil {
 			s.leaked_allocations = make([dynamic][]byte, a);
 		}
-		append(&s.leaked_allocations, ptr);
+		append(&s.leaked_allocations, data);
 
 		if logger := context.logger; logger.lowest_level <= .Warning {
 			if logger.procedure != nil {
@@ -199,7 +196,7 @@ scratch_allocator_proc :: proc(allocator_data: rawptr, mode: Allocator_Mode,
 			}
 		}
 
-		return ptr, err;
+		return;
 
 	case .Free:
 		start := uintptr(raw_data(s.data));
@@ -246,13 +243,10 @@ scratch_allocator_proc :: proc(allocator_data: rawptr, mode: Allocator_Mode,
 			s.curr_offset = int(old_ptr-begin)+size;
 			return byte_slice(old_memory, size), nil;
 		}
-		data, err := scratch_allocator_proc(allocator_data, .Alloc, size, alignment, old_memory, old_size, loc);
-		if err != nil {
-			return data, err;
-		}
+		data = try scratch_allocator_proc(allocator_data, .Alloc, size, alignment, old_memory, old_size, loc);
 		runtime.copy(data, byte_slice(old_memory, old_size));
-		_, err = scratch_allocator_proc(allocator_data, .Free, 0, alignment, old_memory, old_size, loc);
-		return data, err;
+		try scratch_allocator_proc(allocator_data, .Free, 0, alignment, old_memory, old_size, loc);
+		return;
 
 	case .Query_Features:
 		set := (^Allocator_Mode_Set)(old_memory);
@@ -673,7 +667,7 @@ dynamic_pool_alloc :: proc(pool: ^Dynamic_Pool, bytes: int) -> rawptr {
 	return raw_data(data);
 }
 
-dynamic_pool_alloc_bytes :: proc(using pool: ^Dynamic_Pool, bytes: int) -> ([]byte, Allocator_Error) {
+dynamic_pool_alloc_bytes :: proc(using pool: ^Dynamic_Pool, bytes: int) -> (data: []byte, err: Allocator_Error) {
 	cycle_new_block :: proc(using pool: ^Dynamic_Pool) -> (err: Allocator_Error) {
 		if block_allocator.procedure == nil {
 			panic("You must call pool_init on a Pool before using it");
@@ -705,29 +699,28 @@ dynamic_pool_alloc_bytes :: proc(using pool: ^Dynamic_Pool, bytes: int) -> ([]by
 	n += extra;
 	if n >= out_band_size {
 		assert(block_allocator.procedure != nil);
-		memory, err := block_allocator.procedure(block_allocator.data, Allocator_Mode.Alloc,
-			                                block_size, alignment,
-			                                nil, 0);
-		if memory != nil {
-			append(&out_band_allocations, raw_data(memory));
+		data, err = block_allocator.procedure(block_allocator.data, Allocator_Mode.Alloc,
+		                                      block_size, alignment,
+		                                      nil, 0);
+		if data != nil {
+			append(&out_band_allocations, raw_data(data));
 		}
-		return memory, err;
+		return;
 	}
 
 	if bytes_left < n {
-		err := cycle_new_block(pool);
-		if err != nil {
-			return nil, err;
-		}
+		try cycle_new_block(pool);
 		if current_block == nil {
-			return nil, .Out_Of_Memory;
+			err = .Out_Of_Memory;
+			return;
 		}
 	}
 
 	memory := current_pos;
 	current_pos = ptr_offset((^byte)(current_pos), n);
 	bytes_left -= n;
-	return byte_slice(memory, bytes), nil;
+	data = byte_slice(memory, bytes);
+	return;
 }
 
 
@@ -838,7 +831,7 @@ tracking_allocator :: proc(data: ^Tracking_Allocator) -> Allocator {
 
 tracking_allocator_proc :: proc(allocator_data: rawptr, mode: Allocator_Mode,
                                 size, alignment: int,
-                                old_memory: rawptr, old_size: int, loc := #caller_location) -> ([]byte, Allocator_Error) {
+                                old_memory: rawptr, old_size: int, loc := #caller_location) -> (data: []byte, err: Allocator_Error) {
 	data := (^Tracking_Allocator)(allocator_data);
 	if mode == .Query_Info {
 		info := (^Allocator_Query_Info)(old_memory);
@@ -856,15 +849,12 @@ tracking_allocator_proc :: proc(allocator_data: rawptr, mode: Allocator_Mode,
 	result: []byte;
 	err: Allocator_Error;
 	if mode == .Free && old_memory not_in data.allocation_map {
-		append(&data.bad_free_array, Tracking_Allocator_Bad_Free_Entry{
+		try append(&data.bad_free_array, Tracking_Allocator_Bad_Free_Entry{
 			memory = old_memory,
 			location = loc,
 		});
 	} else {
-		result, err = data.backing.procedure(data.backing.data, mode, size, alignment, old_memory, old_size, loc);
-		if err != nil {
-			return result, err;
-		}
+		data = try data.backing.procedure(data.backing.data, mode, size, alignment, old_memory, old_size, loc);
 	}
 	result_ptr := raw_data(result);
 

@@ -12,21 +12,20 @@ Marshal_Error :: enum {
 	Invalid_Data,
 }
 
-marshal :: proc(v: any, allocator := context.allocator) -> ([]byte, Marshal_Error) {
+marshal :: proc(v: any, allocator := context.allocator) -> (data: []byte, err: Marshal_Error) {
 	b: strings.Builder;
 	strings.init_builder(&b, allocator);
-
-	err := marshal_arg(&b, v);
-
-	if err != .None {
+	defer if err != nil {
 		strings.destroy_builder(&b);
-		return nil, err;
 	}
+
+	try marshal_arg(&b, v);
 	if len(b.buf) == 0 {
 		strings.destroy_builder(&b);
-		return nil, err;
+		return;
 	}
-	return b.buf[:], err;
+	data = b.buf[:];
+	return;
 }
 
 

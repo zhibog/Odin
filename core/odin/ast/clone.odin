@@ -168,10 +168,10 @@ clone_node :: proc(node: ^Node) -> ^Node {
 		r.lhs = clone(r.lhs);
 		r.rhs = clone(r.rhs);
 	case Block_Stmt:
-		r.label = auto_cast clone(r.label);
+		r.label = clone(r.label);
 		r.stmts = clone(r.stmts);
 	case If_Stmt:
-		r.label     = auto_cast clone(r.label);
+		r.label     = clone(r.label);
 		r.init      = clone(r.init);
 		r.cond      = clone(r.cond);
 		r.body      = clone(r.body);
@@ -185,13 +185,13 @@ clone_node :: proc(node: ^Node) -> ^Node {
 	case Defer_Stmt:
 		r.stmt = clone(r.stmt);
 	case For_Stmt:
-		r.label = auto_cast clone(r.label);
+		r.label = clone(r.label);
 		r.init = clone(r.init);
 		r.cond = clone(r.cond);
 		r.post = clone(r.post);
 		r.body = clone(r.body);
 	case Range_Stmt:
-		r.label = auto_cast clone(r.label);
+		r.label = clone(r.label);
 		r.vals = clone(r.vals);
 		r.expr = clone(r.expr);
 		r.body = clone(r.body);
@@ -199,12 +199,12 @@ clone_node :: proc(node: ^Node) -> ^Node {
 		r.list = clone(r.list);
 		r.body = clone(r.body);
 	case Switch_Stmt:
-		r.label = auto_cast clone(r.label);
+		r.label = clone(r.label);
 		r.init = clone(r.init);
 		r.cond = clone(r.cond);
 		r.body = clone(r.body);
 	case Type_Switch_Stmt:
-		r.label = auto_cast clone(r.label);
+		r.label = clone(r.label);
 		r.tag  = clone(r.tag);
 		r.expr = clone(r.expr);
 		r.body = clone(r.body);

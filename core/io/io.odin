@@ -218,11 +218,7 @@ read_at :: proc(r: Reader_At, p: []byte, offset: i64) -> (n: int, err: Error) {
 		return 0, .Empty;
 	}
 
-	curr_offset: i64;
-	curr_offset, err = r->impl_seek(offset, .Current);
-	if err != nil {
-		return 0, err;
-	}
+	curr_offset := try r->impl_seek(offset, .Current);
 
 	n, err = r->impl_read(p);
 	_, err1 := r->impl_seek(curr_offset, .Start);
@@ -244,11 +240,7 @@ write_at :: proc(w: Writer_At, p: []byte, offset: i64) -> (n: int, err: Error) {
 		return 0, .Empty;
 	}
 
-	curr_offset: i64;
-	curr_offset, err = w->impl_seek(offset, .Current);
-	if err != nil {
-		return 0, err;
-	}
+	curr_offset := try w->impl_seek(offset, .Current);
 
 	n, err = w->impl_write(p);
 	_, err1 := w->impl_seek(curr_offset, .Start);

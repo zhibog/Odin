@@ -453,10 +453,7 @@ load_from_context :: proc(ctx: ^$C, options := Options{}, allocator := context.a
 			}
 			seen_ihdr = true;
 
-			header, err = read_header(ctx);
-			if err != nil {
-				return img, err;
-			}
+			header = try read_header(ctx);
 
 			if .Paletted in header.color_type {
 				// Color type 3
@@ -506,10 +503,7 @@ load_from_context :: proc(ctx: ^$C, options := Options{}, allocator := context.a
 				return img, E_PNG.PLTE_Encountered_Unexpectedly;
 			}
 
-			c, err = read_chunk(ctx);
-			if err != nil {
-				return img, err;
-			}
+			c = try read_chunk(ctx);
 
 			if c.header.length % 3 != 0 || c.header.length > 768 {
 				return img, E_PNG.PLTE_Invalid_Length;
@@ -540,10 +534,7 @@ load_from_context :: proc(ctx: ^$C, options := Options{}, allocator := context.a
 
 			next := ch.type;
 			for next == .IDAT {
-				c, err = read_chunk(ctx);
-				if err != nil {
-					return img, err;
-				}
+				c = try read_chunk(ctx);
 
 				bytes.buffer_write(&idat_b, c.data);
 				idat_length += c.header.length;
@@ -560,19 +551,13 @@ load_from_context :: proc(ctx: ^$C, options := Options{}, allocator := context.a
 			}
 			seen_idat = true;
 		case .IEND:
-			c, err = read_chunk(ctx);
-			if err != nil {
-				return img, err;
-			}
+			c = try read_chunk(ctx);
 			seen_iend = true;
 		case .bKGD:
 
 			// TODO: Make sure that 16-bit bKGD + tRNS chunks return u16 instead of u16be
+			c = try read_chunk(ctx);
 
-			c, err = read_chunk(ctx);
-			if err != nil {
-				return img, err;
-			}
 			seen_bkgd = true;
 			if .return_metadata in options {
 				append(&info.chunks, c);
@@ -604,10 +589,7 @@ load_from_context :: proc(ctx: ^$C, options := Options{}, allocator := context.a
 					img.background = [3]u16{u16(col[0]), u16(col[1]), u16(col[2])};
 			}
 		case .tRNS:
-			c, err = read_chunk(ctx);
-			if err != nil {
-				return img, err;
-			}
+			c = try read_chunk(ctx);
 
 			if .Alpha in info.header.color_type {
 				return img, E_PNG.TRNS_Encountered_Unexpectedly;
@@ -646,10 +628,7 @@ load_from_context :: proc(ctx: ^$C, options := Options{}, allocator := context.a
 			return img, E_PNG.PNG_Does_Not_Adhere_to_Spec;
 		case:
 			// Unhandled type
-			c, err = read_chunk(ctx);
-			if err != nil {
-				return img, err;
-			}
+			c = try read_chunk(ctx);
 			if .return_metadata in options {
 				// NOTE: Chunk cata is currently allocated on the temp allocator.
 				append(&info.chunks, c);
@@ -693,12 +672,8 @@ load_from_context :: proc(ctx: ^$C, options := Options{}, allocator := context.a
 	}
 
 	buf: bytes.Buffer;
-	zlib_error := zlib.inflate(idat, &buf, false, expected_size);
 	defer bytes.buffer_destroy(&buf);
-
-	if zlib_error != nil {
-		return {}, zlib_error;
-	}
+	try zlib.inflate(idat, &buf, false, expected_size);
 
 	buf_len := len(buf.buf);
 	if expected_size != buf_len {
@@ -710,8 +685,8 @@ load_from_context :: proc(ctx: ^$C, options := Options{}, allocator := context.a
 		So, we'll save the old value of img.channels we return to the user
 		as metadata, and set it instead to the raw number of channels.
 	*/
-	defilter_error := defilter(img, &buf, &header, options);
-	if defilter_error != nil {
+
+	if defilter_error := defilter(img, &buf, &header, options); defilter_error != nil {
 		bytes.buffer_destroy(&img.pixels);
 		return {}, defilter_error;
 	}

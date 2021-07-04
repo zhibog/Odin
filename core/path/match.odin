@@ -127,14 +127,11 @@ match_chunk :: proc(chunk, s: string) -> (rest: string, ok: bool, err: Match_Err
 					break;
 				}
 				lo, hi: rune;
-				if lo, chunk, err = get_escape(chunk); err != .None {
-					return;
-				}
+				lo, chunk = try get_escape(chunk);
+
 				hi = lo;
 				if chunk[0] == '-' {
-					if hi, chunk, err = get_escape(chunk[1:]); err != .None {
-						return;
-					}
+					hi, chunk = try get_escape(chunk[1:]);
 				}
 
 				if lo <= r && r <= hi {

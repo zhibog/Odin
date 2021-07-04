@@ -222,7 +222,7 @@ __dynamic_map_rehash :: proc(using header: Map_Header, new_count: int, loc := #c
 		entry_hash := __get_map_hash_from_entry(header, entry_header);
 
 		fr := __dynamic_map_find(new_header, entry_hash);
-		j := __dynamic_map_add_entry(new_header, entry_hash, loc);
+		j, _ := __dynamic_map_add_entry(new_header, entry_hash, loc);
 		if fr.entry_prev < 0 {
 			nm.hashes[fr.hash_index] = j;
 		} else {
@@ -266,7 +266,7 @@ __dynamic_map_set :: proc(h: Map_Header, hash: Map_Hash, value: rawptr, loc := #
 	if fr.entry_index >= 0 {
 		index = fr.entry_index;
 	} else {
-		index = __dynamic_map_add_entry(h, hash, loc);
+		index, _ = __dynamic_map_add_entry(h, hash, loc);
 		if fr.entry_prev >= 0 {
 			entry := __dynamic_map_get_entry(h, fr.entry_prev);
 			entry.next = index;
@@ -326,16 +326,16 @@ __dynamic_map_find :: proc(using h: Map_Header, hash: Map_Hash) -> Map_Find_Resu
 	return fr;
 }
 
-__dynamic_map_add_entry :: proc(using h: Map_Header, hash: Map_Hash, loc := #caller_location) -> int {
-	prev := m.entries.len;
-	c := __dynamic_array_append_nothing(&m.entries, entry_size, entry_align, loc);
+__dynamic_map_add_entry :: proc(using h: Map_Header, hash: Map_Hash, loc := #caller_location) -> (prev: int, err: Allocator_Error) {
+	prev = m.entries.len;
+	c := try __dynamic_array_append_nothing(&m.entries, entry_size, entry_align, loc);
 	if c != prev {
 		end := __dynamic_map_get_entry(h, c-1);
 		end.hash = hash.hash;
 		mem_copy(rawptr(uintptr(end) + key_offset), hash.key_ptr, key_size);
 		end.next = -1;
 	}
-	return prev;
+	return;
 }
 
 __dynamic_map_delete_key :: proc(using h: Map_Header, hash: Map_Hash) {
